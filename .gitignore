@@ -1,0 +1,69 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Node
+node_modules/
+.npm
+
+# Environment
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Next.js
+.next/
+out/
+dist/
+build/
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebaserc.local
+
+# Vercel
+.vercel
+
+# Xcode / iOS
+*.xcuserstate
+*.xcuserdata/
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# iCloud sync artifacts
+*.icloud
+.iCloud
+
+# Google Services (NO commitear — agregar manualmente)
+GoogleService-Info.plist
+google-services.json
+
+# Secrets
+*.pem
+*.p8
+*.mobileprovision
+AuthKey_*.p8
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
