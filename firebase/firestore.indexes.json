@@ -1,0 +1,80 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "trips",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "start_date", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "trips",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "start_date", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "flights",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "departure_utc", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "flights",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "parse_job_id", "order": "ASCENDING" },
+        { "fieldPath": "departure_utc", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "hotels",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "check_in_datetime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "hotels",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "parse_job_id", "order": "ASCENDING" },
+        { "fieldPath": "check_in_datetime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "transports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "departure_utc", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "transports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "parse_job_id", "order": "ASCENDING" },
+        { "fieldPath": "departure_utc", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "parse_jobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "parse_jobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
