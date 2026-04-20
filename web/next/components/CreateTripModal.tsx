@@ -41,21 +41,28 @@ export function CreateTripModal({ onClose, onCreated }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Sheet */}
-      <div className="relative w-full max-w-lg bg-[#1A1A1A] rounded-t-[20px] p-6 pb-10 animate-slide-up">
-        {/* Handle */}
-        <div className="w-9 h-1 bg-[#333] rounded-full mx-auto mb-6" />
+      {/* Sheet / Dialog */}
+      <div
+        className="
+          relative w-full max-w-lg bg-[#0F0F0F] rounded-t-[20px]
+          md:w-[92vw] md:max-w-[480px] md:rounded-[20px]
+          md:border md:border-[#262626] md:shadow-[0_24px_64px_rgba(0,0,0,0.55)]
+          p-6 pb-10 md:pb-6 animate-slide-up
+        "
+      >
+        {/* Handle (mobile only) */}
+        <div className="md:hidden w-9 h-1 bg-[#333] rounded-full mx-auto mb-6" />
 
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-[22px] font-semibold text-white">Nuevo viaje</h2>
-          <button onClick={onClose} className="text-[#A0A0A0] text-[15px]">Cancelar</button>
+          <h2 className="text-[22px] md:text-[20px] font-semibold text-white tracking-tight">Nuevo viaje</h2>
+          <button onClick={onClose} className="text-[#A0A0A0] md:hover:text-white md:transition-colors text-[15px] md:text-[13px]">Cancelar</button>
         </div>
 
         <div className="space-y-4">
@@ -99,7 +106,8 @@ export function CreateTripModal({ onClose, onCreated }: Props) {
           <button
             onClick={handleCreate}
             disabled={!name.trim() || !startDate || !endDate || saving}
-            className="w-full bg-[#0A84FF] text-white rounded-[12px] py-4 text-[17px] font-semibold mt-2 disabled:opacity-40 transition-opacity"
+            className="w-full text-white rounded-[12px] py-4 md:py-3 text-[17px] md:text-[14px] font-semibold mt-2 disabled:opacity-40 transition-all hover:brightness-110 active:scale-[0.98]"
+            style={{ background: "linear-gradient(135deg, #0A84FF, #0670D9)", boxShadow: "0 4px 14px rgba(10,132,255,0.25)" }}
           >
             {saving ? "Creando..." : "Crear viaje"}
           </button>

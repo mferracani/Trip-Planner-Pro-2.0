@@ -9,6 +9,7 @@ import { signOut } from "@/lib/auth";
 import { useCountUp } from "@/lib/hooks";
 import { Pressable } from "./ui/Pressable";
 import { BottomNav } from "./BottomNav";
+import { TopNav } from "./TopNav";
 import { CreateTripModal } from "./CreateTripModal";
 import { TripCard } from "./TripCard";
 import { Plane, MapPin, DollarSign, CalendarDays, ChevronRight } from "lucide-react";
@@ -52,7 +53,7 @@ function getTotalDays(trip: Trip): number {
 }
 
 export function Dashboard() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [filter, setFilter] = useState<Filter>("all");
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -84,8 +85,15 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#0D0D0D]">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 pt-14 pb-6 md:px-8 animate-fade-slide-up stagger-0">
+      <TopNav
+        active="trips"
+        onAdd={() => setCreateOpen(true)}
+        addIcon="plus"
+        addLabel="Nuevo viaje"
+      />
+
+      {/* Mobile header */}
+      <div className="md:hidden flex items-center justify-between px-6 pt-14 pb-6 animate-fade-slide-up stagger-0">
         <div>
           <p className="text-[#A0A0A0] text-[13px] mb-0.5">
             {new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
@@ -103,18 +111,34 @@ export function Dashboard() {
         </button>
       </div>
 
-      <div className="px-6 md:px-8 space-y-6 pb-32">
-        {/* Hero card */}
-        <div className="animate-spring-up stagger-2">
-          {heroTrip ? (
-            <HeroTripCard trip={heroTrip} status={classifyTrip(heroTrip)} />
-          ) : (
-            <EmptyHeroCard onCreateTrip={() => setCreateOpen(true)} />
-          )}
+      <div className="mx-auto max-w-6xl px-6 md:px-8 space-y-6 pb-32 md:pb-16 md:pt-8">
+        {/* Desktop greeting — inline, editorial feel */}
+        <div className="hidden md:flex items-baseline justify-between animate-fade-slide-up stagger-0">
+          <div>
+            <p className="text-[#707070] text-[12px] uppercase tracking-[0.2em] font-semibold mb-2">
+              {new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
+            </p>
+            <h1 className="text-[34px] font-bold text-white leading-[1.1] tracking-tight">
+              {line1} <span className="text-[#BF5AF2]">{line2}</span>
+            </h1>
+          </div>
+          <p className="text-[#4D4D4D] text-[13px] font-mono tabular-nums">
+            {trips.length} viaje{trips.length === 1 ? "" : "s"} · {totalCities} ciudades
+          </p>
         </div>
 
-        {/* Stats 2×2 */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Desktop: hero + stats side-by-side ; Mobile: stacked */}
+        <div className="grid md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-3 md:gap-5 animate-spring-up stagger-2">
+          <div className="md:h-full">
+            {heroTrip ? (
+              <HeroTripCard trip={heroTrip} status={classifyTrip(heroTrip)} />
+            ) : (
+              <EmptyHeroCard onCreateTrip={() => setCreateOpen(true)} />
+            )}
+          </div>
+
+          {/* Stats 2×2 — glued next to hero on desktop */}
+          <div className="grid grid-cols-2 gap-3 md:content-stretch md:h-full">
           <StatCard
             label="Viajes"
             sublabel="este año"
@@ -152,46 +176,52 @@ export function Dashboard() {
             icon={<CalendarDays size={16} strokeWidth={2.2} />}
             staggerDelay={380}
           />
+          </div>
         </div>
 
         {/* Mis viajes */}
         <div className="animate-fade-slide-up stagger-7">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[20px] font-semibold text-white">Mis viajes</h2>
-          </div>
+          <div className="flex items-end justify-between mb-4 md:mb-5">
+            <div>
+              <h2 className="text-[20px] md:text-[22px] font-semibold text-white tracking-tight">Mis viajes</h2>
+              <p className="hidden md:block text-[#707070] text-[12px] mt-1">
+                {filteredTrips.length} {filter === "all" ? "total" : filter === "future" ? "próximos" : filter === "active" ? "en curso" : "pasados"}
+              </p>
+            </div>
 
-          {/* Filtros */}
-          <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar ios-scroll pb-1 -mx-1 px-1">
-            {(["all", "future", "active", "past"] as Filter[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-4 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors flex-shrink-0 press-feedback ${
-                  filter === f
-                    ? "bg-[#0A84FF] text-white"
-                    : "bg-[#1A1A1A] text-[#A0A0A0] border border-[#333]"
-                }`}
-              >
-                {f === "all" ? "Todos" : f === "future" ? "Futuros" : f === "active" ? "En curso" : "Pasados"}
-              </button>
-            ))}
+            {/* Filtros */}
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar ios-scroll pb-1">
+              {(["all", "future", "active", "past"] as Filter[]).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-3.5 py-1.5 rounded-full text-[12px] md:text-[13px] font-medium whitespace-nowrap transition-colors flex-shrink-0 press-feedback ${
+                    filter === f
+                      ? "bg-white text-black"
+                      : "bg-[#161616] text-[#A0A0A0] border border-[#262626] hover:border-[#333] hover:text-white"
+                  }`}
+                >
+                  {f === "all" ? "Todos" : f === "future" ? "Futuros" : f === "active" ? "En curso" : "Pasados"}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Lista */}
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
+          {authLoading || isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="h-24 rounded-[16px] skeleton" />
               ))}
             </div>
           ) : filteredTrips.length === 0 ? (
-            <div className="text-center py-12 text-[#4D4D4D] text-[15px]">
+            <div className="text-center py-16 md:py-24 text-[#4D4D4D] text-[15px] border border-dashed border-[#1F1F1F] rounded-[18px]">
               {filter === "all"
                 ? "Todavía no tenés viajes."
                 : `No hay viajes ${filter === "future" ? "futuros" : filter === "active" ? "en curso" : "pasados"}.`}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {filteredTrips.map((trip) => (
                 <TripCard key={trip.id} trip={trip} status={classifyTrip(trip)} />
               ))}

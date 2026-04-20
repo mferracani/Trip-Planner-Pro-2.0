@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { CalendarView } from "@/components/TripDetail/CalendarView";
 import { ListView } from "@/components/TripDetail/ListView";
+import { ItemsView } from "@/components/TripDetail/ItemsView";
+import { TopNav } from "@/components/TopNav";
 import { AiParseModal } from "@/components/AiParseModal";
 import { Pressable } from "@/components/ui/Pressable";
 import { BottomNav, BottomNavTab } from "@/components/BottomNav";
@@ -223,33 +225,34 @@ const MOCK_PARSED_ITEMS: ParsedItem[] = [
   {
     type: "flight",
     confidence: 0.97,
-    data: {
-      airline: "Iberia",
-      flight_number: "IB6844",
-      origin_iata: "EZE",
-      destination_iata: "MAD",
-      departure_local_time: "2026-05-14T21:35",
-      price_usd: 1200,
-    },
+    airline: "Iberia",
+    flight_number: "IB6844",
+    origin_iata: "EZE",
+    destination_iata: "MAD",
+    departure_local_time: "2026-05-14T21:35",
+    departure_timezone: "America/Argentina/Buenos_Aires",
+    arrival_local_time: "2026-05-15T14:20",
+    arrival_timezone: "Europe/Madrid",
+    booking_ref: null,
   },
   {
     type: "hotel",
     confidence: 0.83,
-    data: {
-      name: "H10 Casa Mimosa",
-      check_in: "2026-05-19",
-      check_out: "2026-05-22",
-      total_price_usd: 630,
-    },
+    name: "H10 Casa Mimosa",
+    city: "Barcelona",
+    check_in: "2026-05-19",
+    check_out: "2026-05-22",
+    booking_ref: null,
   },
   {
     type: "transport",
     confidence: 0.61,
-    data: {
-      origin: "Madrid Atocha",
-      destination: "Barcelona Sants",
-      operator: "Renfe AVE",
-    },
+    mode: "train",
+    origin: "Madrid Atocha",
+    destination: "Barcelona Sants",
+    departure_local_time: "2026-05-19T09:00",
+    departure_timezone: "Europe/Madrid",
+    booking_ref: null,
   },
 ];
 
@@ -258,7 +261,7 @@ const MOCK_PARSED_ITEMS: ParsedItem[] = [
 // ---------------------------------------------------------------------------
 
 type Screen = "dashboard" | "trip" | "parse-modal";
-type TripTab = "calendar" | "list" | "map";
+type TripTab = "calendar" | "list" | "items";
 
 export default function DevPreview() {
   const [screen, setScreen] = useState<Screen>("dashboard");
@@ -305,6 +308,14 @@ export default function DevPreview() {
           → Auth real
         </Link>
       </div>
+
+      {/* Desktop TopNav */}
+      <TopNav
+        active="trips"
+        onAdd={handleAdd}
+        addIcon={screen === "trip" ? "sparkles" : "plus"}
+        addLabel={screen === "trip" ? "Agregar con IA" : "Nuevo viaje"}
+      />
 
       {/* Screens */}
       {navTab === "trips" && screen === "dashboard" && (
@@ -368,9 +379,9 @@ function MockDashboard({ onOpenTrip }: { onOpenTrip: () => void }) {
   );
 
   return (
-    <div className="px-6 pb-32">
-      {/* Header */}
-      <div className="flex items-center justify-between pt-14 pb-6 animate-fade-slide-up stagger-0">
+    <div className="min-h-screen">
+      {/* Mobile header */}
+      <div className="md:hidden flex items-center justify-between px-6 pt-14 pb-6 animate-fade-slide-up stagger-0">
         <div>
           <p className="text-[#A0A0A0] text-[13px] mb-0.5">
             {new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
@@ -384,71 +395,103 @@ function MockDashboard({ onOpenTrip }: { onOpenTrip: () => void }) {
         </div>
       </div>
 
-      {/* Hero card — with parallax tilt */}
-      <div className="mb-6 animate-spring-up stagger-2">
-        <MockHeroCard tintColor="#FF6B6B" daysUntil={daysUntil} onClick={onOpenTrip} />
-      </div>
-
-      {/* Stats 2×2 */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <StatCard label="Viajes" sublabel="este año" value="3" numericValue={3} color="#0A84FF" icon={<Plane size={16} strokeWidth={2.2} />} staggerDelay={200} />
-        <StatCard label="Ciudades" sublabel="visitadas" value="8" numericValue={8} color="#BF5AF2" icon={<MapPin size={16} strokeWidth={2.2} />} staggerDelay={260} />
-        <StatCard label="Total" sublabel="gastado" value="USD 7,190" numericValue={7190} currencyPrefix="USD " color="#FF9F0A" icon={<DollarSign size={16} strokeWidth={2.2} />} staggerDelay={320} />
-        <StatCard label="Días" sublabel="viajando" value="34" numericValue={34} color="#30D158" icon={<CalendarDays size={16} strokeWidth={2.2} />} staggerDelay={380} />
-      </div>
-
-      {/* Mis viajes */}
-      <div className="animate-fade-slide-up stagger-7">
-        <h2 className="text-[20px] font-semibold text-white mb-4">Mis viajes</h2>
-        <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar ios-scroll pb-1">
-          {(["all", "future", "past"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors press-feedback ${
-                filter === f ? "bg-[#0A84FF] text-white" : "bg-[#1A1A1A] text-[#A0A0A0] border border-[#333]"
-              }`}
-            >
-              {f === "all" ? "Todos" : f === "future" ? "Futuros" : "Pasados"}
-            </button>
-          ))}
+      <div className="mx-auto max-w-6xl px-6 md:px-8 space-y-6 pb-32 md:pb-16 md:pt-8">
+        {/* Desktop greeting */}
+        <div className="hidden md:flex items-baseline justify-between animate-fade-slide-up stagger-0">
+          <div>
+            <p className="text-[#707070] text-[12px] uppercase tracking-[0.2em] font-semibold mb-2">
+              {new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
+            </p>
+            <h1 className="text-[34px] font-bold text-white leading-[1.1] tracking-tight">
+              Buenas noches, <span className="text-[#BF5AF2]">Mati</span>
+            </h1>
+          </div>
+          <p className="text-[#4D4D4D] text-[13px] font-mono tabular-nums">
+            {MOCK_TRIPS.length} viajes · 8 ciudades
+          </p>
         </div>
-        <div className="space-y-3">
-          {filtered.map((t) => (
-            <button
-              key={t.id}
-              onClick={onOpenTrip}
-              className="w-full bg-[#1A1A1A] border border-[#262626] rounded-[16px] px-4 py-4 flex items-center gap-3 text-left card-lift press-feedback"
-            >
-              <div
-                className="w-10 h-10 rounded-[10px] flex-shrink-0 flex items-center justify-center text-[18px]"
-                style={{ backgroundColor: t.status === "past" ? "#4ECDC420" : "#FF6B6B20" }}
-              >
-                ✈️
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[15px] font-semibold text-white truncate">{t.name}</p>
-                <p className="text-[12px] text-[#707070] mt-0.5">
-                  {t.start_date} – {t.end_date}
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${
-                    t.status === "past"
-                      ? "bg-[#707070]/20 text-[#707070]"
-                      : "bg-[#0A84FF]/20 text-[#0A84FF]"
+
+        {/* Hero + Stats side by side on desktop */}
+        <div className="grid md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-3 md:gap-5 animate-spring-up stagger-2">
+          <div className="md:h-full">
+            <MockHeroCard tintColor="#FF6B6B" daysUntil={daysUntil} onClick={onOpenTrip} />
+          </div>
+          <div className="grid grid-cols-2 gap-3 md:content-stretch">
+            <StatCard label="Viajes" sublabel="este año" value="3" numericValue={3} color="#0A84FF" icon={<Plane size={16} strokeWidth={2.2} />} staggerDelay={200} />
+            <StatCard label="Ciudades" sublabel="visitadas" value="8" numericValue={8} color="#BF5AF2" icon={<MapPin size={16} strokeWidth={2.2} />} staggerDelay={260} />
+            <StatCard label="Total" sublabel="gastado" value="USD 7,190" numericValue={7190} currencyPrefix="USD " color="#FF9F0A" icon={<DollarSign size={16} strokeWidth={2.2} />} staggerDelay={320} />
+            <StatCard label="Días" sublabel="viajando" value="34" numericValue={34} color="#30D158" icon={<CalendarDays size={16} strokeWidth={2.2} />} staggerDelay={380} />
+          </div>
+        </div>
+
+        {/* Mis viajes */}
+        <div className="animate-fade-slide-up stagger-7">
+          <div className="flex items-end justify-between mb-4 md:mb-5">
+            <div>
+              <h2 className="text-[20px] md:text-[22px] font-semibold text-white tracking-tight">Mis viajes</h2>
+              <p className="hidden md:block text-[#707070] text-[12px] mt-1">
+                {filtered.length} {filter === "all" ? "total" : filter === "future" ? "próximos" : "pasados"}
+              </p>
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar ios-scroll pb-1">
+              {(["all", "future", "past"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-3.5 py-1.5 rounded-full text-[12px] md:text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors press-feedback ${
+                    filter === f
+                      ? "bg-white text-black"
+                      : "bg-[#161616] text-[#A0A0A0] border border-[#262626] hover:border-[#333] hover:text-white"
                   }`}
                 >
-                  {t.status === "past" ? "Pasado" : "Futuro"}
-                </span>
-                <span className="text-[12px] font-mono text-[#A0A0A0]">USD {t.total_usd.toLocaleString()}</span>
-              </div>
-            </button>
-          ))}
+                  {f === "all" ? "Todos" : f === "future" ? "Futuros" : "Pasados"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {filtered.map((t) => (
+              <button
+                key={t.id}
+                onClick={onOpenTrip}
+                className="group relative w-full rounded-[16px] px-4 py-4 md:px-5 md:py-5 flex items-center gap-4 text-left transition-all overflow-hidden"
+                style={{
+                  background: "linear-gradient(180deg, #171717 0%, #131313 100%)",
+                  border: "1px solid #232323",
+                }}
+              >
+                <div
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                  style={{ background: "radial-gradient(ellipse 60% 80% at 0% 50%, rgba(191,90,242,0.08), transparent 70%)" }}
+                />
+                <div
+                  className="relative w-14 h-14 md:w-16 md:h-16 rounded-[12px] flex-shrink-0 flex items-center justify-center text-[22px]"
+                  style={{ background: `linear-gradient(135deg, ${t.status === "past" ? "#4ECDC420" : "#FF6B6B20"}, #161616)` }}
+                >
+                  ✈️
+                </div>
+                <div className="relative flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="text-[17px] md:text-[18px] font-semibold text-white truncate tracking-tight">{t.name}</p>
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 uppercase tracking-wider ${
+                        t.status === "past"
+                          ? "bg-[#707070]/20 text-[#707070]"
+                          : "bg-[#0A84FF]/20 text-[#0A84FF]"
+                      }`}
+                    >
+                      {t.status === "past" ? "Pasado" : "Futuro"}
+                    </span>
+                  </div>
+                  <p className="text-[#A0A0A0] text-[13px]">{t.start_date} – {t.end_date}</p>
+                  <p className="text-[#707070] text-[12px] font-mono tabular-nums mt-0.5">USD {t.total_usd.toLocaleString()}</p>
+                </div>
+                <span className="relative text-[#3D3D3D] text-[20px] flex-shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:text-[#A0A0A0]">›</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-
     </div>
   );
 }
@@ -520,7 +563,7 @@ function MockHeroCard({ tintColor, daysUntil, onClick }: { tintColor: string; da
 // Trip Detail screen
 // ---------------------------------------------------------------------------
 
-const TRIP_TABS: TripTab[] = ["calendar", "list", "map"];
+const TRIP_TABS: TripTab[] = ["calendar", "list", "items"];
 
 function MockTripDetail({
   tab, onTabChange, onBack, onOpenParse,
@@ -537,9 +580,9 @@ function MockTripDetail({
   prevTabIndex.current = tabIndex;
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-center gap-4 px-6 pt-4 pb-4 border-b border-[#1A1A1A] animate-fade-slide-up stagger-0">
+    <div className="mx-auto max-w-6xl pb-32 md:pb-16">
+      {/* Mobile header */}
+      <div className="md:hidden flex items-center gap-4 px-6 pt-4 pb-4 border-b border-[#1A1A1A] animate-fade-slide-up stagger-0">
         <button
           onClick={onBack}
           className="w-9 h-9 flex items-center justify-center rounded-full bg-[#1A1A1A] border border-[#333] text-[#0A84FF] text-[17px] press-feedback"
@@ -555,26 +598,45 @@ function MockTripDetail({
         </button>
       </div>
 
-      {/* Summary card — sin scroll */}
-      <div className="px-6 pt-3 pb-3 animate-fade-slide-up stagger-2">
+      {/* Desktop header */}
+      <div className="hidden md:flex items-end justify-between px-8 pt-10 pb-6 animate-fade-slide-up stagger-0">
+        <div className="flex items-center gap-5 min-w-0">
+          <button
+            onClick={onBack}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-[#161616] border border-[#262626] text-[#A0A0A0] hover:text-white hover:border-[#333] transition-colors flex-shrink-0"
+          >
+            ←
+          </button>
+          <div className="min-w-0">
+            <p className="text-[#707070] text-[11px] uppercase tracking-[0.18em] font-semibold mb-1.5">Viaje</p>
+            <h1 className="text-[38px] font-bold text-white truncate leading-[1.05] tracking-tight">Europa 2026</h1>
+            <p className="text-[#A0A0A0] text-[14px] mt-1.5">15 may – 28 may 2026 · {totalDays} días</p>
+          </div>
+        </div>
+        <button className="w-10 h-10 flex items-center justify-center rounded-full bg-[#161616] border border-[#262626] text-[#A0A0A0] hover:text-white hover:border-[#333] transition-colors flex-shrink-0">⋯</button>
+      </div>
+
+      {/* Summary card */}
+      <div className="px-6 md:px-8 pt-3 md:pt-0 pb-3 md:pb-6 animate-fade-slide-up stagger-2">
         <div
-          className="rounded-[18px] px-5 py-4 overflow-hidden relative"
+          className="rounded-[18px] px-5 md:px-7 py-3.5 md:py-5 overflow-hidden relative"
           style={{
-            background: "linear-gradient(180deg, #1A1A1A 0%, #141414 100%)",
-            border: "1px solid #262626",
+            background: "linear-gradient(180deg, #171717 0%, #121212 100%)",
+            border: "1px solid #232323",
             boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
           }}
         >
-          <div className="flex items-end justify-between gap-4">
+          <div className="flex items-end justify-between gap-4 md:gap-8">
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-wider text-[#707070] font-bold mb-1">Presupuesto</p>
-              <p className="text-[24px] font-bold text-white tabular-nums leading-none whitespace-nowrap">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-[#707070] font-bold mb-1.5">Presupuesto</p>
+              <p className="text-[22px] md:text-[28px] font-bold text-white tabular-nums leading-none whitespace-nowrap tracking-tight">
                 USD <span className="text-[#0A84FF]">3.240</span>
               </p>
             </div>
+            <div className="hidden md:block w-px self-stretch bg-[#242424]" />
             <div className="text-right flex-shrink-0">
-              <p className="text-[10px] uppercase tracking-wider text-[#707070] font-bold mb-1">Duración</p>
-              <p className="text-[24px] font-bold text-white tabular-nums leading-none">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-[#707070] font-bold mb-1.5">Duración</p>
+              <p className="text-[22px] md:text-[28px] font-bold text-white tabular-nums leading-none tracking-tight">
                 {totalDays}<span className="text-[14px] text-[#707070] font-semibold ml-0.5">d</span>
               </p>
             </div>
@@ -583,7 +645,7 @@ function MockTripDetail({
       </div>
 
       {/* Tabs — sliding indicator */}
-      <div className="relative flex gap-1 mx-6 mb-4 mt-1 bg-[#1A1A1A] p-1 rounded-full border border-[#262626] animate-fade-slide-up stagger-3">
+      <div className="relative flex gap-1 mx-6 md:mx-auto md:max-w-md mb-4 mt-1 bg-[#141414] p-1 rounded-full border border-[#222] animate-fade-slide-up stagger-3">
         {/* Sliding pill */}
         <span
           className="absolute top-1 bottom-1 rounded-full bg-[#242424] pointer-events-none"
@@ -602,7 +664,7 @@ function MockTripDetail({
               tab === t ? "text-white" : "text-[#707070]"
             }`}
           >
-            {t === "calendar" ? "Calendario" : t === "list" ? "Lista" : "Mapa"}
+            {t === "calendar" ? "Calendario" : t === "list" ? "Lista" : "Items"}
           </button>
         ))}
       </div>
@@ -630,11 +692,15 @@ function MockTripDetail({
             transports={MOCK_TRANSPORTS}
           />
         )}
-        {tab === "map" && (
-          <div className="flex flex-col items-center justify-center py-24 gap-3 text-center px-6">
-            <span className="text-5xl">🗺️</span>
-            <p className="text-[#A0A0A0] text-[17px] font-semibold">Mapa disponible en v1.1</p>
-          </div>
+        {tab === "items" && (
+          <ItemsView
+            trip={MOCK_TRIP}
+            cities={MOCK_CITIES}
+            flights={MOCK_FLIGHTS}
+            hotels={MOCK_HOTELS}
+            transports={MOCK_TRANSPORTS}
+            onChanged={() => {}}
+          />
         )}
       </div>
 
@@ -669,15 +735,27 @@ function MockParseModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0D0D0D] animate-slide-up">
-      <div className="flex items-center justify-between px-6 pt-12 pb-4 border-b border-[#262626]">
-        <button onClick={onClose} className="text-[#0A84FF] text-[17px] font-medium press-feedback">Cancelar</button>
-        <h2 className="text-[17px] font-semibold text-white">Agregar al viaje</h2>
+    <div className="fixed inset-0 z-50 md:flex md:items-center md:justify-center">
+      <div className="hidden md:block absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="
+          relative flex flex-col bg-[#0D0D0D]
+          w-full h-full
+          md:w-[92vw] md:max-w-[620px] md:h-auto md:max-h-[86vh]
+          md:rounded-[20px] md:border md:border-[#262626]
+          md:shadow-[0_24px_64px_rgba(0,0,0,0.55)]
+          md:overflow-hidden
+          animate-slide-up
+        "
+      >
+      <div className="flex items-center justify-between px-6 pt-12 md:pt-5 pb-4 border-b border-[#1E1E1E]">
+        <button onClick={onClose} className="text-[#0A84FF] md:text-[#A0A0A0] md:hover:text-white md:transition-colors text-[17px] md:text-[14px] font-medium press-feedback">Cancelar</button>
+        <h2 className="text-[17px] md:text-[16px] font-semibold text-white tracking-tight">Agregar al viaje</h2>
         <div className="w-16" />
       </div>
 
       {!showParsed && !loading && (
-        <div className="flex gap-1 mx-6 mt-4 bg-[#1A1A1A] p-1 rounded-full border border-[#262626]">
+        <div className="flex gap-1 mx-6 md:mx-7 mt-4 bg-[#1A1A1A] p-1 rounded-full border border-[#262626]">
           {(["chat", "file", "manual"] as const).map((m) => (
             <button
               key={m}
@@ -691,7 +769,7 @@ function MockParseModal({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-6 py-5">
+      <div className="flex-1 overflow-y-auto px-6 md:px-7 py-5">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16 gap-8">
             <div className="relative w-24 h-24 flex items-center justify-center">
@@ -739,16 +817,16 @@ function MockParseModal({
       </div>
 
       {!loading && (
-        <div className="px-6 pb-10 pt-4 border-t border-[#262626]">
+        <div className="px-6 md:px-7 pb-10 md:pb-5 pt-4 border-t border-[#1E1E1E]">
           {showParsed ? (
-            <button onClick={onClose} className="w-full text-white rounded-[14px] py-4 text-[17px] font-semibold press-feedback" style={{ background: "linear-gradient(135deg, #30D158, #25A244)" }}>
+            <button onClick={onClose} className="w-full text-white rounded-[14px] md:rounded-[12px] py-4 md:py-3 text-[17px] md:text-[14px] font-semibold press-feedback" style={{ background: "linear-gradient(135deg, #30D158, #25A244)" }}>
               Confirmar y agregar (3 items)
             </button>
           ) : (
             <button
               onClick={handleParse}
               disabled={mode === "chat" && !text.trim()}
-              className="w-full text-white rounded-[14px] py-4 text-[17px] font-semibold disabled:opacity-40 flex items-center justify-center gap-2 press-feedback cta-shimmer"
+              className="w-full text-white rounded-[14px] md:rounded-[12px] py-4 md:py-3 text-[17px] md:text-[14px] font-semibold disabled:opacity-40 flex items-center justify-center gap-2 press-feedback cta-shimmer"
               style={{ background: "linear-gradient(135deg, #BF5AF2, #9B3FD6)", boxShadow: "0 4px 20px rgba(191,90,242,0.35)" }}
             >
               <span>✨</span> Parsear con Claude
@@ -756,6 +834,7 @@ function MockParseModal({
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -777,11 +856,10 @@ function ParsePreview({ items, onEdit }: { items: ParsedItem[]; onEdit: () => vo
           const color = conf >= 0.9 ? "#30D158" : conf >= 0.7 ? "#FF9F0A" : "#FF453A";
           const label = conf >= 0.9 ? "Alta confianza" : conf >= 0.7 ? "Revisar" : "Baja confianza";
           const emoji = item.type === "flight" ? "✈️" : item.type === "hotel" ? "🏨" : "🚆";
-          const d = item.data as Record<string, unknown>;
           const title = item.type === "flight"
-            ? `${d.airline ?? ""} ${d.flight_number ?? ""} · ${d.origin_iata ?? ""}→${d.destination_iata ?? ""}`.trim()
-            : item.type === "hotel" ? String(d.name ?? "Hotel")
-            : `${d.origin ?? ""} → ${d.destination ?? ""}`.trim();
+            ? `${item.airline ?? ""} ${item.flight_number ?? ""} · ${item.origin_iata ?? ""}→${item.destination_iata ?? ""}`.trim()
+            : item.type === "hotel" ? (item.name ?? "Hotel")
+            : `${item.origin ?? ""} → ${item.destination ?? ""}`.trim();
           return (
             <div
               key={i}

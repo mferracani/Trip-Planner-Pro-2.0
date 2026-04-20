@@ -17,7 +17,7 @@ interface Props {
 export function BottomNav({ active, onAdd, addIcon = "plus", onTabChange }: Props) {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 pointer-events-none"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0)" }}
     >
       <div

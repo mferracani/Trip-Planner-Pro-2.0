@@ -248,7 +248,7 @@ export function CalendarView({ trip, cities, flights, hotels, transports }: Prop
   })();
 
   return (
-    <div className="px-3 md:px-6 pb-32" style={{ userSelect: inSelectionMode ? "none" : "auto" }}>
+    <div className="px-3 md:px-8 pb-32 md:pb-8" style={{ userSelect: inSelectionMode ? "none" : "auto" }}>
       {/* Hint bar — selection mode */}
       {inSelectionMode && (
         <div className="mb-3 px-3 py-2 bg-[#0A84FF]/12 border border-[#0A84FF]/30 rounded-[10px] text-[12px] text-[#0A84FF] font-medium text-center animate-fade-slide-up">

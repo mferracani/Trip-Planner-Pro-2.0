@@ -225,7 +225,7 @@ async function callClaude(
   const client = new Anthropic({ apiKey });
 
   const message = await client.messages.create({
-    model: "claude-sonnet-4-5",
+    model: "claude-sonnet-4-6",
     max_tokens: 2048,
     system: buildParsePrompt(context),
     messages: [{ role: "user", content: input }],
@@ -331,8 +331,20 @@ export const parseWithAI = onRequest(
     secrets: [CLAUDE_API_KEY, GEMINI_API_KEY],
     timeoutSeconds: 120,
     memory: "512MiB",
+    invoker: "public",
   },
   async (req, res) => {
+    // CORS headers
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+    // Handle preflight
+    if (req.method === "OPTIONS") {
+      res.status(204).send("");
+      return;
+    }
+
     // Only allow POST
     if (req.method !== "POST") {
       res.status(405).json({ error: "Method not allowed" });

@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { Timestamp } from "firebase/firestore";
+import { ref as storageRef, uploadBytes } from "firebase/storage";
 import { useAuth } from "@/context/AuthContext";
-import { ParsedItem } from "@/lib/types";
+import type { ParsedItem, ParsedFlight, ParsedHotel, ParsedTransport } from "@/lib/types";
 import { createFlight, createHotel, createTransport } from "@/lib/firestore";
+import { getFirebaseStorage } from "@/lib/firebase";
 
 type Mode = "chat" | "file" | "manual";
 
@@ -29,6 +32,7 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
   const [parsedItems, setParsedItems] = useState<ParsedItem[] | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Rotate parse messages during loading
@@ -43,28 +47,42 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
   }, [parsing]);
 
   async function handleParse() {
-    if (!text.trim() || !user) return;
+    if (!user) return;
+    if (mode === "chat" && !text.trim()) return;
+    if (mode === "file" && !selectedFile) return;
     setParsing(true);
     setParseMessage(PARSE_MESSAGES[0]);
     setError(null);
     try {
       const idToken = await user.getIdToken();
+      let body: Record<string, unknown>;
+
+      if (mode === "file" && selectedFile) {
+        // Upload to Firebase Storage first
+        const path = `users/${user.uid}/parse_attachments/${Date.now()}_${selectedFile.name}`;
+        const fileRef2 = storageRef(getFirebaseStorage(), path);
+        await uploadBytes(fileRef2, selectedFile, { contentType: selectedFile.type });
+        body = { tripId, inputType: "attachment", input: "", attachmentRef: path, provider: "gemini" };
+      } else {
+        body = { tripId, inputType: "text", input: text, provider: "claude" };
+      }
+
       const res = await fetch(
-        `https://us-east1-trip-planner-pro-2.cloudfunctions.net/parseWithAI`,
+        `https://parsewithai-onxomw4ntq-ue.a.run.app`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${idToken}`,
-          },
-          body: JSON.stringify({ trip_id: tripId, mode: "chat", input: text }),
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+          body: JSON.stringify(body),
         }
       );
-      if (!res.ok) throw new Error(`Error ${res.status}`);
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        throw new Error(`HTTP ${res.status}: ${errText.slice(0, 200)}`);
+      }
       const data = await res.json();
       setParsedItems(data.items ?? []);
-    } catch {
-      setError("No se pudo parsear. Verificá que las Cloud Functions estén deployadas.");
+    } catch (err) {
+      setError(String(err));
     } finally {
       setParsing(false);
     }
@@ -73,38 +91,98 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
   async function handleConfirm() {
     if (!parsedItems || !user) return;
     setConfirming(true);
+    const toTs = (v: unknown): Timestamp => {
+      if (!v || typeof v !== "object") return Timestamp.now();
+      const o = v as { seconds?: number; nanoseconds?: number; _seconds?: number; _nanoseconds?: number };
+      const s = o.seconds ?? o._seconds;
+      const n = o.nanoseconds ?? o._nanoseconds ?? 0;
+      return typeof s === "number" ? new Timestamp(s, n) : Timestamp.now();
+    };
     try {
       for (const item of parsedItems) {
         if (item.type === "flight") {
-          await createFlight(user.uid, tripId, item.data as Parameters<typeof createFlight>[2]);
+          const f = item as ParsedFlight;
+          const depUtc = toTs(f.departure_utc);
+          const arrUtc = toTs(f.arrival_utc);
+          await createFlight(user.uid, tripId, {
+            trip_id: tripId,
+            airline: f.airline ?? "",
+            flight_number: f.flight_number ?? "",
+            origin_iata: f.origin_iata ?? "",
+            destination_iata: f.destination_iata ?? "",
+            departure_local_time: f.departure_local_time ?? "",
+            departure_timezone: f.departure_timezone ?? "",
+            departure_utc: depUtc,
+            arrival_local_time: f.arrival_local_time ?? "",
+            arrival_timezone: f.arrival_timezone ?? "",
+            arrival_utc: arrUtc,
+            duration_minutes: f.duration_minutes ?? 0,
+            ...(f.booking_ref ? { booking_ref: f.booking_ref } : {}),
+          });
         } else if (item.type === "hotel") {
-          await createHotel(user.uid, tripId, item.data as Parameters<typeof createHotel>[2]);
+          const h = item as ParsedHotel;
+          await createHotel(user.uid, tripId, {
+            trip_id: tripId,
+            city_id: "",
+            name: h.name ?? "",
+            check_in: h.check_in ?? "",
+            check_out: h.check_out ?? "",
+            ...(h.booking_ref ? { booking_ref: h.booking_ref } : {}),
+          });
         } else if (item.type === "transport") {
-          await createTransport(user.uid, tripId, item.data as Parameters<typeof createTransport>[2]);
+          const t = item as ParsedTransport;
+          const depUtc = toTs(t.departure_utc);
+          await createTransport(user.uid, tripId, {
+            trip_id: tripId,
+            type: (t.mode as "train" | "bus" | "ferry" | "car" | "other") ?? "other",
+            origin: t.origin ?? "",
+            destination: t.destination ?? "",
+            departure_local_time: t.departure_local_time ?? "",
+            departure_timezone: t.departure_timezone ?? "",
+            departure_utc: depUtc,
+            ...(t.booking_ref ? { booking_ref: t.booking_ref } : {}),
+          });
         }
       }
       onConfirmed();
-    } catch {
-      setError("Error al guardar los items.");
+    } catch (err) {
+      console.error("Error guardando items:", err);
+      setError(`Error al guardar: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setConfirming(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0D0D0D]">
+    <div className="fixed inset-0 z-50 md:flex md:items-center md:justify-center">
+      {/* Backdrop (desktop) */}
+      <div
+        className="hidden md:block absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      <div
+        className="
+          relative flex flex-col bg-[#0D0D0D]
+          w-full h-full
+          md:w-[92vw] md:max-w-[620px] md:h-auto md:max-h-[86vh]
+          md:rounded-[20px] md:border md:border-[#262626]
+          md:shadow-[0_24px_64px_rgba(0,0,0,0.55)]
+          md:overflow-hidden
+        "
+      >
       {/* Header */}
-      <div className="flex items-center justify-between px-6 pt-12 pb-4 border-b border-[#262626]">
-        <button onClick={onClose} className="text-[#0A84FF] text-[17px] font-medium">
+      <div className="flex items-center justify-between px-6 pt-12 md:pt-5 pb-4 border-b border-[#1E1E1E]">
+        <button onClick={onClose} className="text-[#0A84FF] md:text-[#A0A0A0] md:hover:text-white md:transition-colors text-[17px] md:text-[14px] font-medium">
           Cancelar
         </button>
-        <h2 className="text-[17px] font-semibold text-white">Agregar al viaje</h2>
+        <h2 className="text-[17px] md:text-[16px] font-semibold text-white tracking-tight">Agregar al viaje</h2>
         <div className="w-16" />
       </div>
 
       {/* Mode tabs */}
       {!parsedItems && !parsing && (
-        <div className="flex gap-1 mx-6 mt-4 bg-[#1A1A1A] p-1 rounded-full border border-[#262626]">
+        <div className="flex gap-1 mx-6 md:mx-7 mt-4 bg-[#1A1A1A] p-1 rounded-full border border-[#262626]">
           {(["chat", "file", "manual"] as Mode[]).map((m) => (
             <button
               key={m}
@@ -127,7 +205,7 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-5">
+      <div className="flex-1 overflow-y-auto px-6 md:px-7 py-5">
         {parsing ? (
           <ParseLoadingState message={parseMessage} />
         ) : parsedItems ? (
@@ -135,7 +213,7 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
         ) : mode === "chat" ? (
           <ChatMode text={text} onChange={setText} />
         ) : mode === "file" ? (
-          <FileMode fileRef={fileRef} />
+          <FileMode fileRef={fileRef} selectedFile={selectedFile} onFileSelect={setSelectedFile} />
         ) : (
           <ManualMode />
         )}
@@ -149,12 +227,12 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
 
       {/* Footer CTA */}
       {!parsing && (
-        <div className="px-6 pb-10 pt-4 border-t border-[#262626]">
+        <div className="px-6 md:px-7 pb-10 md:pb-5 pt-4 border-t border-[#1E1E1E]">
           {parsedItems ? (
             <button
               onClick={handleConfirm}
               disabled={confirming || parsedItems.length === 0}
-              className="w-full text-white rounded-[14px] py-4 text-[17px] font-semibold disabled:opacity-40 transition-opacity"
+              className="w-full text-white rounded-[14px] md:rounded-[12px] py-4 md:py-3 text-[17px] md:text-[14px] font-semibold disabled:opacity-40 transition-opacity"
               style={{ background: "linear-gradient(135deg, #30D158, #25A244)" }}
             >
               {confirming
@@ -165,7 +243,7 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
             <button
               onClick={handleParse}
               disabled={!text.trim()}
-              className="w-full text-white rounded-[14px] py-4 text-[17px] font-semibold disabled:opacity-40 flex items-center justify-center gap-2 transition-opacity"
+              className="w-full text-white rounded-[14px] md:rounded-[12px] py-4 md:py-3 text-[17px] md:text-[14px] font-semibold disabled:opacity-40 flex items-center justify-center gap-2 transition-opacity"
               style={{ background: "linear-gradient(135deg, #BF5AF2, #9B3FD6)", boxShadow: "0 4px 20px rgba(191,90,242,0.35)" }}
             >
               <span className="text-[18px]">✨</span>
@@ -173,9 +251,10 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
             </button>
           ) : mode === "file" ? (
             <button
-              disabled
-              className="w-full text-white rounded-[14px] py-4 text-[17px] font-semibold opacity-40 flex items-center justify-center gap-2"
-              style={{ background: "linear-gradient(135deg, #BF5AF2, #9B3FD6)" }}
+              onClick={handleParse}
+              disabled={!selectedFile}
+              className="w-full text-white rounded-[14px] md:rounded-[12px] py-4 md:py-3 text-[17px] md:text-[14px] font-semibold disabled:opacity-40 flex items-center justify-center gap-2 transition-opacity"
+              style={{ background: "linear-gradient(135deg, #BF5AF2, #9B3FD6)", boxShadow: selectedFile ? "0 4px 20px rgba(191,90,242,0.35)" : undefined }}
             >
               <span className="text-[18px]">✨</span>
               Parsear con Gemini
@@ -183,13 +262,14 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
           ) : (
             <button
               disabled
-              className="w-full bg-[#0A84FF] text-white rounded-[14px] py-4 text-[17px] font-semibold opacity-40"
+              className="w-full bg-[#0A84FF] text-white rounded-[14px] md:rounded-[12px] py-4 md:py-3 text-[17px] md:text-[14px] font-semibold opacity-40"
             >
               Guardar
             </button>
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -262,21 +342,47 @@ function ChatMode({ text, onChange }: { text: string; onChange: (v: string) => v
   );
 }
 
-function FileMode({ fileRef }: { fileRef: React.RefObject<HTMLInputElement | null> }) {
+function FileMode({
+  fileRef,
+  selectedFile,
+  onFileSelect,
+}: {
+  fileRef: React.RefObject<HTMLInputElement | null>;
+  selectedFile: File | null;
+  onFileSelect: (f: File | null) => void;
+}) {
   return (
     <div>
       <p className="text-[#A0A0A0] text-[14px] mb-3">
         Subí el PDF del boarding pass o una foto de la confirmación.
       </p>
       <div
-        className="border-2 border-dashed border-[#333] rounded-[16px] h-48 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[#BF5AF2]/60 transition-colors"
+        className={`border-2 border-dashed rounded-[16px] h-48 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors ${
+          selectedFile ? "border-[#BF5AF2]/60 bg-[#BF5AF2]/05" : "border-[#333] hover:border-[#BF5AF2]/60"
+        }`}
         onClick={() => fileRef.current?.click()}
       >
-        <span className="text-4xl">📄</span>
-        <p className="text-[15px] text-[#A0A0A0]">Tocá para elegir archivo</p>
-        <p className="text-[12px] text-[#4D4D4D]">PDF · PNG · JPG · EML</p>
+        {selectedFile ? (
+          <>
+            <span className="text-4xl">{selectedFile.type.includes("pdf") ? "📄" : "🖼️"}</span>
+            <p className="text-[15px] text-white font-medium text-center px-4 truncate max-w-full">{selectedFile.name}</p>
+            <p className="text-[12px] text-[#707070]">{(selectedFile.size / 1024).toFixed(0)} KB · Tocá para cambiar</p>
+          </>
+        ) : (
+          <>
+            <span className="text-4xl">📄</span>
+            <p className="text-[15px] text-[#A0A0A0]">Tocá para elegir archivo</p>
+            <p className="text-[12px] text-[#4D4D4D]">PDF · PNG · JPG · EML</p>
+          </>
+        )}
       </div>
-      <input ref={fileRef} type="file" accept=".pdf,.eml,image/*" className="hidden" />
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".pdf,.eml,image/*"
+        className="hidden"
+        onChange={(e) => onFileSelect(e.target.files?.[0] ?? null)}
+      />
       <div className="grid grid-cols-2 gap-3 mt-3">
         <button className="bg-[#1A1A1A] border border-[#333] rounded-[12px] py-3 text-[14px] text-[#A0A0A0] flex items-center justify-center gap-2 hover:border-[#333] transition-colors">
           📷 Tomar foto
@@ -341,13 +447,12 @@ function ParsedItemCard({ item }: { item: ParsedItem }) {
 
   const emoji = item.type === "flight" ? "✈️" : item.type === "hotel" ? "🏨" : "🚆";
 
-  const d = item.data as Record<string, unknown>;
   const title =
     item.type === "flight"
-      ? `${d.airline ?? ""} ${d.flight_number ?? ""} · ${d.origin_iata ?? ""}→${d.destination_iata ?? ""}`.trim()
+      ? `${item.airline ?? ""} ${item.flight_number ?? ""} · ${item.origin_iata ?? ""}→${item.destination_iata ?? ""}`.trim()
       : item.type === "hotel"
-      ? String(d.name ?? "Hotel")
-      : `${d.origin ?? ""} → ${d.destination ?? ""}`.trim();
+      ? (item.name ?? "Hotel")
+      : `${item.origin ?? ""} → ${item.destination ?? ""}`.trim();
 
   return (
     <div
