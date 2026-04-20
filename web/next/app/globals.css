@@ -1,39 +1,303 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter Tight', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   /* Backgrounds */
-  --color-bg-primary: #0D0D0D;
-  --color-bg-surface: #1A1A1A;
-  --color-bg-elevated: #242424;
-  --color-bg-border: #333333;
+  --color-bg-base:        #0D0D0D;
+  --color-bg-surface:     #1A1A1A;
+  --color-bg-elevated:    #242424;
+  --color-bg-border:      #333333;
+  --color-bg-border-soft: #262626;
 
   /* Text */
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #A0A0A0;
-  --color-text-tertiary: #707070;
+  --color-text-primary:    #FFFFFF;
+  --color-text-secondary:  #A0A0A0;
+  --color-text-tertiary:   #707070;
+  --color-text-quaternary: #4D4D4D;
 
   /* Accents */
-  --color-accent-blue: #0A84FF;
-  --color-accent-green: #30D158;
+  --color-accent-blue:   #0A84FF;
+  --color-accent-green:  #30D158;
   --color-accent-orange: #FF9F0A;
-  --color-accent-red: #FF453A;
+  --color-accent-red:    #FF453A;
   --color-accent-purple: #BF5AF2;
+
+  /* City palette (8 rotativas) */
+  --color-city-coral:   #FF6B6B;
+  --color-city-teal:    #4ECDC4;
+  --color-city-yellow:  #FFD93D;
+  --color-city-mint:    #95E1D3;
+  --color-city-lavender:#C77DFF;
+  --color-city-salmon:  #FF8FA3;
+  --color-city-green:   #6BCB77;
+  --color-city-blue:    #4D96FF;
+
+  /* Spacing tokens (prefixed para no pisar Tailwind v4) */
+  --tpp-space-xs:   4px;
+  --tpp-space-sm:   8px;
+  --tpp-space-md:   12px;
+  --tpp-space-lg:   16px;
+  --tpp-space-xl:   24px;
+  --tpp-space-xxl:  32px;
+  --tpp-space-xxxl: 48px;
+
+  /* Radius tokens */
+  --tpp-radius-sm:   8px;
+  --tpp-radius-md:   12px;
+  --tpp-radius-lg:   16px;
+  --tpp-radius-xl:   20px;
+  --tpp-radius-pill: 999px;
 }
 
-* {
-  box-sizing: border-box;
-}
+/* ─── Base ────────────────────────────────────────────────────── */
+
+* { box-sizing: border-box; }
 
 body {
   background: #0D0D0D;
   color: #FFFFFF;
+  font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Scrollbar dark */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #1A1A1A; }
-::-webkit-scrollbar-thumb { background: #333333; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #444444; }
+/* Scrollbar dark (solo en overflow vertical del root) */
+body::-webkit-scrollbar { width: 6px; }
+body::-webkit-scrollbar-track { background: #0D0D0D; }
+body::-webkit-scrollbar-thumb { background: #262626; border-radius: 3px; }
+body::-webkit-scrollbar-thumb:hover { background: #333; }
+
+/* Hide scrollbars on horizontal rows / mobile-like surfaces */
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  .ios-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+}
+
+/* ─── Keyframes ───────────────────────────────────────────────── */
+
+/* Entrada suave con traslado vertical */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Entrada desde abajo con spring overshoot */
+@keyframes springUp {
+  0%   { opacity: 0; transform: translateY(32px) scale(0.96); }
+  60%  { opacity: 1; transform: translateY(-4px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Escala desde centro (para stats, badges) */
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(0.75); }
+  65%  { transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Sheet desde abajo */
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Glow pulse para FAB */
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 8px 32px rgba(191, 90, 242, 0.4),
+                0 0 0 0 rgba(191, 90, 242, 0);
+  }
+  50% {
+    box-shadow: 0 12px 48px rgba(191, 90, 242, 0.65),
+                0 0 0 10px rgba(191, 90, 242, 0.08);
+  }
+}
+
+/* Gradiente vivo para hero card */
+@keyframes gradientDrift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Shimmer direccional (botones CTA, loading) */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* Shimmer en CTA button */
+@keyframes ctaShimmer {
+  0%   { background-position: -300% center; }
+  100% { background-position:  300% center; }
+}
+
+/* Sparkle flotante para IA */
+@keyframes sparkleFloat {
+  0%   { transform: translateY(0px)   scale(1);    opacity: 0.9; }
+  50%  { transform: translateY(-10px) scale(1.15); opacity: 1;   }
+  100% { transform: translateY(0px)   scale(1);    opacity: 0.9; }
+}
+
+/* Pulso suave para indicators */
+@keyframes softPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+/* Rotación suave */
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Ripple haptic — onda expansiva desde el punto de toque */
+@keyframes ripple {
+  0%   { transform: translate(-50%, -50%) scale(0); opacity: 0.55; }
+  80%  { opacity: 0.12; }
+  100% { transform: translate(-50%, -50%) scale(24); opacity: 0; }
+}
+
+/* Slide horizontal para tab content */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Confetti burst — partícula que explota en una dirección */
+@keyframes confettiBurst {
+  0%   { transform: translate(0, 0) scale(0); opacity: 1; }
+  20%  { transform: translate(var(--dx, 0), var(--dy, 0)) scale(1); opacity: 1; }
+  100% { transform: translate(calc(var(--dx, 0) * 1.4), calc(var(--dy, 0) * 1.4 + 8px)) scale(0.4); opacity: 0; }
+}
+
+/* ─── Clases de animación ─────────────────────────────────────── */
+
+/* Entrada */
+.animate-fade-slide-up {
+  animation: fadeSlideUp 420ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.animate-spring-up {
+  animation: springUp 480ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.animate-pop-in {
+  animation: popIn 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.animate-slide-up {
+  animation: slideUp 320ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* Motion especiales */
+.animate-glow-pulse {
+  animation: glowPulse 2.8s ease-in-out infinite;
+}
+.animate-gradient-drift {
+  background-size: 200% 200%;
+  animation: gradientDrift 8s ease infinite;
+}
+.animate-soft-pulse {
+  animation: softPulse 2s ease-in-out infinite;
+}
+
+/* Sparkles IA */
+.animate-sparkle-1 { animation: sparkleFloat 2.4s ease-in-out infinite; }
+.animate-sparkle-2 { animation: sparkleFloat 2.4s ease-in-out infinite 0.4s; }
+.animate-sparkle-3 { animation: sparkleFloat 2.4s ease-in-out infinite 0.8s; }
+.animate-sparkle-4 { animation: sparkleFloat 2.4s ease-in-out infinite 1.2s; }
+
+/* Ripple */
+.animate-ripple {
+  animation: ripple 620ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Tab slide */
+.animate-slide-in-right {
+  animation: slideInRight 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.animate-slide-in-left {
+  animation: slideInLeft 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* Confetti particle */
+.animate-confetti {
+  animation: confettiBurst 720ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+/* ─── Stagger delays ──────────────────────────────────────────── */
+/* Usar con .animate-fade-slide-up o .animate-spring-up          */
+
+.stagger-0 { animation-delay: 0ms; }
+.stagger-1 { animation-delay: 60ms; }
+.stagger-2 { animation-delay: 120ms; }
+.stagger-3 { animation-delay: 180ms; }
+.stagger-4 { animation-delay: 240ms; }
+.stagger-5 { animation-delay: 300ms; }
+.stagger-6 { animation-delay: 360ms; }
+.stagger-7 { animation-delay: 420ms; }
+.stagger-8 { animation-delay: 480ms; }
+
+/* ─── Interacciones ───────────────────────────────────────────── */
+
+/* Press feedback universal */
+.press-feedback {
+  transition: transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 120ms ease;
+}
+.press-feedback:active { transform: scale(0.94); }
+
+/* Card lift en hover */
+.card-lift {
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 200ms ease,
+              border-color 200ms ease;
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+}
+
+/* CTA shimmer (aplicar al style inline del botón) */
+.cta-shimmer {
+  background-image: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 80%
+  );
+  background-size: 300% 100%;
+  animation: ctaShimmer 3.5s ease-in-out infinite;
+}
+
+/* ─── Skeleton / Loading ──────────────────────────────────────── */
+
+.skeleton {
+  background: linear-gradient(90deg, #1A1A1A 25%, #242424 50%, #1A1A1A 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ─── Reduce motion ───────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

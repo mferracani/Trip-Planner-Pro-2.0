@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getAuth, OAuthProvider } from "firebase/auth";
+import { getAuth, OAuthProvider, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
@@ -31,4 +31,8 @@ export function getFirebaseStorage() {
 
 export function getAppleProvider() {
   return new OAuthProvider("apple.com");
+}
+
+export function getGoogleProvider() {
+  return new GoogleAuthProvider();
 }

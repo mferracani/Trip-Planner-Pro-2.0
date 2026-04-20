@@ -1,0 +1,26 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Next.js dev server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "web/next",
+      "port": 3000
+    },
+    {
+      "name": "Firebase Emulators (auth + functions + firestore + storage + UI)",
+      "runtimeExecutable": "firebase",
+      "runtimeArgs": ["emulators:start"],
+      "cwd": "firebase",
+      "port": 4000
+    },
+    {
+      "name": "Cloud Functions TypeScript watcher",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "build:watch"],
+      "cwd": "firebase/functions",
+      "port": 5001
+    }
+  ]
+}

@@ -1,10 +1,15 @@
 "use client";
 
 import { signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged, User } from "firebase/auth";
-import { getFirebaseAuth, getAppleProvider } from "./firebase";
+import { getFirebaseAuth, getAppleProvider, getGoogleProvider } from "./firebase";
 
 export async function signInWithApple() {
   const result = await signInWithPopup(getFirebaseAuth(), getAppleProvider());
+  return result.user;
+}
+
+export async function signInWithGoogle() {
+  const result = await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
   return result.user;
 }
 

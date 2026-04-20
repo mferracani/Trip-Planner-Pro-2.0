@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { getTrip, getCities, getFlights, getHotels, getTransports } from "@/lib/firestore";
+import { BottomNav } from "../BottomNav";
 import { CalendarView } from "./CalendarView";
 import { ListView } from "./ListView";
 import { AiParseModal } from "../AiParseModal";
 import Link from "next/link";
 
 type Tab = "calendar" | "list" | "map";
+const TABS: Tab[] = ["calendar", "list", "map"];
 
 interface Props {
   tripId: string;
@@ -59,7 +61,7 @@ export function TripDetailPage({ tripId }: Props) {
   if (loadingTrip) {
     return (
       <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center">
-        <div className="text-[#A0A0A0] text-[15px]">Cargando...</div>
+        <div className="text-[#707070] text-[15px]">Cargando…</div>
       </div>
     );
   }
@@ -73,85 +75,112 @@ export function TripDetailPage({ tripId }: Props) {
     );
   }
 
+  const totalDays =
+    Math.ceil(
+      (new Date(trip.end_date + "T00:00:00").getTime() -
+        new Date(trip.start_date + "T00:00:00").getTime()) /
+        86400000
+    ) + 1;
+
+  const tabIndex = TABS.indexOf(tab);
+  const prevTabIndex = useRef(tabIndex);
+  const direction = tabIndex >= prevTabIndex.current ? 1 : -1;
+  prevTabIndex.current = tabIndex;
+
   return (
     <div className="min-h-screen bg-[#0D0D0D]">
       {/* Header */}
-      <div className="flex items-center gap-4 px-6 pt-10 pb-4">
-        <Link href="/" className="text-[#0A84FF] text-[17px]">←</Link>
+      <div className="flex items-center gap-4 px-6 pt-12 pb-4 border-b border-[#1A1A1A] animate-fade-slide-up stagger-0">
+        <Link
+          href="/"
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-[#1A1A1A] border border-[#333] text-[#0A84FF] text-[17px] press-feedback"
+        >
+          ←
+        </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="text-[22px] font-semibold text-white truncate">{trip.name}</h1>
-          <p className="text-[#A0A0A0] text-[13px]">
-            {new Date(trip.start_date + "T00:00:00").toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
+          <h1 className="text-[20px] font-bold text-white truncate leading-tight">{trip.name}</h1>
+          <p className="text-[#707070] text-[12px] mt-0.5">
+            {new Date(trip.start_date + "T00:00:00").toLocaleDateString("es-AR", {
+              day: "numeric",
+              month: "short",
+            })}
             {" – "}
-            {new Date(trip.end_date + "T00:00:00").toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" })}
+            {new Date(trip.end_date + "T00:00:00").toLocaleDateString("es-AR", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
           </p>
         </div>
+        <button className="w-9 h-9 flex items-center justify-center rounded-full bg-[#1A1A1A] border border-[#333] text-[#A0A0A0] press-feedback">
+          ⋯
+        </button>
       </div>
 
-      {/* Stats row */}
-      <div className="flex gap-3 px-6 mb-4 overflow-x-auto pb-1">
-        <StatPill label="Total" value={`USD ${trip.total_usd.toLocaleString()}`} />
-        <StatPill label="Ciudades" value={String(cities.length)} />
-        <StatPill label="Vuelos" value={String(flights.length)} />
-        <StatPill label="Hoteles" value={String(hotels.length)} />
+      {/* Summary card — presupuesto + duración */}
+      <div className="px-6 pt-3 pb-3 animate-fade-slide-up stagger-2">
+        <TripSummaryCard totalUsd={trip.total_usd} totalDays={totalDays} />
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mx-6 mb-4 bg-[#1A1A1A] p-1 rounded-full border border-[#333]">
-        {(["calendar", "list"] as Tab[]).map((t) => (
+      {/* Tabs — sliding indicator */}
+      <div className="relative flex gap-1 mx-6 mb-4 mt-1 bg-[#1A1A1A] p-1 rounded-full border border-[#262626] animate-fade-slide-up stagger-3">
+        {/* Sliding pill */}
+        <span
+          className="absolute top-1 bottom-1 rounded-full bg-[#242424] pointer-events-none"
+          style={{
+            boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
+            width: "calc((100% - 8px) / 3)",
+            left: `calc(4px + ${tabIndex} * (100% - 8px) / 3)`,
+            transition: "left 320ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+          }}
+        />
+        {TABS.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 py-2 text-[15px] font-medium rounded-full transition-colors ${
-              tab === t ? "bg-[#0A84FF] text-white" : "text-[#A0A0A0]"
+            className={`relative flex-1 py-2 text-[14px] font-semibold rounded-full transition-colors duration-200 ${
+              tab === t ? "text-white" : "text-[#707070]"
             }`}
           >
             {t === "calendar" ? "Calendario" : t === "list" ? "Lista" : "Mapa"}
           </button>
         ))}
-        <button
-          onClick={() => setTab("map")}
-          className={`flex-1 py-2 text-[15px] font-medium rounded-full transition-colors ${
-            tab === "map" ? "bg-[#0A84FF] text-white" : "text-[#A0A0A0]"
-          }`}
-        >
-          Mapa
-        </button>
       </div>
 
-      {/* Content */}
-      {tab === "calendar" && (
-        <CalendarView
-          trip={trip}
-          cities={cities}
-          flights={flights}
-          hotels={hotels}
-          transports={transports}
-        />
-      )}
-      {tab === "list" && (
-        <ListView
-          trip={trip}
-          cities={cities}
-          flights={flights}
-          hotels={hotels}
-          transports={transports}
-        />
-      )}
-      {tab === "map" && (
-        <div className="flex items-center justify-center py-20 text-[#707070] text-[15px]">
-          Mapa disponible en v1.1
-        </div>
-      )}
-
-      {/* FAB sparkles */}
-      <button
-        onClick={() => setParseOpen(true)}
-        className="fixed bottom-8 right-8 w-14 h-14 bg-[#BF5AF2] rounded-full flex items-center justify-center shadow-[0_8px_24px_rgba(0,0,0,0.4)] text-white text-[22px] transition-transform active:scale-95"
-        title="Agregar con IA"
+      {/* Content — slides horizontally based on tab direction */}
+      <div
+        key={tab}
+        className={direction > 0 ? "animate-slide-in-right" : "animate-slide-in-left"}
       >
-        ✨
-      </button>
+        {tab === "calendar" && (
+          <CalendarView
+            trip={trip}
+            cities={cities}
+            flights={flights}
+            hotels={hotels}
+            transports={transports}
+          />
+        )}
+        {tab === "list" && (
+          <ListView
+            trip={trip}
+            cities={cities}
+            flights={flights}
+            hotels={hotels}
+            transports={transports}
+          />
+        )}
+        {tab === "map" && (
+          <div className="flex flex-col items-center justify-center py-24 gap-3 text-center px-6">
+            <span className="text-5xl">🗺️</span>
+            <p className="text-[#A0A0A0] text-[17px] font-semibold">Mapa disponible en v1.1</p>
+            <p className="text-[#4D4D4D] text-[14px]">Estamos trabajando en eso.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom nav con FAB central (sparkles) */}
+      <BottomNav active="trips" onAdd={() => setParseOpen(true)} addIcon="sparkles" />
 
       {parseOpen && (
         <AiParseModal
@@ -164,11 +193,40 @@ export function TripDetailPage({ tripId }: Props) {
   );
 }
 
-function StatPill({ label, value }: { label: string; value: string }) {
+function TripSummaryCard({
+  totalUsd,
+  totalDays,
+}: {
+  totalUsd: number;
+  totalDays: number;
+}) {
   return (
-    <div className="flex-shrink-0 bg-[#1A1A1A] border border-[#333] rounded-full px-4 py-1.5 flex items-center gap-2">
-      <span className="text-[#A0A0A0] text-[12px]">{label}</span>
-      <span className="text-white text-[13px] font-semibold">{value}</span>
+    <div
+      className="rounded-[18px] px-5 py-3.5 overflow-hidden relative"
+      style={{
+        background: "linear-gradient(180deg, #1A1A1A 0%, #141414 100%)",
+        border: "1px solid #262626",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+      }}
+    >
+      <div className="flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-wider text-[#707070] font-bold mb-1">
+            Presupuesto
+          </p>
+          <p className="text-[24px] font-bold text-white tabular-nums leading-none whitespace-nowrap">
+            USD <span className="text-[#0A84FF]">{totalUsd.toLocaleString("es-AR")}</span>
+          </p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-[10px] uppercase tracking-wider text-[#707070] font-bold mb-1">
+            Duración
+          </p>
+          <p className="text-[24px] font-bold text-white tabular-nums leading-none">
+            {totalDays}<span className="text-[14px] text-[#707070] font-semibold ml-0.5">d</span>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
