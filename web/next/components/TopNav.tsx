@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Home, Briefcase, Map, Settings, Plus, Sparkles, LogOut } from "lucide-react";
+import { Briefcase, Map, Settings, Plus, Sparkles, LogOut } from "lucide-react";
 import { ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { signOut } from "@/lib/auth";
@@ -48,10 +48,9 @@ export function TopNav({ active, onAdd, addIcon = "plus", addLabel = "Nuevo viaj
 
         {/* Nav items */}
         <nav className="flex items-center gap-1 flex-1">
-          <NavItem href="/" active={active === "home"} icon={<Home size={16} strokeWidth={2.2} />} label="Home" />
           <NavItem href="/" active={active === "trips"} icon={<Briefcase size={16} strokeWidth={2.2} />} label="Viajes" />
-          <NavItem href="#" active={active === "map"} icon={<Map size={16} strokeWidth={2.2} />} label="Mapa" muted />
-          <NavItem href="#" active={active === "settings"} icon={<Settings size={16} strokeWidth={2.2} />} label="Ajustes" muted />
+          <DisabledNavItem icon={<Map size={16} strokeWidth={2.2} />} label="Mapa" />
+          <DisabledNavItem icon={<Settings size={16} strokeWidth={2.2} />} label="Ajustes" />
         </nav>
 
         {/* Right side: action + avatar */}
@@ -93,13 +92,11 @@ function NavItem({
   active,
   icon,
   label,
-  muted,
 }: {
   href: string;
   active: boolean;
   icon: ReactNode;
   label: string;
-  muted?: boolean;
 }) {
   return (
     <Link
@@ -107,13 +104,24 @@ function NavItem({
       className={`flex items-center gap-1.5 px-3 h-9 rounded-[10px] text-[13px] font-medium transition-colors ${
         active
           ? "text-white bg-[#1A1A1A] border border-[#262626]"
-          : muted
-          ? "text-[#4D4D4D] hover:text-[#707070]"
           : "text-[#A0A0A0] hover:text-white hover:bg-[#161616]"
       }`}
     >
       {icon}
       <span>{label}</span>
     </Link>
+  );
+}
+
+function DisabledNavItem({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <span
+      className="flex items-center gap-1.5 px-3 h-9 rounded-[10px] text-[13px] font-medium text-[#3D3D3D] cursor-not-allowed"
+      title="Disponible en v1.1"
+    >
+      {icon}
+      <span>{label}</span>
+      <span className="ml-0.5 text-[9px] font-bold text-[#4D4D4D] uppercase tracking-wider">· v1.1</span>
+    </span>
   );
 }

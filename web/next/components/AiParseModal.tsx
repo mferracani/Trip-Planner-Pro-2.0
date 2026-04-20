@@ -5,7 +5,9 @@ import { Timestamp } from "firebase/firestore";
 import { ref as storageRef, uploadBytes } from "firebase/storage";
 import { useAuth } from "@/context/AuthContext";
 import type { ParsedItem, ParsedFlight, ParsedHotel, ParsedTransport } from "@/lib/types";
-import { createFlight, createHotel, createTransport } from "@/lib/firestore";
+import { guessTimezone } from "@/lib/datetime";
+import { createFlight, createHotel, createTransport, getCities, createCity } from "@/lib/firestore";
+import { CITY_COLORS } from "@/lib/types";
 import { getFirebaseStorage } from "@/lib/firebase";
 
 type Mode = "chat" | "file" | "manual";
@@ -98,6 +100,38 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
       const n = o.nanoseconds ?? o._nanoseconds ?? 0;
       return typeof s === "number" ? new Timestamp(s, n) : Timestamp.now();
     };
+
+    // Cache de ciudades para no refetchear en cada item
+    let citiesCache: Awaited<ReturnType<typeof getCities>> | null = null;
+    async function ensureCity(uid: string, tid: string, cityName: string): Promise<string> {
+      const trimmed = cityName.trim();
+      if (!trimmed) return "";
+      if (!citiesCache) citiesCache = await getCities(uid, tid);
+      const match = citiesCache.find((c) => c.name.toLowerCase() === trimmed.toLowerCase());
+      if (match) return match.id;
+      const usedColors = citiesCache.map((c) => c.color);
+      const color = CITY_COLORS.find((c) => !usedColors.includes(c)) ?? CITY_COLORS[0];
+      const id = await createCity(uid, tid, {
+        trip_id: tid,
+        name: trimmed,
+        lat: 0,
+        lng: 0,
+        color,
+        timezone: guessTimezone(),
+        days: [],
+      });
+      citiesCache.push({
+        id,
+        trip_id: tid,
+        name: trimmed,
+        lat: 0,
+        lng: 0,
+        color,
+        timezone: guessTimezone(),
+        days: [],
+      });
+      return id;
+    }
     try {
       for (const item of parsedItems) {
         if (item.type === "flight") {
@@ -121,9 +155,10 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
           });
         } else if (item.type === "hotel") {
           const h = item as ParsedHotel;
+          const cityId = h.city ? await ensureCity(user.uid, tripId, h.city) : "";
           await createHotel(user.uid, tripId, {
             trip_id: tripId,
-            city_id: "",
+            city_id: cityId,
             name: h.name ?? "",
             check_in: h.check_in ?? "",
             check_out: h.check_out ?? "",
@@ -209,7 +244,11 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
         {parsing ? (
           <ParseLoadingState message={parseMessage} />
         ) : parsedItems ? (
-          <PreviewSection items={parsedItems} onEdit={() => setParsedItems(null)} />
+          <PreviewSection
+            items={parsedItems}
+            onEdit={() => setParsedItems(null)}
+            onRemove={(idx) => setParsedItems((prev) => prev ? prev.filter((_, i) => i !== idx) : prev)}
+          />
         ) : mode === "chat" ? (
           <ChatMode text={text} onChange={setText} />
         ) : mode === "file" ? (
@@ -403,7 +442,7 @@ function ManualMode() {
   );
 }
 
-function PreviewSection({ items, onEdit }: { items: ParsedItem[]; onEdit: () => void }) {
+function PreviewSection({ items, onEdit, onRemove }: { items: ParsedItem[]; onEdit: () => void; onRemove: (idx: number) => void }) {
   if (items.length === 0) {
     return (
       <div className="text-center py-12">
@@ -432,14 +471,14 @@ function PreviewSection({ items, onEdit }: { items: ParsedItem[]; onEdit: () => 
       </div>
       <div className="space-y-3">
         {items.map((item, i) => (
-          <ParsedItemCard key={i} item={item} />
+          <ParsedItemCard key={i} item={item} onRemove={() => onRemove(i)} />
         ))}
       </div>
     </div>
   );
 }
 
-function ParsedItemCard({ item }: { item: ParsedItem }) {
+function ParsedItemCard({ item, onRemove }: { item: ParsedItem; onRemove: () => void }) {
   const conf = item.confidence;
   // Thresholds from design handoff: ≥0.9 green, 0.7–0.9 orange, <0.7 red
   const confColor = conf >= 0.9 ? "#30D158" : conf >= 0.7 ? "#FF9F0A" : "#FF453A";
@@ -456,7 +495,7 @@ function ParsedItemCard({ item }: { item: ParsedItem }) {
 
   return (
     <div
-      className="bg-[#1A1A1A] rounded-[14px] px-4 py-4 flex items-start gap-3"
+      className="group bg-[#1A1A1A] rounded-[14px] px-4 py-4 flex items-start gap-3 relative"
       style={{ border: `1px solid ${confColor}30` }}
     >
       <span className="text-[24px] flex-shrink-0 mt-0.5">{emoji}</span>
@@ -475,6 +514,13 @@ function ParsedItemCard({ item }: { item: ParsedItem }) {
           {confLabel}
         </p>
       </div>
+      <button
+        onClick={onRemove}
+        aria-label="Quitar item"
+        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#242424] text-[#707070] hover:bg-[#FF453A]/20 hover:text-[#FF453A] transition-colors flex items-center justify-center text-[14px] leading-none opacity-0 group-hover:opacity-100 md:opacity-100"
+      >
+        ×
+      </button>
     </div>
   );
 }
