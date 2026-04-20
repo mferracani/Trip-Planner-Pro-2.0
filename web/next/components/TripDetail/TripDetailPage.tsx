@@ -1,17 +1,18 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
-import { getTrip, getCities, getFlights, getHotels, getTransports } from "@/lib/firestore";
+import { getTrip, getCities, getFlights, getHotels, getTransports, recalcTripAggregates } from "@/lib/firestore";
 import { BottomNav } from "../BottomNav";
 import { TopNav } from "../TopNav";
 import { CalendarView } from "./CalendarView";
 import { ListView } from "./ListView";
 import { ItemsView } from "./ItemsView";
 import { AiParseModal } from "../AiParseModal";
+import { TripForm } from "../forms/TripForm";
 import Link from "next/link";
-import { ArrowLeft, MoreHorizontal, Sparkles } from "lucide-react";
+import { ArrowLeft, MoreHorizontal } from "lucide-react";
 
 type Tab = "calendar" | "list" | "items";
 const TABS: Tab[] = ["calendar", "list", "items"];
@@ -23,11 +24,13 @@ interface Props {
 
 export function TripDetailPage({ tripId }: Props) {
   const { user, loading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("calendar");
   const [parseOpen, setParseOpen] = useState(false);
+  const [editTripOpen, setEditTripOpen] = useState(false);
   const prevTabIndexRef = useRef(0);
 
-  const { data: trip, isLoading: loadingTrip } = useQuery({
+  const { data: trip, isLoading: loadingTrip, refetch: refetchTrip } = useQuery({
     queryKey: ["trip", user?.uid, tripId],
     queryFn: () => getTrip(user!.uid, tripId),
     enabled: !!user,
@@ -57,11 +60,20 @@ export function TripDetailPage({ tripId }: Props) {
     enabled: !!user,
   });
 
-  function refetchAll() {
+  async function refetchAll() {
     refetchCities();
     refetchFlights();
     refetchHotels();
     refetchTransports();
+    if (user) {
+      try {
+        await recalcTripAggregates(user.uid, tripId);
+        refetchTrip();
+        queryClient.invalidateQueries({ queryKey: ["trips", user.uid] });
+      } catch (e) {
+        console.error("recalc failed", e);
+      }
+    }
   }
 
   if (authLoading || loadingTrip) {
@@ -122,7 +134,11 @@ export function TripDetailPage({ tripId }: Props) {
           <h1 className="text-[20px] font-bold text-white truncate leading-tight">{trip.name}</h1>
           <p className="text-[#707070] text-[12px] mt-0.5">{dateRange}</p>
         </div>
-        <button className="w-9 h-9 flex items-center justify-center rounded-full bg-[#1A1A1A] border border-[#333] text-[#A0A0A0] press-feedback">
+        <button
+          onClick={() => setEditTripOpen(true)}
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-[#1A1A1A] border border-[#333] text-[#A0A0A0] hover:text-white transition-colors press-feedback"
+          aria-label="Editar viaje"
+        >
           <MoreHorizontal size={18} />
         </button>
       </div>
@@ -148,7 +164,11 @@ export function TripDetailPage({ tripId }: Props) {
               <p className="text-[#A0A0A0] text-[14px] mt-1.5">{dateRange} · {totalDays} días</p>
             </div>
           </div>
-          <button className="w-10 h-10 flex items-center justify-center rounded-full bg-[#161616] border border-[#262626] text-[#A0A0A0] hover:text-white hover:border-[#333] transition-colors flex-shrink-0">
+          <button
+            onClick={() => setEditTripOpen(true)}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-[#161616] border border-[#262626] text-[#A0A0A0] hover:text-white hover:border-[#333] transition-colors flex-shrink-0"
+            aria-label="Editar viaje"
+          >
             <MoreHorizontal size={18} />
           </button>
         </div>
@@ -229,6 +249,18 @@ export function TripDetailPage({ tripId }: Props) {
           tripId={tripId}
           onClose={() => setParseOpen(false)}
           onConfirmed={() => { setParseOpen(false); refetchAll(); }}
+        />
+      )}
+
+      {editTripOpen && trip && (
+        <TripForm
+          trip={trip}
+          onClose={() => setEditTripOpen(false)}
+          onSaved={() => {
+            setEditTripOpen(false);
+            refetchTrip();
+            queryClient.invalidateQueries({ queryKey: ["trips", user?.uid] });
+          }}
         />
       )}
     </div>

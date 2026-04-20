@@ -7,6 +7,7 @@ export interface Trip {
   end_date: string;
   cover_url?: string;
   total_usd: number;
+  cities_count?: number; // denormalized from cities subcollection
   created_at: Timestamp;
   updated_at: Timestamp;
 }

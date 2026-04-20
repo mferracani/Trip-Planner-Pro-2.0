@@ -80,7 +80,7 @@ export function Dashboard() {
   const thisYear = new Date().getFullYear().toString();
   const yearTrips = trips.filter((t) => t.start_date.startsWith(thisYear));
   const totalUsd = yearTrips.reduce((sum, t) => sum + (t.total_usd ?? 0), 0);
-  const totalCities = yearTrips.length;
+  const totalCities = yearTrips.reduce((sum, t) => sum + (t.cities_count ?? 0), 0);
   const totalDaysThisYear = yearTrips.reduce((sum, t) => sum + getTotalDays(t), 0);
 
   return (

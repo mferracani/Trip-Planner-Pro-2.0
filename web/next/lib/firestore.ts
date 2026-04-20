@@ -146,6 +146,27 @@ export async function deleteTransport(uid: string, tripId: string, id: string) {
   await deleteDoc(transportRef(uid, tripId, id));
 }
 
+// Recalculates trip total_usd from all items + expenses, and cities_count.
+// Call this after any create/update/delete of items or cities.
+export async function recalcTripAggregates(uid: string, tripId: string) {
+  const [flights, hotels, transports, expenses, cities] = await Promise.all([
+    getFlights(uid, tripId),
+    getHotels(uid, tripId),
+    getTransports(uid, tripId),
+    getExpenses(uid, tripId),
+    getCities(uid, tripId),
+  ]);
+  const total =
+    flights.reduce((s, f) => s + (f.price_usd ?? 0), 0) +
+    hotels.reduce((s, h) => s + (h.total_price_usd ?? 0), 0) +
+    transports.reduce((s, t) => s + (t.price_usd ?? 0), 0) +
+    expenses.reduce((s, e) => s + (e.amount_usd ?? 0), 0);
+  await updateTrip(uid, tripId, {
+    total_usd: Math.round(total),
+    cities_count: cities.length,
+  } as Partial<Trip>);
+}
+
 // Expenses
 export async function getExpenses(uid: string, tripId: string): Promise<Expense[]> {
   const q = query(expensesRef(uid, tripId), orderBy("date", "desc"));
