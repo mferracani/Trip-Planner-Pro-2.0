@@ -12,7 +12,7 @@ import {
 import type { City, Flight, Hotel, Transport } from "@/lib/types";
 import { CITY_COLORS } from "@/lib/types";
 import { COMMON_TIMEZONES, localToUtcTimestamp, minutesBetween, guessTimezone } from "@/lib/datetime";
-import { ChevronDown, ArrowLeft, Plane, Hotel as HotelIcon, Car, Train, Bus, Ship, MapPin, ChevronRight } from "lucide-react";
+import { ChevronDown, ArrowLeft, Plane, Hotel as HotelIcon, Car, Train, Bus, MapPin, ChevronRight } from "lucide-react";
 
 // ─── Type picker ─────────────────────────────────────────────────────────────
 
@@ -32,9 +32,6 @@ const TYPE_OPTIONS: TypeOpt[] = [
   { type: "car", label: "Auto / rental", desc: "Modelo, extras", icon: <Car size={22} strokeWidth={2.2} />, color: "#4ECDC4" },
   { type: "train", label: "Tren", desc: "Número, asientos", icon: <Train size={22} strokeWidth={2.2} />, color: "#FF8FA3" },
   { type: "bus", label: "Bus", desc: "Empresa, horarios", icon: <Bus size={22} strokeWidth={2.2} />, color: "#C77DFF" },
-  { type: "ferry", label: "Ferry", desc: "Naviera, cruce", icon: <Ship size={22} strokeWidth={2.2} />, color: "#6BCB77" },
-  { type: "taxi", label: "Taxi / Uber", desc: "Chofer, trayecto", icon: <Car size={22} strokeWidth={2.2} />, color: "#95E1D3" },
-  { type: "subway", label: "Metro", desc: "Línea, estación", icon: <Train size={22} strokeWidth={2.2} />, color: "#FFD93D" },
   { type: "city", label: "Ciudad", desc: "Asignar a días", icon: <MapPin size={22} strokeWidth={2.2} />, color: "#BF5AF2" },
 ];
 
