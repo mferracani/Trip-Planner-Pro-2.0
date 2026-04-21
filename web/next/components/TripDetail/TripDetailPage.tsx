@@ -224,6 +224,7 @@ export function TripDetailPage({ tripId }: Props) {
               flights={flights}
               hotels={hotels}
               transports={transports}
+              onChanged={refetchAll}
             />
           )}
           {tab === "list" && (

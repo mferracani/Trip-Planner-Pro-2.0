@@ -681,6 +681,7 @@ function MockTripDetail({
             flights={MOCK_FLIGHTS}
             hotels={MOCK_HOTELS}
             transports={MOCK_TRANSPORTS}
+            onChanged={() => {}}
           />
         )}
         {tab === "list" && (

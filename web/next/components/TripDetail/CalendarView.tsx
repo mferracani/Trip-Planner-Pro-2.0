@@ -2,6 +2,12 @@
 
 import { PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
 import { Trip, City, Flight, Hotel, Transport } from "@/lib/types";
+import { useAuth } from "@/context/AuthContext";
+import { updateTrip } from "@/lib/firestore";
+import { CityForm } from "../forms/CityForm";
+import { FlightForm } from "../forms/FlightForm";
+import { HotelForm } from "../forms/HotelForm";
+import { TransportForm } from "../forms/TransportForm";
 
 interface Props {
   trip: Trip;
@@ -9,6 +15,7 @@ interface Props {
   flights: Flight[];
   hotels: Hotel[];
   transports: Transport[];
+  onChanged: () => void;
 }
 
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -116,7 +123,8 @@ interface SelectionStats {
   cities: City[];
 }
 
-export function CalendarView({ trip, cities, flights, hotels, transports }: Props) {
+export function CalendarView({ trip, cities, flights, hotels, transports, onChanged }: Props) {
+  const { user } = useAuth();
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [filterCity, setFilterCity] = useState<City | null>(null);
@@ -223,6 +231,18 @@ export function CalendarView({ trip, cities, flights, hotels, transports }: Prop
       window.removeEventListener("pointercancel", onGlobalUp);
     };
   }, []);
+
+  async function adjustDate(edge: "start" | "end", delta: number) {
+    if (!user) return;
+    const base = edge === "start" ? trip.start_date : trip.end_date;
+    const d = new Date(base + "T00:00:00");
+    d.setDate(d.getDate() + delta);
+    const newDate = d.toISOString().split("T")[0];
+    if (edge === "start" && newDate >= trip.end_date) return;
+    if (edge === "end" && newDate <= trip.start_date) return;
+    await updateTrip(user.uid, trip.id, edge === "start" ? { start_date: newDate } : { end_date: newDate });
+    onChanged();
+  }
 
   const selectionStats: SelectionStats = (() => {
     if (selection.size === 0) return { count: 0, hasEmpty: false, hasCity: false, cities: [] };
@@ -334,6 +354,52 @@ export function CalendarView({ trip, cities, flights, hotels, transports }: Prop
         </div>
       )}
 
+      {/* Date adjustment */}
+      {!inSelectionMode && (
+        <div className="mt-5 px-1">
+          <p className="text-center text-[10px] text-[#4D4D4D] uppercase tracking-wider font-semibold mb-2.5">
+            Ajustar duración
+          </p>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 flex-1">
+              <button
+                onClick={() => adjustDate("start", -1)}
+                className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-[#A0A0A0] bg-[#1A1A1A] border border-[#333] press-feedback hover:border-[#555] transition-colors"
+              >
+                ← +día
+              </button>
+              <span className="text-[11px] text-[#707070] flex-1 text-center">
+                {new Date(trip.start_date + "T00:00:00").toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
+              </span>
+              <button
+                onClick={() => adjustDate("start", +1)}
+                className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-[#A0A0A0] bg-[#1A1A1A] border border-[#333] press-feedback hover:border-[#555] transition-colors"
+              >
+                −día →
+              </button>
+            </div>
+            <span className="text-[#333] text-[12px] flex-shrink-0">·</span>
+            <div className="flex items-center gap-1.5 flex-1">
+              <button
+                onClick={() => adjustDate("end", -1)}
+                className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-[#A0A0A0] bg-[#1A1A1A] border border-[#333] press-feedback hover:border-[#555] transition-colors"
+              >
+                ← −día
+              </button>
+              <span className="text-[11px] text-[#707070] flex-1 text-center">
+                {new Date(trip.end_date + "T00:00:00").toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
+              </span>
+              <button
+                onClick={() => adjustDate("end", +1)}
+                className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-[#A0A0A0] bg-[#1A1A1A] border border-[#333] press-feedback hover:border-[#555] transition-colors"
+              >
+                +día →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Day detail sheet */}
       {selectedDay && !inSelectionMode && (
         <DayDetailSheet
@@ -342,6 +408,9 @@ export function CalendarView({ trip, cities, flights, hotels, transports }: Prop
           flights={flights}
           hotels={hotels}
           transports={transports}
+          trip={trip}
+          cities={cities}
+          onChanged={onChanged}
           onClose={() => setSelectedDay(null)}
         />
       )}
@@ -672,12 +741,17 @@ function dayLabelShort(dateStr: string): string {
 
 // ─── the sheet ───────────────────────────────────────────────────────────────
 
+type AddingType = "city" | "flight" | "hotel" | "transport";
+
 function DayDetailSheet({
   dateStr,
   city,
   flights,
   hotels,
   transports,
+  trip,
+  cities,
+  onChanged,
   onClose,
 }: {
   dateStr: string;
@@ -685,8 +759,21 @@ function DayDetailSheet({
   flights: Flight[];
   hotels: Hotel[];
   transports: Transport[];
+  trip: Trip;
+  cities: City[];
+  onChanged: () => void;
   onClose: () => void;
 }) {
+  const [showPicker, setShowPicker] = useState(false);
+  const [addingType, setAddingType] = useState<AddingType | null>(null);
+
+  function handleSaved() {
+    setAddingType(null);
+    setShowPicker(false);
+    onChanged();
+    onClose();
+  }
+
   const date = new Date(dateStr + "T00:00:00");
   const label = date.toLocaleDateString("es-AR", {
     weekday: "long",
@@ -762,16 +849,86 @@ function DayDetailSheet({
           </div>
         )}
 
-        <button
-          className="w-full mt-5 rounded-[14px] py-3.5 text-[15px] font-semibold text-white press-feedback"
-          style={{
-            background: "linear-gradient(135deg, #BF5AF2, #9B3FD6)",
-            boxShadow: "0 4px 16px rgba(191,90,242,0.3)",
-          }}
-        >
-          ✨ Agregar al día
-        </button>
+        {/* Add to day — type picker */}
+        {!showPicker ? (
+          <button
+            onClick={() => setShowPicker(true)}
+            className="w-full mt-5 rounded-[14px] py-3.5 text-[15px] font-semibold text-white press-feedback"
+            style={{
+              background: "linear-gradient(135deg, #BF5AF2, #9B3FD6)",
+              boxShadow: "0 4px 16px rgba(191,90,242,0.3)",
+            }}
+          >
+            ✨ Agregar al día
+          </button>
+        ) : (
+          <div className="mt-5 space-y-2">
+            <p className="text-center text-[12px] text-[#707070] mb-3">¿Qué querés agregar?</p>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { type: "city" as AddingType, label: "Ciudad", emoji: "🏙️", color: "#FF6B6B" },
+                { type: "flight" as AddingType, label: "Vuelo", emoji: "✈️", color: "#4D96FF" },
+                { type: "hotel" as AddingType, label: "Hotel", emoji: "🏨", color: "#FFD93D" },
+                { type: "transport" as AddingType, label: "Transporte", emoji: "🚆", color: "#4ECDC4" },
+              ] as const).map(({ type, label, emoji, color }) => (
+                <button
+                  key={type}
+                  onClick={() => { setShowPicker(false); setAddingType(type); }}
+                  className="flex flex-col items-center gap-1.5 py-3.5 rounded-[14px] font-semibold text-[13px] press-feedback transition-all"
+                  style={{ background: `${color}18`, border: `1px solid ${color}40`, color }}
+                >
+                  <span className="text-[22px]">{emoji}</span>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowPicker(false)}
+              className="w-full py-2.5 text-[13px] text-[#707070] hover:text-white transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Forms — rendered via createPortal inside each component */}
+      {addingType === "city" && (
+        <CityForm
+          tripId={trip.id}
+          tripStart={trip.start_date}
+          tripEnd={trip.end_date}
+          usedColors={cities.map((c) => c.color)}
+          initialDay={dateStr}
+          onClose={() => setAddingType(null)}
+          onSaved={handleSaved}
+        />
+      )}
+      {addingType === "flight" && (
+        <FlightForm
+          tripId={trip.id}
+          initialDate={dateStr}
+          onClose={() => setAddingType(null)}
+          onSaved={handleSaved}
+        />
+      )}
+      {addingType === "hotel" && (
+        <HotelForm
+          tripId={trip.id}
+          cities={cities}
+          initialDate={dateStr}
+          onClose={() => setAddingType(null)}
+          onSaved={handleSaved}
+        />
+      )}
+      {addingType === "transport" && (
+        <TransportForm
+          tripId={trip.id}
+          initialDate={dateStr}
+          onClose={() => setAddingType(null)}
+          onSaved={handleSaved}
+        />
+      )}
     </div>
   );
 }

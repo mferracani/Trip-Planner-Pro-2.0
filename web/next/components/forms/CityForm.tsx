@@ -14,6 +14,7 @@ interface Props {
   tripEnd: string;
   usedColors: string[];
   existing?: City;
+  initialDay?: string;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -27,7 +28,7 @@ function* dateRange(start: string, end: string): Generator<string> {
   }
 }
 
-export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, onClose, onSaved }: Props) {
+export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, initialDay, onClose, onSaved }: Props) {
   const { user } = useAuth();
   const [name, setName] = useState(existing?.name ?? "");
   const [lat, setLat] = useState<number | null>(existing?.lat ?? null);
@@ -36,7 +37,7 @@ export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, onC
   const [color, setColor] = useState(
     existing?.color ?? CITY_COLORS.find((c) => !usedColors.includes(c)) ?? CITY_COLORS[0]
   );
-  const [days, setDays] = useState<string[]>(existing?.days ?? []);
+  const [days, setDays] = useState<string[]>(existing?.days ?? (initialDay ? [initialDay] : []));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

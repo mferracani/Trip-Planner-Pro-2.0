@@ -11,6 +11,7 @@ import { Field, TextInput, NumberInput, SelectInput } from "./fields";
 interface Props {
   tripId: string;
   existing?: Transport;
+  initialDate?: string;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -25,14 +26,16 @@ const TRANSPORT_TYPES: { value: Transport["type"]; label: string }[] = [
   { value: "other", label: "🚐 Otro" },
 ];
 
-export function TransportForm({ tripId, existing, onClose, onSaved }: Props) {
+export function TransportForm({ tripId, existing, initialDate, onClose, onSaved }: Props) {
   const { user } = useAuth();
   const defaultTz = guessTimezone();
 
   const [type, setType] = useState<Transport["type"]>(existing?.type ?? "train");
   const [origin, setOrigin] = useState(existing?.origin ?? "");
   const [destination, setDestination] = useState(existing?.destination ?? "");
-  const [departureLocal, setDepartureLocal] = useState(existing?.departure_local_time ?? "");
+  const [departureLocal, setDepartureLocal] = useState(
+    existing?.departure_local_time ?? (initialDate ? `${initialDate}T00:00` : "")
+  );
   const [departureTz, setDepartureTz] = useState(existing?.departure_timezone ?? defaultTz);
   const [arrivalLocal, setArrivalLocal] = useState(existing?.arrival_local_time ?? "");
   const [arrivalTz, setArrivalTz] = useState(existing?.arrival_timezone ?? defaultTz);

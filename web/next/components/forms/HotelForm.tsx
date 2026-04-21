@@ -11,16 +11,17 @@ interface Props {
   tripId: string;
   cities: City[];
   existing?: Hotel;
+  initialDate?: string;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function HotelForm({ tripId, cities, existing, onClose, onSaved }: Props) {
+export function HotelForm({ tripId, cities, existing, initialDate, onClose, onSaved }: Props) {
   const { user } = useAuth();
   const [cityId, setCityId] = useState(existing?.city_id ?? "");
   const [name, setName] = useState(existing?.name ?? "");
   const [brand, setBrand] = useState(existing?.brand ?? "");
-  const [checkIn, setCheckIn] = useState(existing?.check_in ?? "");
+  const [checkIn, setCheckIn] = useState(existing?.check_in ?? initialDate ?? "");
   const [checkOut, setCheckOut] = useState(existing?.check_out ?? "");
   const [roomType, setRoomType] = useState(existing?.room_type ?? "");
   const [bookingRef, setBookingRef] = useState(existing?.booking_ref ?? "");

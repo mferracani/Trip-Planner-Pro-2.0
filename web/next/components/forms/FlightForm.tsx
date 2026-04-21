@@ -11,11 +11,12 @@ import { Field, TextInput, NumberInput, SelectInput } from "./fields";
 interface Props {
   tripId: string;
   existing?: Flight;
+  initialDate?: string;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function FlightForm({ tripId, existing, onClose, onSaved }: Props) {
+export function FlightForm({ tripId, existing, initialDate, onClose, onSaved }: Props) {
   const { user } = useAuth();
   const defaultTz = guessTimezone();
 
@@ -23,7 +24,9 @@ export function FlightForm({ tripId, existing, onClose, onSaved }: Props) {
   const [flightNumber, setFlightNumber] = useState(existing?.flight_number ?? "");
   const [originIata, setOriginIata] = useState(existing?.origin_iata ?? "");
   const [destinationIata, setDestinationIata] = useState(existing?.destination_iata ?? "");
-  const [departureLocal, setDepartureLocal] = useState(existing?.departure_local_time ?? "");
+  const [departureLocal, setDepartureLocal] = useState(
+    existing?.departure_local_time ?? (initialDate ? `${initialDate}T00:00` : "")
+  );
   const [departureTz, setDepartureTz] = useState(existing?.departure_timezone ?? defaultTz);
   const [arrivalLocal, setArrivalLocal] = useState(existing?.arrival_local_time ?? "");
   const [arrivalTz, setArrivalTz] = useState(existing?.arrival_timezone ?? defaultTz);
