@@ -339,7 +339,9 @@ export function CalendarView({ trip, cities, flights, hotels, transports }: Prop
         <DayDetailSheet
           dateStr={selectedDay}
           city={dateCityMap[selectedDay]}
-          items={dayItemsMap[selectedDay]}
+          flights={flights}
+          hotels={hotels}
+          transports={transports}
           onClose={() => setSelectedDay(null)}
         />
       )}
@@ -586,15 +588,39 @@ function SelectionActionBar({
   );
 }
 
+// ─── day detail helpers ─────────────────────────────────────────────────────
+
+function extractTime(iso?: string | null): string {
+  return iso?.split("T")[1]?.slice(0, 5) ?? "";
+}
+function extractDate(iso?: string | null): string {
+  return iso?.split("T")[0] ?? "";
+}
+function daysBetweenDates(a: string, b: string): number {
+  return Math.round(
+    (new Date(b + "T00:00:00").getTime() - new Date(a + "T00:00:00").getTime()) / 86400000
+  );
+}
+function dayLabelShort(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
+}
+
+// ─── the sheet ───────────────────────────────────────────────────────────────
+
 function DayDetailSheet({
   dateStr,
   city,
-  items,
+  flights,
+  hotels,
+  transports,
   onClose,
 }: {
   dateStr: string;
   city?: City;
-  items?: DayItems;
+  flights: Flight[];
+  hotels: Hotel[];
+  transports: Transport[];
   onClose: () => void;
 }) {
   const date = new Date(dateStr + "T00:00:00");
@@ -604,24 +630,29 @@ function DayDetailSheet({
     month: "long",
   });
 
-  const allItems = [
-    ...(items?.flights ?? []).map((f) => ({ key: f.id, label: f.label, type: "flight" as const })),
-    ...(items?.hotels ?? []).map((h) => ({ key: h.id, label: h.label, type: "hotel" as const })),
-    ...(items?.transports ?? []).map((t) => ({ key: t.id, label: t.label, type: "transport" as const })),
-  ];
+  // Filter items relevant to this day
+  const dayFlights = flights.filter((f) => {
+    const dep = extractDate(f.departure_local_time);
+    const arr = extractDate(f.arrival_local_time);
+    return dep === dateStr || arr === dateStr;
+  });
+  const dayHotels = hotels.filter((h) => dateStr >= h.check_in && dateStr < h.check_out);
+  const dayTransports = transports.filter((t) => extractDate(t.departure_local_time) === dateStr);
+
+  const totalCount = dayFlights.length + dayHotels.length + dayTransports.length;
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-[12px]" onClick={onClose} />
       <div
-        className="relative w-full max-w-lg bg-[#1A1A1A] rounded-t-[24px] p-6 pb-10 animate-slide-up"
+        className="relative w-full max-w-lg bg-[#161616] rounded-t-[24px] px-5 pt-5 pb-10 animate-slide-up max-h-[85vh] overflow-y-auto"
         style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
       >
         <div className="w-9 h-1 bg-[#333] rounded-full mx-auto mb-5" />
 
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h3 className="text-[20px] font-semibold text-white capitalize">{label}</h3>
+            <h3 className="text-[20px] font-semibold text-white capitalize leading-tight">{label}</h3>
             {city && (
               <div className="flex items-center gap-1.5 mt-1.5">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: city.color }} />
@@ -634,28 +665,35 @@ function DayDetailSheet({
               </div>
             )}
           </div>
-          <button onClick={onClose} className="text-[#707070] hover:text-white transition-colors text-[24px] leading-none mt-0.5 press-feedback">
+          <button
+            onClick={onClose}
+            className="text-[#707070] hover:text-white transition-colors text-[24px] leading-none mt-0.5 press-feedback"
+          >
             ×
           </button>
         </div>
 
-        {allItems.length === 0 ? (
-          <div className="text-center py-10 text-[#4D4D4D] text-[15px]">
-            Sin items en este día.
+        {totalCount === 0 ? (
+          <div className="text-center py-12 px-6">
+            <div className="text-[42px] mb-2 opacity-60">🗓️</div>
+            <p className="text-[#707070] text-[14px]">Día libre.</p>
+            <p className="text-[#4D4D4D] text-[12px] mt-1">Sin vuelos, hoteles ni transportes.</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {allItems.map((item, i) => (
-              <div
-                key={item.key}
-                className="bg-[#242424] rounded-[14px] px-4 py-3.5 flex items-center gap-3 animate-spring-up"
-                style={{ border: "1px solid #2C2C2C", animationDelay: `${i * 60}ms` }}
-              >
-                <span className="text-[22px]">
-                  {item.type === "flight" ? "✈️" : item.type === "hotel" ? "🏨" : "🚆"}
-                </span>
-                <span className="text-[15px] font-medium text-white">{item.label}</span>
-              </div>
+          <div className="space-y-2.5">
+            {dayFlights.map((f, i) => (
+              <FlightCard key={f.id} flight={f} dateStr={dateStr} delay={i * 60} />
+            ))}
+            {dayTransports.map((t, i) => (
+              <TransportCard key={t.id} transport={t} delay={(dayFlights.length + i) * 60} />
+            ))}
+            {dayHotels.map((h, i) => (
+              <HotelCard
+                key={h.id}
+                hotel={h}
+                dateStr={dateStr}
+                delay={(dayFlights.length + dayTransports.length + i) * 60}
+              />
             ))}
           </div>
         )}
@@ -670,6 +708,291 @@ function DayDetailSheet({
           ✨ Agregar al día
         </button>
       </div>
+    </div>
+  );
+}
+
+// ─── Flight card ────────────────────────────────────────────────────────────
+
+function FlightCard({ flight: f, dateStr, delay }: { flight: Flight; dateStr: string; delay: number }) {
+  const depDate = extractDate(f.departure_local_time);
+  const arrDate = extractDate(f.arrival_local_time);
+  const depTime = extractTime(f.departure_local_time);
+  const arrTime = extractTime(f.arrival_local_time);
+  const isDeparture = depDate === dateStr;
+  const isArrival = !isDeparture && arrDate === dateStr;
+  const dayOffset = arrDate && depDate ? daysBetweenDates(depDate, arrDate) : 0;
+  const sameDay = dayOffset === 0;
+
+  return (
+    <div
+      className="relative rounded-[16px] px-4 pt-3.5 pb-3 animate-spring-up overflow-hidden"
+      style={{
+        background: "linear-gradient(135deg, #0F1B2E 0%, #101417 100%)",
+        border: "1px solid #1E2A40",
+        animationDelay: `${delay}ms`,
+      }}
+    >
+      {/* Left accent */}
+      <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#4D96FF]" />
+
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-2.5 pl-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[14px]">✈️</span>
+          <span className="text-[12px] font-bold text-[#4D96FF] uppercase tracking-wide">
+            {isArrival ? "Llegada" : "Vuelo"}
+          </span>
+          {f.airline && (
+            <span className="text-[12px] text-[#A0A0A0]">
+              · {f.airline} {f.flight_number}
+            </span>
+          )}
+        </div>
+        {f.booking_ref && (
+          <span
+            className="text-[10.5px] font-mono font-semibold px-2 py-0.5 rounded-full"
+            style={{ background: "#BF5AF220", color: "#BF5AF2" }}
+          >
+            🎫 {f.booking_ref}
+          </span>
+        )}
+      </div>
+
+      {/* Route + times */}
+      {isArrival ? (
+        <div className="pl-1">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[24px] font-bold text-white tabular-nums">{arrTime}</span>
+            <span className="text-[13px] text-[#A0A0A0]">en</span>
+            <span className="text-[18px] font-bold text-white">{f.destination_iata}</span>
+          </div>
+          {depTime && depDate && (
+            <p className="text-[12px] text-[#707070] mt-1">
+              ← Salió de {f.origin_iata} el {dayLabelShort(depDate)} a las {depTime}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="pl-1">
+          <div className="flex items-center gap-3">
+            {/* Departure */}
+            <div>
+              <div className="text-[22px] font-bold text-white tabular-nums leading-none">{depTime}</div>
+              <div className="text-[15px] font-bold text-[#E0E0E0] mt-1">{f.origin_iata}</div>
+            </div>
+            {/* Arrow */}
+            <div className="flex-1 flex items-center gap-1">
+              <div className="flex-1 h-[1px] bg-gradient-to-r from-[#4D96FF] to-[#4D96FF60]" />
+              <span className="text-[#4D96FF] text-[12px]">✈</span>
+              <div className="flex-1 h-[1px] bg-gradient-to-r from-[#4D96FF60] to-[#4D96FF]" />
+            </div>
+            {/* Arrival */}
+            <div className="text-right">
+              <div className="text-[22px] font-bold text-white tabular-nums leading-none relative inline-block">
+                {arrTime}
+                {!sameDay && dayOffset > 0 && (
+                  <span className="absolute -top-1 -right-5 text-[10px] font-bold text-[#FF9F0A]">
+                    +{dayOffset}
+                  </span>
+                )}
+              </div>
+              <div className="text-[15px] font-bold text-[#E0E0E0] mt-1">{f.destination_iata}</div>
+            </div>
+          </div>
+          {!sameDay && dayOffset > 0 && (
+            <p className="text-[11px] text-[#FF9F0A] mt-2">
+              Llega el {dayLabelShort(arrDate)} ({dayOffset === 1 ? "mañana" : `+${dayOffset} días`})
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Metadata row */}
+      {(f.seat || f.cabin_class || f.price != null) && (
+        <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-[#1E2A40] pl-1 flex-wrap">
+          {f.seat && (
+            <span className="text-[11.5px] text-[#A0A0A0]">
+              <span className="text-[#4D4D4D]">Asiento</span> <span className="text-white font-semibold">{f.seat}</span>
+            </span>
+          )}
+          {f.cabin_class && (
+            <>
+              {f.seat && <span className="text-[#333]">·</span>}
+              <span className="text-[11.5px] text-[#A0A0A0]">{f.cabin_class}</span>
+            </>
+          )}
+          {f.price != null && (
+            <>
+              {(f.seat || f.cabin_class) && <span className="text-[#333]">·</span>}
+              <span className="text-[11.5px] text-[#30D158] font-semibold">
+                {f.currency ?? "USD"} {f.price.toLocaleString("es-AR")}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Hotel card ─────────────────────────────────────────────────────────────
+
+function HotelCard({ hotel: h, dateStr, delay }: { hotel: Hotel; dateStr: string; delay: number }) {
+  const totalNights = daysBetweenDates(h.check_in, h.check_out);
+  const night = daysBetweenDates(h.check_in, dateStr) + 1;
+  const isCheckIn = dateStr === h.check_in;
+  const badge = isCheckIn ? "✨ Check-in hoy" : `Noche ${night} de ${totalNights}`;
+
+  return (
+    <div
+      className="relative rounded-[16px] px-4 pt-3.5 pb-3 animate-spring-up overflow-hidden"
+      style={{
+        background: "linear-gradient(135deg, #1F1A10 0%, #171411 100%)",
+        border: "1px solid #2E2818",
+        animationDelay: `${delay}ms`,
+      }}
+    >
+      <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#FFD93D]" />
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2 pl-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[14px]">🏨</span>
+          <span className="text-[15px] font-bold text-white truncate">{h.name}</span>
+        </div>
+        {h.booking_ref && (
+          <span
+            className="text-[10.5px] font-mono font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
+            style={{ background: "#BF5AF220", color: "#BF5AF2" }}
+          >
+            🎫 {h.booking_ref}
+          </span>
+        )}
+      </div>
+
+      {/* Brand / meta */}
+      {h.brand && (
+        <p className="pl-1 text-[12px] text-[#A0A0A0] mb-2.5">{h.brand}</p>
+      )}
+
+      {/* Stay badge */}
+      <div className="pl-1 mb-2.5">
+        <span
+          className="inline-flex items-center text-[11px] font-bold px-2 py-1 rounded-full"
+          style={{
+            background: isCheckIn ? "#FFD93D25" : "#FFD93D15",
+            color: "#FFD93D",
+          }}
+        >
+          {badge}
+        </span>
+      </div>
+
+      {/* Dates */}
+      <div className="pl-1 flex items-center gap-3 text-[12px]">
+        <div>
+          <div className="text-[10px] text-[#4D4D4D] uppercase tracking-wide font-semibold">Check-in</div>
+          <div className="text-[#E0E0E0] font-semibold">{dayLabelShort(h.check_in)}</div>
+        </div>
+        <div className="text-[#FFD93D60]">→</div>
+        <div>
+          <div className="text-[10px] text-[#4D4D4D] uppercase tracking-wide font-semibold">Check-out</div>
+          <div className="text-[#E0E0E0] font-semibold">{dayLabelShort(h.check_out)}</div>
+        </div>
+        <div className="text-[#333]">·</div>
+        <span className="text-[#A0A0A0]">{totalNights} {totalNights === 1 ? "noche" : "noches"}</span>
+      </div>
+
+      {/* Metadata */}
+      {(h.room_type || h.price_per_night != null) && (
+        <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-[#2E2818] pl-1 flex-wrap">
+          {h.room_type && (
+            <span className="text-[11.5px] text-[#A0A0A0]">{h.room_type}</span>
+          )}
+          {h.price_per_night != null && (
+            <>
+              {h.room_type && <span className="text-[#333]">·</span>}
+              <span className="text-[11.5px] text-[#30D158] font-semibold">
+                {h.currency ?? "USD"} {h.price_per_night.toLocaleString("es-AR")}/noche
+              </span>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Transport card ─────────────────────────────────────────────────────────
+
+function TransportCard({ transport: t, delay }: { transport: Transport; delay: number }) {
+  const depTime = extractTime(t.departure_local_time);
+  const arrTime = extractTime(t.arrival_local_time);
+  const typeEmoji: Record<Transport["type"], string> = {
+    train: "🚆", bus: "🚌", ferry: "⛴️", car: "🚗", taxi: "🚕", subway: "🚇", other: "🚐",
+  };
+  const typeLabel: Record<Transport["type"], string> = {
+    train: "Tren", bus: "Bus", ferry: "Ferry", car: "Auto / rental", taxi: "Taxi", subway: "Metro", other: "Transporte",
+  };
+
+  return (
+    <div
+      className="relative rounded-[16px] px-4 pt-3.5 pb-3 animate-spring-up overflow-hidden"
+      style={{
+        background: "linear-gradient(135deg, #101D1B 0%, #0F1513 100%)",
+        border: "1px solid #1B2E2B",
+        animationDelay: `${delay}ms`,
+      }}
+    >
+      <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#4ECDC4]" />
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2 pl-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[14px]">{typeEmoji[t.type]}</span>
+          <span className="text-[12px] font-bold text-[#4ECDC4] uppercase tracking-wide">{typeLabel[t.type]}</span>
+          {t.operator && (
+            <span className="text-[12px] text-[#A0A0A0] truncate">· {t.operator}</span>
+          )}
+        </div>
+        {t.booking_ref && (
+          <span
+            className="text-[10.5px] font-mono font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
+            style={{ background: "#BF5AF220", color: "#BF5AF2" }}
+          >
+            🎫 {t.booking_ref}
+          </span>
+        )}
+      </div>
+
+      {/* Route */}
+      <div className="pl-1">
+        <div className="flex items-start gap-2 text-[13px]">
+          <div className="flex-1 min-w-0">
+            {depTime && (
+              <div className="text-[18px] font-bold text-white tabular-nums leading-none mb-0.5">{depTime}</div>
+            )}
+            <div className="text-[13px] text-[#E0E0E0] font-semibold truncate">{t.origin}</div>
+          </div>
+          <div className="text-[#4ECDC460] text-[14px] mt-1.5">→</div>
+          <div className="flex-1 min-w-0 text-right">
+            {arrTime && (
+              <div className="text-[18px] font-bold text-white tabular-nums leading-none mb-0.5">{arrTime}</div>
+            )}
+            <div className="text-[13px] text-[#E0E0E0] font-semibold truncate">{t.destination}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Price */}
+      {t.price != null && (
+        <div className="flex items-center mt-3 pt-2.5 border-t border-[#1B2E2B] pl-1">
+          <span className="text-[11.5px] text-[#30D158] font-semibold">
+            {t.currency ?? "USD"} {t.price.toLocaleString("es-AR")}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
