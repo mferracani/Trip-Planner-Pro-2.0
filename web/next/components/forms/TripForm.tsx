@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { updateTrip, deleteTrip } from "@/lib/firestore";
 import type { Trip } from "@/lib/types";
@@ -17,6 +18,7 @@ interface Props {
 export function TripForm({ trip, onClose, onSaved }: Props) {
   const { user } = useAuth();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [name, setName] = useState(trip.name);
   const [startDate, setStartDate] = useState(trip.start_date);
   const [endDate, setEndDate] = useState(trip.end_date);
@@ -51,6 +53,7 @@ export function TripForm({ trip, onClose, onSaved }: Props) {
     setError(null);
     try {
       await deleteTrip(user.uid, trip.id);
+      queryClient.invalidateQueries({ queryKey: ["trips", user.uid] });
       router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
