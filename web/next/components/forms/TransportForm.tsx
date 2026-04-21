@@ -41,6 +41,7 @@ export function TransportForm({ tripId, existing, onClose, onSaved }: Props) {
   const [price, setPrice] = useState<number | null>(existing?.price ?? null);
   const [currency, setCurrency] = useState(existing?.currency ?? "USD");
   const [priceUsd, setPriceUsd] = useState<number | null>(existing?.price_usd ?? null);
+  const [paidAmount, setPaidAmount] = useState<number | null>(existing?.paid_amount ?? null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,6 +72,7 @@ export function TransportForm({ tripId, existing, onClose, onSaved }: Props) {
         price: price ?? undefined,
         currency: price != null ? currency : undefined,
         price_usd: priceUsd ?? undefined,
+        paid_amount: paidAmount ?? undefined,
       };
       if (existing) {
         await updateTransport(user.uid, tripId, existing.id, data);
@@ -161,6 +163,10 @@ export function TransportForm({ tripId, existing, onClose, onSaved }: Props) {
           <NumberInput value={priceUsd} onChange={setPriceUsd} placeholder="80" />
         </Field>
       </div>
+
+      <Field label="Pagado" hint="Monto ya abonado en la misma moneda">
+        <NumberInput value={paidAmount} onChange={setPaidAmount} placeholder="0" />
+      </Field>
     </FormSheet>
   );
 }

@@ -146,6 +146,19 @@ export async function deleteTransport(uid: string, tripId: string, id: string) {
   await deleteDoc(transportRef(uid, tripId, id));
 }
 
+// Fetches today's FX rates. Returns { EUR: 0.92, ARS: 1050, ... } (1 USD = N currency).
+// Falls back to yesterday if today's doc doesn't exist yet.
+export async function getFxRates(): Promise<Record<string, number>> {
+  const db = getFirebaseDb();
+  const today = new Date().toISOString().split("T")[0];
+  const snap = await getDoc(doc(db, "fx_rates", today));
+  if (snap.exists()) return (snap.data().rates as Record<string, number>) ?? {};
+  // fallback: try yesterday
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  const snap2 = await getDoc(doc(db, "fx_rates", yesterday));
+  return snap2.exists() ? ((snap2.data().rates as Record<string, number>) ?? {}) : {};
+}
+
 // Recalculates trip total_usd from all items + expenses, and cities_count.
 // Call this after any create/update/delete of items or cities.
 export async function recalcTripAggregates(uid: string, tripId: string) {

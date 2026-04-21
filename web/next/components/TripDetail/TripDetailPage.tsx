@@ -3,20 +3,21 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
-import { getTrip, getCities, getFlights, getHotels, getTransports, recalcTripAggregates } from "@/lib/firestore";
+import { getTrip, getCities, getFlights, getHotels, getTransports, recalcTripAggregates, getFxRates } from "@/lib/firestore";
 import { BottomNav } from "../BottomNav";
 import { TopNav } from "../TopNav";
 import { CalendarView } from "./CalendarView";
 import { ListView } from "./ListView";
 import { ItemsView } from "./ItemsView";
+import { CostView } from "./CostView";
 import { AiParseModal } from "../AiParseModal";
 import { TripForm } from "../forms/TripForm";
 import Link from "next/link";
 import { ArrowLeft, MoreHorizontal } from "lucide-react";
 
-type Tab = "calendar" | "list" | "items";
-const TABS: Tab[] = ["calendar", "list", "items"];
-const TAB_LABELS: Record<Tab, string> = { calendar: "Calendario", list: "Lista", items: "Items" };
+type Tab = "calendar" | "list" | "items" | "costos";
+const TABS: Tab[] = ["calendar", "list", "items", "costos"];
+const TAB_LABELS: Record<Tab, string> = { calendar: "Calendario", list: "Lista", items: "Items", costos: "Costos" };
 
 interface Props {
   tripId: string;
@@ -58,6 +59,12 @@ export function TripDetailPage({ tripId }: Props) {
     queryKey: ["transports", user?.uid, tripId],
     queryFn: () => getTransports(user!.uid, tripId),
     enabled: !!user,
+  });
+
+  const { data: fxRates = {} } = useQuery({
+    queryKey: ["fx_rates"],
+    queryFn: getFxRates,
+    staleTime: 1000 * 60 * 60, // 1h — rates don't change often
   });
 
   async function refetchAll() {
@@ -236,6 +243,14 @@ export function TripDetailPage({ tripId }: Props) {
               hotels={hotels}
               transports={transports}
               onChanged={refetchAll}
+            />
+          )}
+          {tab === "costos" && (
+            <CostView
+              flights={flights}
+              hotels={hotels}
+              transports={transports}
+              firebaseRates={fxRates}
             />
           )}
         </div>

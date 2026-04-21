@@ -43,6 +43,7 @@ export interface Flight {
   price?: number;
   currency?: string;
   price_usd?: number;
+  paid_amount?: number;  // paid so far in original currency
 }
 
 export interface Hotel {
@@ -56,8 +57,10 @@ export interface Hotel {
   room_type?: string;
   booking_ref?: string;
   price_per_night?: number;
+  total_price?: number;  // total in original currency
   currency?: string;
   total_price_usd?: number;
+  paid_amount?: number;  // paid so far in original currency
 }
 
 export interface Transport {
@@ -77,6 +80,7 @@ export interface Transport {
   price?: number;
   currency?: string;
   price_usd?: number;
+  paid_amount?: number;  // paid so far in original currency
 }
 
 export type ExpenseCategory =

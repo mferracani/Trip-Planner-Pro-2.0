@@ -27,6 +27,7 @@ export function HotelForm({ tripId, cities, existing, onClose, onSaved }: Props)
   const [pricePerNight, setPricePerNight] = useState<number | null>(existing?.price_per_night ?? null);
   const [currency, setCurrency] = useState(existing?.currency ?? "USD");
   const [totalUsd, setTotalUsd] = useState<number | null>(existing?.total_price_usd ?? null);
+  const [paidAmount, setPaidAmount] = useState<number | null>(existing?.paid_amount ?? null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +38,11 @@ export function HotelForm({ tripId, cities, existing, onClose, onSaved }: Props)
     setSaving(true);
     setError(null);
     try {
+      const nights = checkIn && checkOut
+        ? Math.max(0, Math.round((new Date(checkOut + "T00:00:00").getTime() - new Date(checkIn + "T00:00:00").getTime()) / 86400000))
+        : 0;
+      const totalPrice = pricePerNight != null && nights > 0 ? pricePerNight * nights : undefined;
+
       const data: Omit<Hotel, "id"> = {
         trip_id: tripId,
         city_id: cityId,
@@ -47,8 +53,10 @@ export function HotelForm({ tripId, cities, existing, onClose, onSaved }: Props)
         room_type: roomType.trim() || undefined,
         booking_ref: bookingRef.trim() || undefined,
         price_per_night: pricePerNight ?? undefined,
+        total_price: totalPrice,
         currency: pricePerNight != null ? currency : undefined,
         total_price_usd: totalUsd ?? undefined,
+        paid_amount: paidAmount ?? undefined,
       };
       if (existing) {
         await updateHotel(user.uid, tripId, existing.id, data);
@@ -130,6 +138,10 @@ export function HotelForm({ tripId, cities, existing, onClose, onSaved }: Props)
           <NumberInput value={totalUsd} onChange={setTotalUsd} placeholder="720" />
         </Field>
       </div>
+
+      <Field label="Pagado" hint="Monto ya abonado en la misma moneda">
+        <NumberInput value={paidAmount} onChange={setPaidAmount} placeholder="0" />
+      </Field>
     </FormSheet>
   );
 }
