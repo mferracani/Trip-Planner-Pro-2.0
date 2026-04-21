@@ -1,15 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Plane, Hotel as HotelIcon, Car } from "lucide-react";
-import type { Flight, Hotel, Transport } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { Plane, Hotel as HotelIcon, Car, Receipt, Check, X, Trash2, Plus, Pencil } from "lucide-react";
+import type { Expense, ExpenseCategory, Flight, Hotel, Transport } from "@/lib/types";
+import {
+  updateFlight,
+  updateHotel,
+  updateTransport,
+  createExpense,
+  updateExpense,
+  deleteExpense,
+  recalcTripAggregates,
+} from "@/lib/firestore";
 
 interface Props {
+  tripId: string;
+  userId: string;
   flights: Flight[];
   hotels: Hotel[];
   transports: Transport[];
-  // rates from Firebase: { USD: 1, EUR: 0.92, ARS: 1050, ... } — 1 USD = N currency
+  expenses: Expense[];
   firebaseRates: Record<string, number>;
+  onChanged: () => void;
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -35,19 +47,27 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 const CURRENCY_LABELS: Record<string, string> = {
   USD: "USD", EUR: "€ EUR", ARS: "ARS", BRL: "BRL", GBP: "GBP",
 };
-// Color per currency (normal/paid state)
 const CURRENCY_COLORS: Record<string, string> = {
-  USD: "#34C759",   // green
-  EUR: "#5AC8FA",   // sky blue
-  ARS: "#FFD93D",   // amber
-  BRL: "#4ECDC4",   // teal
-  GBP: "#BF5AF2",   // purple
+  USD: "#34C759",
+  EUR: "#5AC8FA",
+  ARS: "#FFD93D",
+  BRL: "#4ECDC4",
+  GBP: "#BF5AF2",
 };
+
+const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
+  { value: "food", label: "Comida" },
+  { value: "activity", label: "Actividad" },
+  { value: "shopping", label: "Compras" },
+  { value: "transport", label: "Transporte" },
+  { value: "hotel", label: "Hotel" },
+  { value: "flight", label: "Vuelo" },
+  { value: "other", label: "Otro" },
+];
 
 function fmtAmt(amount: number, currency: string): string {
   const sym = CURRENCY_SYMBOLS[currency] ?? "";
   const n = Math.round(amount).toLocaleString("es-AR");
-  // EUR/BRL/GBP: symbol prefix (€920); USD/ARS: symbol prefix too
   return `${sym}${n}`;
 }
 
@@ -55,12 +75,12 @@ function fmtUSD(amount: number): string {
   return `USD ${Math.round(amount).toLocaleString("es-AR")}`;
 }
 
-// ─── type ────────────────────────────────────────────────────────────────────
+// ─── types ───────────────────────────────────────────────────────────────────
 
 interface CostRow {
   id: string;
   label: string;
-  type: "flight" | "hotel" | "transport";
+  type: "flight" | "hotel" | "transport" | "expense";
   currency: string;
   total: number | null;
   paid: number;
@@ -70,7 +90,7 @@ interface CostRow {
 
 interface RateControlProps {
   currency: string;
-  autoRate: number;    // 1 X = autoRate USD
+  autoRate: number;
   locked: boolean;
   lockedRate: number;
   onLock: (rate: number) => void;
@@ -81,7 +101,6 @@ function RateControl({ currency, autoRate, locked, lockedRate, onLock, onUnlock 
   const [inputVal, setInputVal] = useState(
     locked ? lockedRate.toFixed(4) : autoRate.toFixed(4)
   );
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!locked) setInputVal(autoRate.toFixed(4));
@@ -97,7 +116,6 @@ function RateControl({ currency, autoRate, locked, lockedRate, onLock, onUnlock 
         {!locked && <span className="text-[#4D4D4D] ml-1">(auto)</span>}
       </span>
       <input
-        ref={inputRef}
         type="number"
         step="0.0001"
         value={inputVal}
@@ -128,9 +146,27 @@ function RateControl({ currency, autoRate, locked, lockedRate, onLock, onUnlock 
 
 // ─── main component ──────────────────────────────────────────────────────────
 
-export function CostView({ flights, hotels, transports, firebaseRates }: Props) {
+export function CostView({
+  tripId, userId,
+  flights, hotels, transports, expenses,
+  firebaseRates, onChanged,
+}: Props) {
   const [lockedRates, setLockedRates] = useState<Record<string, number>>({});
   const [lockedFlags, setLockedFlags] = useState<Record<string, boolean>>({});
+
+  // Edit state
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState({ total: "", paid: "" });
+  const [saving, setSaving] = useState(false);
+
+  // Add expense form
+  const [addingExpense, setAddingExpense] = useState(false);
+  const [newExpense, setNewExpense] = useState({
+    title: "",
+    amount: "",
+    currency: "USD",
+    category: "other" as ExpenseCategory,
+  });
 
   // Build cost rows
   const rows: CostRow[] = [
@@ -158,9 +194,16 @@ export function CostView({ flights, hotels, transports, firebaseRates }: Props) 
       total: t.price ?? null,
       paid: t.paid_amount ?? 0,
     })),
+    ...expenses.map((e): CostRow => ({
+      id: e.id,
+      label: e.title,
+      type: "expense",
+      currency: e.currency,
+      total: e.amount,
+      paid: e.amount, // expenses are fully paid by definition
+    })),
   ].filter((r) => r.total != null || r.paid > 0);
 
-  // Determine currencies shown (exclude USD — it gets its own fixed column)
   const nonUsdCurrencies = Array.from(
     new Set(rows.map((r) => r.currency).filter((c) => c !== "USD"))
   ).sort((a, b) => {
@@ -169,14 +212,12 @@ export function CostView({ flights, hotels, transports, firebaseRates }: Props) 
   });
   const allCurrencies = [...nonUsdCurrencies, "USD"];
 
-  // Convert amount to USD using Firebase rates (with optional lock override)
   function toUSD(amount: number, currency: string): number {
     if (currency === "USD") return amount;
     const rate = lockedFlags[currency] ? lockedRates[currency] : (1 / (firebaseRates[currency] ?? 1));
     return amount * rate;
   }
 
-  // 1 X = ? USD (for display in RateControl)
   function autoRateToUSD(currency: string): number {
     return 1 / (firebaseRates[currency] ?? 1);
   }
@@ -194,14 +235,114 @@ export function CostView({ flights, hotels, transports, firebaseRates }: Props) 
   const paidUSDAll = rows.reduce((s, r) => s + toUSD(r.paid, r.currency), 0);
   const pendingUSDAll = totalUSDAll - paidUSDAll;
 
+  // Edit actions
+  function startEdit(row: CostRow) {
+    setEditingRowId(row.id);
+    setEditValues({
+      total: row.total != null ? String(row.total) : "",
+      paid: row.type !== "expense" && row.paid > 0 ? String(row.paid) : "",
+    });
+  }
+
+  function cancelEdit() {
+    setEditingRowId(null);
+    setEditValues({ total: "", paid: "" });
+  }
+
+  async function saveEdit(row: CostRow) {
+    setSaving(true);
+    try {
+      const newTotal = parseFloat(editValues.total);
+      const newPaid = parseFloat(editValues.paid);
+      const hasTotal = !isNaN(newTotal) && editValues.total !== "";
+      const hasPaid = !isNaN(newPaid) && editValues.paid !== "" && row.type !== "expense";
+
+      if (!hasTotal && !hasPaid) {
+        setEditingRowId(null);
+        return;
+      }
+
+      if (row.type === "flight") {
+        await updateFlight(userId, tripId, row.id, {
+          ...(hasTotal && { price: newTotal, price_usd: toUSD(newTotal, row.currency) }),
+          ...(hasPaid && { paid_amount: newPaid }),
+        });
+      } else if (row.type === "hotel") {
+        await updateHotel(userId, tripId, row.id, {
+          ...(hasTotal && { total_price: newTotal, total_price_usd: toUSD(newTotal, row.currency) }),
+          ...(hasPaid && { paid_amount: newPaid }),
+        });
+      } else if (row.type === "transport") {
+        await updateTransport(userId, tripId, row.id, {
+          ...(hasTotal && { price: newTotal, price_usd: toUSD(newTotal, row.currency) }),
+          ...(hasPaid && { paid_amount: newPaid }),
+        });
+      } else if (row.type === "expense") {
+        if (hasTotal) {
+          await updateExpense(userId, tripId, row.id, {
+            amount: newTotal,
+            amount_usd: toUSD(newTotal, row.currency),
+          });
+        }
+      }
+
+      await recalcTripAggregates(userId, tripId);
+      onChanged();
+      setEditingRowId(null);
+    } catch (e) {
+      console.error("saveEdit failed", e);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteExpense(id: string) {
+    try {
+      await deleteExpense(userId, tripId, id);
+      await recalcTripAggregates(userId, tripId);
+      onChanged();
+    } catch (e) {
+      console.error("deleteExpense failed", e);
+    }
+  }
+
+  async function saveNewExpense() {
+    const amount = parseFloat(newExpense.amount);
+    if (!newExpense.title.trim() || isNaN(amount) || amount <= 0) return;
+    setSaving(true);
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      await createExpense(userId, tripId, {
+        trip_id: tripId,
+        title: newExpense.title.trim(),
+        amount,
+        currency: newExpense.currency,
+        amount_usd: toUSD(amount, newExpense.currency),
+        date: today,
+        category: newExpense.category,
+      });
+      await recalcTripAggregates(userId, tripId);
+      onChanged();
+      setAddingExpense(false);
+      setNewExpense({ title: "", amount: "", currency: "USD", category: "other" });
+    } catch (e) {
+      console.error("saveNewExpense failed", e);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Renderers
   const typeIcon = (type: CostRow["type"]) => {
     if (type === "flight") return <Plane size={13} className="text-[#4D96FF]" />;
     if (type === "hotel") return <HotelIcon size={13} className="text-[#FFD93D]" />;
+    if (type === "expense") return <Receipt size={13} className="text-[#FF9F0A]" />;
     return <Car size={13} className="text-[#4ECDC4]" />;
   };
   const typeLabel = (type: CostRow["type"]) => {
     if (type === "flight") return "Vuelo";
     if (type === "hotel") return "Hotel";
+    if (type === "expense") return "Gasto";
     return "Transporte";
   };
 
@@ -210,17 +351,16 @@ export function CostView({ flights, hotels, transports, firebaseRates }: Props) 
   function cellAmt(amount: number | null, currency: string, pending = false) {
     if (amount == null || amount === 0) return DASH;
     const color = pending ? "#FF6B6B" : (CURRENCY_COLORS[currency] ?? "#E0E0E0");
-    return (
-      <span style={{ color }}>
-        {fmtAmt(amount, currency)}
-      </span>
-    );
+    return <span style={{ color }}>{fmtAmt(amount, currency)}</span>;
   }
 
   function cellUSD(amount: number | null) {
     if (amount == null || amount === 0) return DASH;
     return <span className="text-[#30D158] font-semibold">{fmtUSD(amount)}</span>;
   }
+
+  const INPUT_CLASS =
+    "w-full bg-[#0D0D0D] border border-[#BF5AF2] rounded-[4px] px-1.5 py-0.5 text-white text-[12px] outline-none text-right tabular-nums";
 
   const COL_W = "w-[90px] min-w-[90px]";
   const HEADER_STYLE = "text-[11px] font-semibold text-[#4D4D4D] uppercase tracking-wide text-right";
@@ -245,46 +385,82 @@ export function CostView({ flights, hotels, transports, firebaseRates }: Props) 
         </div>
       )}
 
-      {rows.length === 0 ? (
+      {rows.length === 0 && !addingExpense ? (
         <p className="text-[#4D4D4D] text-[14px] py-8 text-center">
           No hay items con precio cargado.
         </p>
       ) : (
         <div className="overflow-x-auto -mx-6 px-6">
-          <table className="w-full border-collapse" style={{ minWidth: `${300 + allCurrencies.length * 270}px` }}>
+          <table
+            className="w-full border-collapse"
+            style={{ minWidth: `${300 + allCurrencies.length * 270 + 60}px` }}
+          >
             <thead>
-              {/* Currency group headers */}
               <tr>
-                <th className="text-left pb-2 text-[#4D4D4D] text-[11px] font-semibold uppercase tracking-wide" style={{ width: 180 }}>Item</th>
-                <th className="text-left pb-2 text-[#4D4D4D] text-[11px] font-semibold uppercase tracking-wide" style={{ width: 110 }}>Tipo</th>
+                <th
+                  className="text-left pb-2 text-[#4D4D4D] text-[11px] font-semibold uppercase tracking-wide"
+                  style={{ width: 180 }}
+                >
+                  Item
+                </th>
+                <th
+                  className="text-left pb-2 text-[#4D4D4D] text-[11px] font-semibold uppercase tracking-wide"
+                  style={{ width: 110 }}
+                >
+                  Tipo
+                </th>
                 {allCurrencies.map((c) => (
                   <th key={c} colSpan={3} className="pb-2 text-center border-b border-[#1E1E1E]">
-                    <span className="text-[12px] font-semibold" style={{ color: c === "USD" ? "#30D158" : "#A0A0A0" }}>
+                    <span
+                      className="text-[12px] font-semibold"
+                      style={{ color: c === "USD" ? "#30D158" : "#A0A0A0" }}
+                    >
                       {CURRENCY_LABELS[c] ?? c}
                     </span>
                   </th>
                 ))}
-                <th className={`${HEADER_STYLE} pb-2`} style={{ width: 110 }}>Total USD</th>
+                <th className={`${HEADER_STYLE} pb-2`} style={{ width: 110 }}>
+                  Total USD
+                </th>
+                <th style={{ width: 60 }} />
               </tr>
-              {/* Sub-column headers */}
               <tr className="border-b border-[#1E1E1E]">
-                <th /><th />
+                <th />
+                <th />
                 {allCurrencies.map((c) => (
                   <>
-                    <th key={c + "_t"} className={`${HEADER_STYLE} ${COL_W} pb-2 px-2`}>Total</th>
-                    <th key={c + "_p"} className={`${HEADER_STYLE} ${COL_W} pb-2 px-2`}>Pagado</th>
-                    <th key={c + "_n"} className={`${HEADER_STYLE} ${COL_W} pb-2 px-2`}>Pendiente</th>
+                    <th key={c + "_t"} className={`${HEADER_STYLE} ${COL_W} pb-2 px-2`}>
+                      Total
+                    </th>
+                    <th key={c + "_p"} className={`${HEADER_STYLE} ${COL_W} pb-2 px-2`}>
+                      Pagado
+                    </th>
+                    <th key={c + "_n"} className={`${HEADER_STYLE} ${COL_W} pb-2 px-2`}>
+                      Pendiente
+                    </th>
                   </>
                 ))}
+                <th />
                 <th />
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => {
-                const pending = row.total != null ? row.total - row.paid : null;
-                const rowUSD = row.total != null ? toUSD(row.total, row.currency) : null;
+                const isEditing = editingRowId === row.id;
+                const displayTotal = isEditing && editValues.total !== ""
+                  ? (parseFloat(editValues.total) || null)
+                  : row.total;
+                const displayPaid = isEditing && row.type !== "expense" && editValues.paid !== ""
+                  ? (parseFloat(editValues.paid) || 0)
+                  : row.paid;
+                const pending = displayTotal != null ? displayTotal - displayPaid : null;
+                const rowUSD = displayTotal != null ? toUSD(displayTotal, row.currency) : null;
+
                 return (
-                  <tr key={row.id} className="border-b border-[#141414] hover:bg-[#111] transition-colors">
+                  <tr
+                    key={row.id}
+                    className="group border-b border-[#141414] hover:bg-[#111] transition-colors"
+                  >
                     <td className="py-3 pr-3 text-[13px] text-white font-medium">{row.label}</td>
                     <td className="py-3 pr-3">
                       <div className="flex items-center gap-1.5">
@@ -297,25 +473,106 @@ export function CostView({ flights, hotels, transports, firebaseRates }: Props) 
                       return (
                         <>
                           <td key={c + "_t"} className={`${CELL_STYLE} ${COL_W}`}>
-                            {isThis ? cellAmt(row.total, c) : DASH}
+                            {isThis ? (
+                              isEditing ? (
+                                <input
+                                  type="number"
+                                  value={editValues.total}
+                                  onChange={(e) =>
+                                    setEditValues((p) => ({ ...p, total: e.target.value }))
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") saveEdit(row);
+                                    if (e.key === "Escape") cancelEdit();
+                                  }}
+                                  className={INPUT_CLASS}
+                                  autoFocus
+                                  placeholder="0"
+                                />
+                              ) : (
+                                cellAmt(row.total, c)
+                              )
+                            ) : (
+                              DASH
+                            )}
                           </td>
                           <td key={c + "_p"} className={`${CELL_STYLE} ${COL_W}`}>
-                            {isThis ? cellAmt(row.paid > 0 ? row.paid : null, c) : DASH}
+                            {isThis ? (
+                              isEditing && row.type !== "expense" ? (
+                                <input
+                                  type="number"
+                                  value={editValues.paid}
+                                  onChange={(e) =>
+                                    setEditValues((p) => ({ ...p, paid: e.target.value }))
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") saveEdit(row);
+                                    if (e.key === "Escape") cancelEdit();
+                                  }}
+                                  className={INPUT_CLASS}
+                                  placeholder="0"
+                                />
+                              ) : (
+                                cellAmt(row.paid > 0 ? row.paid : null, c)
+                              )
+                            ) : (
+                              DASH
+                            )}
                           </td>
                           <td key={c + "_n"} className={`${CELL_STYLE} ${COL_W}`}>
-                            {isThis ? cellAmt(pending != null && pending > 0 ? pending : null, c, true) : DASH}
+                            {isThis
+                              ? cellAmt(pending != null && pending > 0 ? pending : null, c, true)
+                              : DASH}
                           </td>
                         </>
                       );
                     })}
                     <td className={`${CELL_STYLE} text-right`}>{cellUSD(rowUSD)}</td>
+                    <td className="py-3 pl-2 pr-1">
+                      {isEditing ? (
+                        <div className="flex items-center gap-1 justify-end">
+                          <button
+                            onClick={() => saveEdit(row)}
+                            disabled={saving}
+                            className="w-6 h-6 flex items-center justify-center rounded-[4px] bg-[#30D15820] text-[#30D158] hover:bg-[#30D15840] transition-colors disabled:opacity-50"
+                          >
+                            <Check size={13} />
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="w-6 h-6 flex items-center justify-center rounded-[4px] bg-[#FF453A20] text-[#FF453A] hover:bg-[#FF453A40] transition-colors"
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => startEdit(row)}
+                            className="w-6 h-6 flex items-center justify-center rounded-[4px] bg-[#1E1E1E] text-[#707070] hover:text-white hover:bg-[#2A2A2A] transition-colors"
+                          >
+                            <Pencil size={12} />
+                          </button>
+                          {row.type === "expense" && (
+                            <button
+                              onClick={() => handleDeleteExpense(row.id)}
+                              className="w-6 h-6 flex items-center justify-center rounded-[4px] bg-[#1E1E1E] text-[#707070] hover:text-[#FF453A] hover:bg-[#FF453A20] transition-colors"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-[#2A2A2A]">
-                <td colSpan={2} className="py-3 text-[13px] font-bold text-white">Total</td>
+                <td colSpan={2} className="py-3 text-[13px] font-bold text-white">
+                  Total
+                </td>
                 {allCurrencies.map((c) => {
                   const inCurrency = rows.filter((r) => r.currency === c);
                   const tot = inCurrency.reduce((s, r) => s + (r.total ?? 0), 0);
@@ -324,13 +581,25 @@ export function CostView({ flights, hotels, transports, firebaseRates }: Props) 
                   const cColor = CURRENCY_COLORS[c] ?? "#E0E0E0";
                   return (
                     <>
-                      <td key={c + "_t"} className={`${CELL_STYLE} ${COL_W} font-bold`} style={{ color: cColor }}>
+                      <td
+                        key={c + "_t"}
+                        className={`${CELL_STYLE} ${COL_W} font-bold`}
+                        style={{ color: cColor }}
+                      >
                         {tot > 0 ? fmtAmt(tot, c) : DASH}
                       </td>
-                      <td key={c + "_p"} className={`${CELL_STYLE} ${COL_W} font-bold`} style={{ color: cColor, opacity: 0.75 }}>
+                      <td
+                        key={c + "_p"}
+                        className={`${CELL_STYLE} ${COL_W} font-bold`}
+                        style={{ color: cColor, opacity: 0.75 }}
+                      >
                         {paid > 0 ? fmtAmt(paid, c) : DASH}
                       </td>
-                      <td key={c + "_n"} className={`${CELL_STYLE} ${COL_W} font-bold`} style={{ color: "#FF6B6B" }}>
+                      <td
+                        key={c + "_n"}
+                        className={`${CELL_STYLE} ${COL_W} font-bold`}
+                        style={{ color: "#FF6B6B" }}
+                      >
                         {pend > 0 ? fmtAmt(pend, c) : DASH}
                       </td>
                     </>
@@ -349,10 +618,98 @@ export function CostView({ flights, hotels, transports, firebaseRates }: Props) 
                     </div>
                   )}
                 </td>
+                <td />
               </tr>
             </tfoot>
           </table>
         </div>
+      )}
+
+      {/* Add expense */}
+      {addingExpense ? (
+        <div className="mt-4 bg-[#141414] border border-[#2A2A2A] rounded-[14px] p-4">
+          <p className="text-[12px] font-semibold text-[#707070] uppercase tracking-wide mb-3">
+            Nuevo gasto
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="col-span-2 md:col-span-1">
+              <input
+                type="text"
+                placeholder="Descripción"
+                value={newExpense.title}
+                onChange={(e) => setNewExpense((p) => ({ ...p, title: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === "Enter") saveNewExpense(); if (e.key === "Escape") setAddingExpense(false); }}
+                autoFocus
+                className="w-full bg-[#0D0D0D] border border-[#333] rounded-[8px] px-3 py-2 text-white text-[13px] outline-none focus:border-[#BF5AF2] placeholder:text-[#3D3D3D]"
+              />
+            </div>
+            <div>
+              <input
+                type="number"
+                placeholder="Monto"
+                value={newExpense.amount}
+                onChange={(e) => setNewExpense((p) => ({ ...p, amount: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === "Enter") saveNewExpense(); if (e.key === "Escape") setAddingExpense(false); }}
+                className="w-full bg-[#0D0D0D] border border-[#333] rounded-[8px] px-3 py-2 text-white text-[13px] outline-none focus:border-[#BF5AF2] placeholder:text-[#3D3D3D]"
+              />
+            </div>
+            <div>
+              <select
+                value={newExpense.currency}
+                onChange={(e) => setNewExpense((p) => ({ ...p, currency: e.target.value }))}
+                className="w-full bg-[#0D0D0D] border border-[#333] rounded-[8px] px-3 py-2 text-white text-[13px] outline-none focus:border-[#BF5AF2]"
+              >
+                {["USD", "EUR", "ARS", "BRL", "GBP"].map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <select
+                value={newExpense.category}
+                onChange={(e) =>
+                  setNewExpense((p) => ({ ...p, category: e.target.value as ExpenseCategory }))
+                }
+                className="w-full bg-[#0D0D0D] border border-[#333] rounded-[8px] px-3 py-2 text-white text-[13px] outline-none focus:border-[#BF5AF2]"
+              >
+                {EXPENSE_CATEGORIES.map((cat) => (
+                  <option key={cat.value} value={cat.value}>{cat.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={saveNewExpense}
+              disabled={saving || !newExpense.title.trim() || !newExpense.amount}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-[8px] text-[13px] font-semibold transition-colors disabled:opacity-40"
+              style={{ background: "#30D15820", color: "#30D158" }}
+            >
+              <Check size={14} />
+              Guardar
+            </button>
+            <button
+              onClick={() => {
+                setAddingExpense(false);
+                setNewExpense({ title: "", amount: "", currency: "USD", category: "other" });
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-[8px] text-[13px] font-semibold bg-[#1E1E1E] text-[#707070] hover:text-white transition-colors"
+            >
+              <X size={14} />
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setAddingExpense(true)}
+          className="mt-4 flex items-center gap-2 text-[13px] text-[#707070] hover:text-[#A0A0A0] transition-colors"
+        >
+          <div className="w-6 h-6 flex items-center justify-center rounded-full border border-[#2A2A2A] bg-[#161616]">
+            <Plus size={13} />
+          </div>
+          Agregar gasto
+        </button>
       )}
     </div>
   );

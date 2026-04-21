@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
-import { getTrip, getCities, getFlights, getHotels, getTransports, recalcTripAggregates, getFxRates } from "@/lib/firestore";
+import { getTrip, getCities, getFlights, getHotels, getTransports, getExpenses, recalcTripAggregates, getFxRates } from "@/lib/firestore";
 import { BottomNav } from "../BottomNav";
 import { TopNav } from "../TopNav";
 import { CalendarView } from "./CalendarView";
@@ -61,6 +61,12 @@ export function TripDetailPage({ tripId }: Props) {
     enabled: !!user,
   });
 
+  const { data: expenses = [], refetch: refetchExpenses } = useQuery({
+    queryKey: ["expenses", user?.uid, tripId],
+    queryFn: () => getExpenses(user!.uid, tripId),
+    enabled: !!user,
+  });
+
   const { data: fxRates = {} } = useQuery({
     queryKey: ["fx_rates"],
     queryFn: getFxRates,
@@ -72,6 +78,7 @@ export function TripDetailPage({ tripId }: Props) {
     refetchFlights();
     refetchHotels();
     refetchTransports();
+    refetchExpenses();
     if (user) {
       try {
         await recalcTripAggregates(user.uid, tripId);
@@ -248,10 +255,14 @@ export function TripDetailPage({ tripId }: Props) {
           )}
           {tab === "costos" && (
             <CostView
+              tripId={tripId}
+              userId={user!.uid}
               flights={flights}
               hotels={hotels}
               transports={transports}
+              expenses={expenses}
               firebaseRates={fxRates}
+              onChanged={refetchAll}
             />
           )}
         </div>
