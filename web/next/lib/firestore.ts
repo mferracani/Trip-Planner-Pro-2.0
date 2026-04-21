@@ -146,6 +146,58 @@ export async function deleteTransport(uid: string, tripId: string, id: string) {
   await deleteDoc(transportRef(uid, tripId, id));
 }
 
+// ─── Cross-trip aggregated queries (for global catalog view) ───────────────
+
+export type FlightWithTrip = Flight & { trip_name: string };
+export type HotelWithTrip = Hotel & { trip_name: string; city_name?: string };
+export type TransportWithTrip = Transport & { trip_name: string };
+
+export async function getAllFlights(uid: string): Promise<FlightWithTrip[]> {
+  const trips = await getTrips(uid);
+  const results = await Promise.all(
+    trips.map(async (t) => {
+      const flights = await getFlights(uid, t.id);
+      return flights.map((f) => ({ ...f, trip_name: t.name }));
+    })
+  );
+  return results.flat().sort((a, b) =>
+    (b.departure_local_time ?? "").localeCompare(a.departure_local_time ?? "")
+  );
+}
+
+export async function getAllHotels(uid: string): Promise<HotelWithTrip[]> {
+  const trips = await getTrips(uid);
+  const results = await Promise.all(
+    trips.map(async (t) => {
+      const [hotels, cities] = await Promise.all([
+        getHotels(uid, t.id),
+        getCities(uid, t.id),
+      ]);
+      const cityMap: Record<string, string> = {};
+      for (const c of cities) cityMap[c.id] = c.name;
+      return hotels.map((h) => ({
+        ...h,
+        trip_name: t.name,
+        city_name: h.city_id ? cityMap[h.city_id] : undefined,
+      }));
+    })
+  );
+  return results.flat().sort((a, b) => (b.check_in ?? "").localeCompare(a.check_in ?? ""));
+}
+
+export async function getAllTransports(uid: string): Promise<TransportWithTrip[]> {
+  const trips = await getTrips(uid);
+  const results = await Promise.all(
+    trips.map(async (t) => {
+      const transports = await getTransports(uid, t.id);
+      return transports.map((tr) => ({ ...tr, trip_name: t.name }));
+    })
+  );
+  return results.flat().sort((a, b) =>
+    (b.departure_local_time ?? "").localeCompare(a.departure_local_time ?? "")
+  );
+}
+
 // Fetches today's FX rates. Returns { EUR: 0.92, ARS: 1050, ... } (1 USD = N currency).
 // Falls back to yesterday if today's doc doesn't exist yet.
 export async function getFxRates(): Promise<Record<string, number>> {

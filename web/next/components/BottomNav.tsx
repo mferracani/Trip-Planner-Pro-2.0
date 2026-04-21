@@ -1,11 +1,11 @@
 "use client";
 
-import { Home, Briefcase, Map, Settings, Sparkles, Plus } from "lucide-react";
+import { Home, Briefcase, Library, Settings, Sparkles, Plus } from "lucide-react";
 import Link from "next/link";
 import { ReactNode } from "react";
 import { Pressable } from "./ui/Pressable";
 
-export type BottomNavTab = "home" | "trips" | "map" | "settings";
+export type BottomNavTab = "home" | "trips" | "catalog" | "settings";
 
 interface Props {
   active: BottomNavTab;
@@ -50,11 +50,11 @@ export function BottomNav({ active, onAdd, addIcon = "plus", onTabChange }: Prop
           <div className="w-14 flex-shrink-0" aria-hidden />
 
           <NavItem
-            label="Mapa"
-            icon={<Map size={22} strokeWidth={2} />}
-            active={active === "map"}
-            onClick={onTabChange ? () => onTabChange("map") : undefined}
-            href={onTabChange ? undefined : "#"}
+            label="Catálogo"
+            icon={<Library size={22} strokeWidth={active === "catalog" ? 2.4 : 2} />}
+            active={active === "catalog"}
+            onClick={onTabChange ? () => onTabChange("catalog") : undefined}
+            href={onTabChange ? undefined : "/catalog"}
           />
           <NavItem
             label="Ajustes"

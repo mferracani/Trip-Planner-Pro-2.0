@@ -330,7 +330,7 @@ export default function DevPreview() {
         />
       )}
       {navTab === "home" && <PlaceholderScreen title="Home" emoji="🏠" subtitle="Feed de próximos eventos · v1.1" />}
-      {navTab === "map" && <PlaceholderScreen title="Mapa" emoji="🗺️" subtitle="Tus viajes en el mundo · v1.1" />}
+      {navTab === "catalog" && <PlaceholderScreen title="Catálogo" emoji="📚" subtitle="Todos los items" />}
       {navTab === "settings" && <PlaceholderScreen title="Ajustes" emoji="⚙️" subtitle="Perfil y preferencias · v1.1" />}
 
       {/* Bottom nav */}
