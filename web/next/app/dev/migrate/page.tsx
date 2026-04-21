@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Timestamp, collection, addDoc, setDoc, doc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 import { CITY_COLORS } from "@/lib/types";
+import { getTrips, recalcTripAggregates } from "@/lib/firestore";
 
 // ---------------------------------------------------------------------------
 // TIMEZONE HELPERS
@@ -1124,8 +1125,23 @@ export default function MigratePage() {
   const [audit, setAudit] = useState<AuditTrip[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [currentTrip, setCurrentTrip] = useState<string | null>(null);
+  const [recalcState, setRecalcState] = useState<"idle" | "running" | "done">("idle");
 
   function addLog(e: LogEntry) { setLogs((p) => [...p, e]); }
+
+  async function runRecalcAll() {
+    if (!user || recalcState === "running") return;
+    setRecalcState("running");
+    try {
+      const trips = await getTrips(user.uid);
+      for (const t of trips) {
+        await recalcTripAggregates(user.uid, t.id);
+      }
+      setRecalcState("done");
+    } catch {
+      setRecalcState("idle");
+    }
+  }
 
   async function runAudit() {
     if (!password.trim()) return;
@@ -1256,6 +1272,16 @@ export default function MigratePage() {
               Ir al Dashboard →
             </a>
           </div>
+          <button
+            onClick={runRecalcAll}
+            disabled={recalcState === "running"}
+            className="w-full mt-3 py-3 rounded-[12px] text-[13px] font-semibold text-white disabled:opacity-50 transition-opacity"
+            style={{ background: recalcState === "done" ? "#30D15820" : "#1C1C1E", border: "1px solid #333" }}
+          >
+            {recalcState === "idle" && "Recalcular total_usd + cities_count de todos los viajes"}
+            {recalcState === "running" && "Recalculando…"}
+            {recalcState === "done" && "✓ Totales actualizados"}
+          </button>
         </>
       )}
     </div>
