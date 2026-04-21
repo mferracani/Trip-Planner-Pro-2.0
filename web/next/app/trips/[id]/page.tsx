@@ -1,10 +1,11 @@
 import { TripDetailPage } from "@/components/TripDetail/TripDetailPage";
 import { AuthGuard } from "@/components/AuthGuard";
 
-export default function TripPage({ params }: { params: { id: string } }) {
+export default async function TripPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   return (
     <AuthGuard>
-      <TripDetailPage tripId={params.id} />
+      <TripDetailPage tripId={id} />
     </AuthGuard>
   );
 }

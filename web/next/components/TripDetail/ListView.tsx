@@ -57,7 +57,7 @@ export function ListView({ trip, cities, flights, hotels, transports }: Props) {
   }
 
   return (
-    <div className="px-6 space-y-6 pb-32">
+    <div className="px-6 md:px-8 space-y-6 pb-32 md:pb-8">
       {groups.map((group) => {
         const date = new Date(group.date + "T00:00:00");
         const label = date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });

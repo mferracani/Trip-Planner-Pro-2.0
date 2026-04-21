@@ -28,33 +28,65 @@ export function TripCard({ trip, status }: TripCardProps) {
   const badge = STATUS_LABELS[status];
 
   return (
-    <Link href={`/trips/${trip.id}`}>
-      <div className="flex items-center gap-4 bg-[#1A1A1A] rounded-[16px] border border-[#333] px-4 py-4 hover:border-[#444] transition-colors cursor-pointer">
+    <Link href={`/trips/${trip.id}`} className="group">
+      <div
+        className="relative flex items-center gap-4 rounded-[16px] px-4 py-4 md:px-5 md:py-5 transition-all cursor-pointer overflow-hidden"
+        style={{
+          background: "linear-gradient(180deg, #171717 0%, #131313 100%)",
+          border: "1px solid #232323",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
+        }}
+      >
+        {/* hover gradient wash */}
+        <div
+          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse 60% 80% at 0% 50%, rgba(191,90,242,0.08), transparent 70%)",
+          }}
+        />
+
         {/* Cover thumbnail */}
-        <div className="w-14 h-14 rounded-[12px] bg-[#242424] flex-shrink-0 overflow-hidden">
+        <div className="relative w-14 h-14 md:w-16 md:h-16 rounded-[12px] bg-[#242424] flex-shrink-0 overflow-hidden">
           {trip.cover_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={trip.cover_url} alt={trip.name} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-2xl">✈️</div>
+            <div
+              className="w-full h-full flex items-center justify-center text-2xl"
+              style={{
+                background: "linear-gradient(135deg, #1E1E1E 0%, #161616 100%)",
+              }}
+            >
+              ✈️
+            </div>
           )}
         </div>
 
         {/* Info */}
-        <div className="flex-1 min-w-0">
+        <div className="relative flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <h3 className="text-[17px] font-semibold text-white truncate">{trip.name}</h3>
-            <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${badge.color}`}>
+            <h3 className="text-[17px] md:text-[18px] font-semibold text-white truncate tracking-tight">
+              {trip.name}
+            </h3>
+            <span
+              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 uppercase tracking-wider ${badge.color}`}
+            >
               {badge.label}
             </span>
           </div>
           <p className="text-[#A0A0A0] text-[13px]">{formatDateRange(trip.start_date, trip.end_date)}</p>
           {trip.total_usd > 0 && (
-            <p className="text-[#707070] text-[12px] mt-0.5">USD {trip.total_usd.toLocaleString()}</p>
+            <p className="text-[#707070] text-[12px] font-mono tabular-nums mt-0.5">
+              USD {trip.total_usd.toLocaleString()}
+            </p>
           )}
         </div>
 
         {/* Arrow */}
-        <span className="text-[#333] text-[20px] flex-shrink-0">›</span>
+        <span className="relative text-[#3D3D3D] text-[20px] flex-shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:text-[#A0A0A0]">
+          ›
+        </span>
       </div>
     </Link>
   );

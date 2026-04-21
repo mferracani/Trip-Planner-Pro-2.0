@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter_Tight } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const interTight = Inter_Tight({
+  subsets: ["latin"],
+  variable: "--font-inter-tight",
+  weight: ["400", "500", "600", "700", "800"],
+});
 
 export const metadata: Metadata = {
   title: "Trip Planner Pro 2",
@@ -12,8 +16,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${inter.variable} h-full`}>
-      <body className="font-sans bg-[#0D0D0D] text-white antialiased min-h-full">
+    <html lang="es" className={`${interTight.variable} h-full`}>
+      <body className="bg-[#0D0D0D] text-white antialiased min-h-full">
         <Providers>{children}</Providers>
       </body>
     </html>

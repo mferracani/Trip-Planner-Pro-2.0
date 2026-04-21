@@ -7,6 +7,7 @@ export interface Trip {
   end_date: string;
   cover_url?: string;
   total_usd: number;
+  cities_count?: number; // denormalized from cities subcollection
   created_at: Timestamp;
   updated_at: Timestamp;
 }
@@ -42,6 +43,7 @@ export interface Flight {
   price?: number;
   currency?: string;
   price_usd?: number;
+  paid_amount?: number;  // paid so far in original currency
 }
 
 export interface Hotel {
@@ -55,8 +57,10 @@ export interface Hotel {
   room_type?: string;
   booking_ref?: string;
   price_per_night?: number;
+  total_price?: number;  // total in original currency
   currency?: string;
   total_price_usd?: number;
+  paid_amount?: number;  // paid so far in original currency
 }
 
 export interface Transport {
@@ -76,6 +80,30 @@ export interface Transport {
   price?: number;
   currency?: string;
   price_usd?: number;
+  paid_amount?: number;  // paid so far in original currency
+}
+
+export type ExpenseCategory =
+  | "flight"
+  | "hotel"
+  | "transport"
+  | "food"
+  | "activity"
+  | "shopping"
+  | "other";
+
+export interface Expense {
+  id: string;
+  trip_id: string;
+  title: string;
+  amount: number;
+  currency: string; // ISO 4217, ej "USD", "ARS", "EUR"
+  amount_usd: number;
+  date: string; // "2026-03-15"
+  category: ExpenseCategory;
+  notes?: string;
+  linked_item_id?: string;
+  linked_item_type?: "flight" | "hotel" | "transport";
 }
 
 export interface ParseJob {
@@ -89,11 +117,48 @@ export interface ParseJob {
   created_at: Timestamp;
 }
 
-export interface ParsedItem {
-  type: "flight" | "hotel" | "transport";
+// Flat union type matching the Cloud Function parseWithAI response
+export interface ParsedFlight {
+  type: "flight";
   confidence: number;
-  data: Partial<Flight> | Partial<Hotel> | Partial<Transport>;
+  airline: string | null;
+  flight_number: string | null;
+  origin_iata: string | null;
+  destination_iata: string | null;
+  departure_local_time: string | null;
+  departure_timezone: string | null;
+  arrival_local_time: string | null;
+  arrival_timezone: string | null;
+  booking_ref: string | null;
+  // enriched server-side
+  departure_utc?: { _seconds: number; _nanoseconds: number } | { seconds: number; nanoseconds: number } | null;
+  arrival_utc?: { _seconds: number; _nanoseconds: number } | { seconds: number; nanoseconds: number } | null;
+  duration_minutes?: number | null;
 }
+
+export interface ParsedHotel {
+  type: "hotel";
+  confidence: number;
+  name: string | null;
+  city: string | null;
+  check_in: string | null;
+  check_out: string | null;
+  booking_ref: string | null;
+}
+
+export interface ParsedTransport {
+  type: "transport";
+  confidence: number;
+  mode: "train" | "bus" | "ferry" | "car" | "other" | null;
+  origin: string | null;
+  destination: string | null;
+  departure_local_time: string | null;
+  departure_timezone: string | null;
+  booking_ref: string | null;
+  departure_utc?: { _seconds: number; _nanoseconds: number } | { seconds: number; nanoseconds: number } | null;
+}
+
+export type ParsedItem = ParsedFlight | ParsedHotel | ParsedTransport;
 
 // Design system constants
 export const CITY_COLORS = [
