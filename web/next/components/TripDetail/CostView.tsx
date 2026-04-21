@@ -35,12 +35,20 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 const CURRENCY_LABELS: Record<string, string> = {
   USD: "USD", EUR: "€ EUR", ARS: "ARS", BRL: "BRL", GBP: "GBP",
 };
+// Color per currency (normal/paid state)
+const CURRENCY_COLORS: Record<string, string> = {
+  USD: "#34C759",   // green
+  EUR: "#5AC8FA",   // sky blue
+  ARS: "#FFD93D",   // amber
+  BRL: "#4ECDC4",   // teal
+  GBP: "#BF5AF2",   // purple
+};
 
-function fmt(amount: number, currency: string): string {
+function fmtAmt(amount: number, currency: string): string {
   const sym = CURRENCY_SYMBOLS[currency] ?? "";
-  const rounded = Math.round(amount);
-  return `${currency !== "USD" && currency !== "GBP" ? sym : ""}${rounded.toLocaleString("es-AR")}${currency === "USD" || currency === "GBP" ? " " + (sym + " ") : ""}`.trim()
-    .replace("  ", " ");
+  const n = Math.round(amount).toLocaleString("es-AR");
+  // EUR/BRL/GBP: symbol prefix (€920); USD/ARS: symbol prefix too
+  return `${sym}${n}`;
 }
 
 function fmtUSD(amount: number): string {
@@ -199,11 +207,12 @@ export function CostView({ flights, hotels, transports, firebaseRates }: Props) 
 
   const DASH = <span className="text-[#333]">—</span>;
 
-  function cellAmt(amount: number | null, pending = false) {
+  function cellAmt(amount: number | null, currency: string, pending = false) {
     if (amount == null || amount === 0) return DASH;
+    const color = pending ? "#FF6B6B" : (CURRENCY_COLORS[currency] ?? "#E0E0E0");
     return (
-      <span style={{ color: pending ? "#FF6B6B" : "#E0E0E0" }}>
-        {amount.toLocaleString("es-AR")}
+      <span style={{ color }}>
+        {fmtAmt(amount, currency)}
       </span>
     );
   }
@@ -288,13 +297,13 @@ export function CostView({ flights, hotels, transports, firebaseRates }: Props) 
                       return (
                         <>
                           <td key={c + "_t"} className={`${CELL_STYLE} ${COL_W}`}>
-                            {isThis ? cellAmt(row.total) : DASH}
+                            {isThis ? cellAmt(row.total, c) : DASH}
                           </td>
                           <td key={c + "_p"} className={`${CELL_STYLE} ${COL_W}`}>
-                            {isThis ? cellAmt(row.paid > 0 ? row.paid : null) : DASH}
+                            {isThis ? cellAmt(row.paid > 0 ? row.paid : null, c) : DASH}
                           </td>
                           <td key={c + "_n"} className={`${CELL_STYLE} ${COL_W}`}>
-                            {isThis ? cellAmt(pending != null && pending > 0 ? pending : null, true) : DASH}
+                            {isThis ? cellAmt(pending != null && pending > 0 ? pending : null, c, true) : DASH}
                           </td>
                         </>
                       );
@@ -312,16 +321,17 @@ export function CostView({ flights, hotels, transports, firebaseRates }: Props) 
                   const tot = inCurrency.reduce((s, r) => s + (r.total ?? 0), 0);
                   const paid = inCurrency.reduce((s, r) => s + r.paid, 0);
                   const pend = tot - paid;
+                  const cColor = CURRENCY_COLORS[c] ?? "#E0E0E0";
                   return (
                     <>
-                      <td key={c + "_t"} className={`${CELL_STYLE} ${COL_W} font-bold text-white`}>
-                        {tot > 0 ? tot.toLocaleString("es-AR") : DASH}
+                      <td key={c + "_t"} className={`${CELL_STYLE} ${COL_W} font-bold`} style={{ color: cColor }}>
+                        {tot > 0 ? fmtAmt(tot, c) : DASH}
                       </td>
-                      <td key={c + "_p"} className={`${CELL_STYLE} ${COL_W} font-bold`} style={{ color: "#30D158" }}>
-                        {paid > 0 ? paid.toLocaleString("es-AR") : DASH}
+                      <td key={c + "_p"} className={`${CELL_STYLE} ${COL_W} font-bold`} style={{ color: cColor, opacity: 0.75 }}>
+                        {paid > 0 ? fmtAmt(paid, c) : DASH}
                       </td>
                       <td key={c + "_n"} className={`${CELL_STYLE} ${COL_W} font-bold`} style={{ color: "#FF6B6B" }}>
-                        {pend > 0 ? pend.toLocaleString("es-AR") : DASH}
+                        {pend > 0 ? fmtAmt(pend, c) : DASH}
                       </td>
                     </>
                   );
