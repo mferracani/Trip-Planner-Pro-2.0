@@ -14,6 +14,33 @@ import { CITY_COLORS } from "@/lib/types";
 import { COMMON_TIMEZONES, localToUtcTimestamp, minutesBetween, guessTimezone } from "@/lib/datetime";
 import { ChevronDown, ArrowLeft, Plane, Hotel as HotelIcon, Car, Train, Bus, MapPin, ChevronRight } from "lucide-react";
 
+// ─── Timezone picker (compact) ───────────────────────────────────────────────
+
+function TzPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const shortTz = value.split("/").pop()?.replace(/_/g, " ") ?? value;
+  return (
+    <div className="mt-1">
+      {open ? (
+        <Select
+          value={value}
+          onChange={(v) => { onChange(v); setOpen(false); }}
+          options={COMMON_TIMEZONES.map((tz) => ({ value: tz, label: tz }))}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-1.5 text-[11.5px] text-[#4D4D4D] hover:text-[#A0A0A0] transition-colors"
+        >
+          <span className="text-[#707070]">🌐 {shortTz}</span>
+          <span className="text-[#3D3D3D] underline underline-offset-2">Cambiar</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Type picker ─────────────────────────────────────────────────────────────
 
 export type ManualType = "flight" | "hotel" | "car" | "train" | "bus" | "ferry" | "taxi" | "subway" | "city";
@@ -243,7 +270,6 @@ function ErrorMsg({ error }: { error: string | null }) {
 export function ManualFlightForm({ tripId, onCreated, onBack }: { tripId: string; onCreated: () => void; onBack: () => void }) {
   const { user } = useAuth();
   const defaultTz = guessTimezone();
-  const tzOpts = COMMON_TIMEZONES.map((tz) => ({ value: tz, label: tz }));
 
   const [airline, setAirline] = useState("");
   const [flightNumber, setFlightNumber] = useState("");
@@ -331,15 +357,11 @@ export function ManualFlightForm({ tripId, onCreated, onBack }: { tripId: string
       <Section title="Horarios">
         <Field label="Salida (local)">
           <TxtInput value={depLocal} onChange={setDepLocal} type="datetime-local" required />
-        </Field>
-        <Field label="Timezone salida">
-          <Select value={depTz} onChange={setDepTz} options={tzOpts} />
+          <TzPicker value={depTz} onChange={setDepTz} />
         </Field>
         <Field label="Llegada (local)">
           <TxtInput value={arrLocal} onChange={setArrLocal} type="datetime-local" required />
-        </Field>
-        <Field label="Timezone llegada">
-          <Select value={arrTz} onChange={setArrTz} options={tzOpts} />
+          <TzPicker value={arrTz} onChange={setArrTz} />
         </Field>
       </Section>
 
@@ -567,7 +589,6 @@ const TRANSPORT_LABELS: Record<TransportMode, { label: string; color: string; pl
 export function ManualTransportForm({ tripId, mode, onCreated, onBack }: { tripId: string; mode: TransportMode; onCreated: () => void; onBack: () => void }) {
   const { user } = useAuth();
   const defaultTz = guessTimezone();
-  const tzOpts = COMMON_TIMEZONES.map((tz) => ({ value: tz, label: tz }));
   const meta = TRANSPORT_LABELS[mode];
 
   const [origin, setOrigin] = useState("");
@@ -657,18 +678,12 @@ export function ManualTransportForm({ tripId, mode, onCreated, onBack }: { tripI
       <Section title="Horarios">
         <Field label="Salida (local)">
           <TxtInput value={depLocal} onChange={setDepLocal} type="datetime-local" required />
-        </Field>
-        <Field label="Timezone salida">
-          <Select value={depTz} onChange={setDepTz} options={tzOpts} />
+          <TzPicker value={depTz} onChange={setDepTz} />
         </Field>
         <Field label="Llegada (opcional)">
           <TxtInput value={arrLocal} onChange={setArrLocal} type="datetime-local" />
+          {arrLocal && <TzPicker value={arrTz} onChange={setArrTz} />}
         </Field>
-        {arrLocal && (
-          <Field label="Timezone llegada">
-            <Select value={arrTz} onChange={setArrTz} options={tzOpts} />
-          </Field>
-        )}
       </Section>
 
       <Section title={`Detalles del ${meta.label.toLowerCase()}`}>

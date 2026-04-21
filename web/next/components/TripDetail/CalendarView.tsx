@@ -1,9 +1,10 @@
 "use client";
 
-import { PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
-import { Trip, City, Flight, Hotel, Transport } from "@/lib/types";
+import { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Trip, City, Flight, Hotel, Transport, CITY_TO_COUNTRY, COUNTRY_COLORS } from "@/lib/types";
 import { useAuth } from "@/context/AuthContext";
-import { updateTrip } from "@/lib/firestore";
+import { updateTrip, citySettingsRef } from "@/lib/firestore";
+import { onSnapshot } from "firebase/firestore";
 import { CityForm } from "../forms/CityForm";
 import { FlightForm } from "../forms/FlightForm";
 import { HotelForm } from "../forms/HotelForm";
@@ -20,6 +21,36 @@ interface Props {
 
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const LONG_PRESS_MS = 380;
+
+function normalizeCity(name: string): string {
+  return name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function detectCountryCode(city: City, settingsMap: Record<string, { country_code?: string }> = {}): string | undefined {
+  const key = normalizeCity(city.name);
+  if (settingsMap[key]?.country_code) return settingsMap[key].country_code;
+  if (city.country_code) return city.country_code;
+  return CITY_TO_COUNTRY[key];
+}
+
+const SPECIAL_FLAGS: Record<string, string> = {
+  SCO: "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+};
+
+function countryFlag(code: string): string {
+  if (SPECIAL_FLAGS[code]) return SPECIAL_FLAGS[code];
+  return [...code.toUpperCase()]
+    .map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
+    .join("");
+}
+
+function cityColor(city: City, settingsMap: Record<string, { color?: string; country_code?: string }> = {}): string {
+  const key = normalizeCity(city.name);
+  if (settingsMap[key]?.color) return settingsMap[key].color!;
+  const code = detectCountryCode(city, settingsMap);
+  if (code && COUNTRY_COLORS[code]) return COUNTRY_COLORS[code];
+  return city.color;
+}
 
 function toDateStr(d: Date): string {
   return d.toISOString().split("T")[0];
@@ -133,12 +164,34 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
   const dragStartDate = useRef<string | null>(null);
   const isDragging = useRef(false);
 
+  // Global city settings — realtime listener so Catalog changes propagate instantly
+  const [citySettingsMap, setCitySettingsMap] = useState<Record<string, { color?: string; country_code?: string }>>({});
+  useEffect(() => {
+    if (!user) return;
+    const unsub = onSnapshot(citySettingsRef(user.uid), (snap) => {
+      const map: Record<string, { color?: string; country_code?: string }> = {};
+      snap.docs.forEach((d) => { map[d.id] = d.data() as { color?: string; country_code?: string }; });
+      setCitySettingsMap(map);
+    });
+    return unsub;
+  }, [user]);
+
+  // Apply global settings on top of per-trip city data
+  const enhancedCities = useMemo(
+    () => cities.map((c) => ({
+      ...c,
+      color: cityColor(c, citySettingsMap),
+      country_code: detectCountryCode(c, citySettingsMap),
+    })) as City[],
+    [cities, citySettingsMap]
+  );
+
   const todayStr = toDateStr(new Date());
   const weeks = buildWeeks(trip.start_date, trip.end_date);
   const dayItemsMap = buildDayItemsMap(flights, hotels, transports);
 
   const dateCityMap: Record<string, City> = {};
-  for (const city of cities) {
+  for (const city of enhancedCities) {
     for (const d of city.days ?? []) {
       dateCityMap[d] = city;
     }
@@ -262,7 +315,7 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
       hasEmpty,
       hasCity,
       cities: Array.from(cityIds)
-        .map((id) => cities.find((c) => c.id === id))
+        .map((id) => enhancedCities.find((c) => c.id === id))
         .filter((c): c is City => !!c),
     };
   })();
@@ -277,15 +330,24 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
       )}
 
       {/* Filter city hint */}
-      {filterCity && !inSelectionMode && (
-        <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-[10px] animate-fade-slide-up" style={{ backgroundColor: `${filterCity.color}15`, border: `1px solid ${filterCity.color}40` }}>
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: filterCity.color }} />
-          <span className="text-[12px] font-semibold flex-1" style={{ color: filterCity.color }}>
-            Filtrando {filterCity.name.toUpperCase()}
-          </span>
-          <button onClick={() => setFilterCity(null)} className="text-[#A0A0A0] text-[16px] leading-none press-feedback">×</button>
-        </div>
-      )}
+      {filterCity && !inSelectionMode && (() => {
+        const fc = filterCity;
+        const fcColor = cityColor(fc);
+        const fcCode = detectCountryCode(fc);
+        return (
+          <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-[10px] animate-fade-slide-up" style={{ backgroundColor: `${fcColor}15`, border: `1px solid ${fcColor}40` }}>
+            {fcCode ? (
+              <span className="text-[14px] leading-none">{countryFlag(fcCode)}</span>
+            ) : (
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: fcColor }} />
+            )}
+            <span className="text-[12px] font-semibold flex-1" style={{ color: fcColor }}>
+              Filtrando {fc.name.toUpperCase()}
+            </span>
+            <button onClick={() => setFilterCity(null)} className="text-[#A0A0A0] text-[16px] leading-none press-feedback">×</button>
+          </div>
+        );
+      })()}
 
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 mb-1.5">
@@ -306,14 +368,19 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
               const items = dayItemsMap[dateStr];
               const isSelected = selection.has(dateStr);
               const isToday = dateStr === todayStr;
-              const dayNum = parseInt(dateStr.split("-")[2]);
+              const [, mm, dd] = dateStr.split("-");
+              const dateLabel = `${dd}/${mm}`;
+              const dayIndex = city ? (city.days ?? []).indexOf(dateStr) : -1;
+              const totalDays = city ? (city.days ?? []).length : 0;
               const dimmed = !!filterCity && (!city || city.id !== filterCity.id);
 
               return (
                 <DayCell
                   key={dateStr}
                   dateStr={dateStr}
-                  dayNum={dayNum}
+                  dateLabel={dateLabel}
+                  dayIndex={dayIndex}
+                  totalDays={totalDays}
                   inRange={inRange}
                   city={city}
                   items={items}
@@ -331,22 +398,28 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
       </div>
 
       {/* City legend — tap to filter */}
-      {cities.length > 0 && !inSelectionMode && (
+      {enhancedCities.length > 0 && !inSelectionMode && (
         <div className="flex flex-wrap gap-2 mt-5 px-1">
-          {cities.map((c) => {
+          {enhancedCities.map((c) => {
             const isActive = filterCity?.id === c.id;
+            const cc = detectCountryCode(c);
+            const color = cityColor(c);
             return (
               <button
                 key={c.id}
                 onClick={() => setFilterCity(isActive ? null : c)}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide press-feedback transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide press-feedback transition-all"
                 style={{
-                  backgroundColor: isActive ? `${c.color}40` : `${c.color}20`,
-                  color: c.color,
-                  boxShadow: isActive ? `0 0 0 1px ${c.color}` : undefined,
+                  backgroundColor: isActive ? `${color}40` : `${color}20`,
+                  color: color,
+                  boxShadow: isActive ? `0 0 0 1px ${color}` : undefined,
                 }}
               >
-                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: c.color }} />
+                {cc ? (
+                  <span className="text-[13px] leading-none">{countryFlag(cc)}</span>
+                ) : (
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+                )}
                 {c.name}
               </button>
             );
@@ -409,7 +482,7 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
           hotels={hotels}
           transports={transports}
           trip={trip}
-          cities={cities}
+          cities={enhancedCities}
           onChanged={onChanged}
           onClose={() => setSelectedDay(null)}
         />
@@ -432,7 +505,9 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
 
 interface DayCellProps {
   dateStr: string;
-  dayNum: number;
+  dateLabel: string;
+  dayIndex: number;
+  totalDays: number;
   inRange: boolean;
   city?: City;
   items?: DayItems;
@@ -446,7 +521,9 @@ interface DayCellProps {
 
 function DayCell({
   dateStr,
-  dayNum,
+  dateLabel,
+  dayIndex,
+  totalDays,
   inRange,
   city,
   items,
@@ -457,24 +534,30 @@ function DayCell({
   onPointerEnter,
   onPointerUp,
 }: DayCellProps) {
-  const bg = city ? `${city.color}24` : "#1A1A1A";
-  const selectionColor = city?.color ?? "#0A84FF";
+  const resolvedColor = city ? cityColor(city) : null;
+  const bg = resolvedColor ? `${resolvedColor}20` : "#1A1A1A";
+  const selectionColor = resolvedColor ?? "#0A84FF";
   const borderColor = isSelected
     ? selectionColor
     : isToday
     ? "#0A84FF"
-    : city
-    ? `${city.color}4D`
+    : resolvedColor
+    ? `${resolvedColor}50`
     : "#262626";
   const borderWidth = isSelected ? 2 : isToday ? 2 : 1;
 
+  const countryCode = city ? detectCountryCode(city) : undefined;
+  const flag = countryCode ? countryFlag(countryCode) : null;
   const hasHotel = (items?.hotels.length ?? 0) > 0;
+  const showProgress = city && totalDays > 0 && dayIndex >= 0;
+  const progressPct = showProgress ? ((dayIndex + 1) / totalDays) * 100 : 0;
 
+  // Max 2 badges to leave room for progress + city tag
   const badges = [
     ...(items?.flights ?? []).map((f) => ({ key: f.id, label: f.label, type: "flight" as const })),
     ...(items?.hotels ?? []).map((h) => ({ key: h.id, label: h.label, type: "hotel" as const })),
     ...(items?.transports ?? []).map((t) => ({ key: t.id, label: t.label, type: "transport" as const })),
-  ].slice(0, 3);
+  ].slice(0, 2);
 
   return (
     <div
@@ -485,8 +568,8 @@ function DayCell({
       aria-disabled={!inRange}
       aria-label={`${dateStr}${city ? ` — ${city.name}` : ""}`}
       className={`
-        relative flex flex-col rounded-[10px] px-1 pt-1.5 pb-1
-        min-h-[88px] md:min-h-[112px] w-full text-left
+        relative flex flex-col rounded-[10px] px-1 pt-1 pb-1
+        min-h-[96px] md:min-h-[116px] w-full text-left
         transition-all
         ${inRange ? "cursor-pointer active:scale-[0.94]" : "opacity-25 cursor-default"}
         ${dimmed ? "opacity-30" : ""}
@@ -501,10 +584,20 @@ function DayCell({
         touchAction: "none",
       }}
     >
-      {/* Today indicator dot */}
-      {isToday && (
-        <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#0A84FF]" />
-      )}
+      {/* Top row: date DD/MM + flag (or today dot if no city) */}
+      <div className="flex items-start justify-between px-0.5 mb-0.5">
+        <span
+          className="text-[11px] md:text-[13px] font-bold leading-none tabular-nums"
+          style={{ color: isToday ? "#0A84FF" : "#FFFFFF" }}
+        >
+          {dateLabel}
+        </span>
+        {flag && !isSelected ? (
+          <span className="text-[11px] leading-none" style={{ lineHeight: 1 }}>{flag}</span>
+        ) : !flag && isToday && !isSelected ? (
+          <div className="w-1.5 h-1.5 rounded-full bg-[#0A84FF] mt-0.5" />
+        ) : null}
+      </div>
 
       {/* Selection checkmark */}
       {isSelected && (
@@ -516,35 +609,39 @@ function DayCell({
         </div>
       )}
 
-      {/* Day number */}
-      <span
-        className="text-[13px] md:text-[15px] font-bold leading-none px-0.5"
-        style={{ color: isToday ? "#0A84FF" : "#FFFFFF" }}
-      >
-        {dayNum}
-      </span>
-
       {/* Badges */}
-      <div className="flex flex-col gap-[3px] mt-1 flex-1 w-full overflow-hidden">
+      <div className="flex flex-col gap-[3px] flex-1 w-full overflow-hidden">
         {badges.map((b) => (
           <ItemBadge key={b.key} label={b.label} type={b.type} />
         ))}
       </div>
 
-      {/* City tag */}
-      {city && (
-        <div
-          className="mt-auto text-[9px] font-bold uppercase tracking-widest px-0.5 truncate leading-tight"
-          style={{ color: city.color }}
-        >
-          {city.name}
+      {/* City tag + day counter */}
+      {city && resolvedColor && (
+        <div className="mt-auto w-full px-0.5 pb-0.5">
+          <div className="flex items-end justify-between gap-1">
+            <span
+              className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest truncate leading-none"
+              style={{ color: resolvedColor }}
+            >
+              {city.name}
+            </span>
+            {showProgress && (
+              <span
+                className="text-[10px] md:text-[11px] font-bold leading-none flex-shrink-0 tabular-nums"
+                style={{ color: resolvedColor }}
+              >
+                {dayIndex + 1}/{totalDays}
+              </span>
+            )}
+          </div>
         </div>
       )}
 
       {/* Hotel continued strip */}
       {hasHotel && (
         <div
-          className="absolute bottom-0 left-0 right-0 h-[3px] rounded-b-[8px]"
+          className="absolute bottom-0 left-0 right-0 h-[2px] rounded-b-[8px]"
           style={{ backgroundColor: "#FF9F0A" }}
         />
       )}
@@ -804,17 +901,25 @@ function DayDetailSheet({
         <div className="flex items-start justify-between mb-5">
           <div>
             <h3 className="text-[20px] font-semibold text-white capitalize leading-tight">{label}</h3>
-            {city && (
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: city.color }} />
-                <span
-                  className="text-[12px] font-semibold uppercase tracking-wide"
-                  style={{ color: city.color }}
-                >
-                  {city.name}
-                </span>
-              </div>
-            )}
+            {city && (() => {
+              const sheetColor = cityColor(city);
+              const sheetCode = detectCountryCode(city);
+              return (
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  {sheetCode ? (
+                    <span className="text-[15px] leading-none">{countryFlag(sheetCode)}</span>
+                  ) : (
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sheetColor }} />
+                  )}
+                  <span
+                    className="text-[12px] font-semibold uppercase tracking-wide"
+                    style={{ color: sheetColor }}
+                  >
+                    {city.name}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
           <button
             onClick={onClose}
