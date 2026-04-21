@@ -9,6 +9,14 @@ import { guessTimezone } from "@/lib/datetime";
 import { createFlight, createHotel, createTransport, getCities, createCity } from "@/lib/firestore";
 import { CITY_COLORS } from "@/lib/types";
 import { getFirebaseStorage } from "@/lib/firebase";
+import {
+  ManualTypePicker,
+  ManualFlightForm,
+  ManualHotelForm,
+  ManualTransportForm,
+  ManualCityForm,
+  type ManualType,
+} from "./ManualItemForms";
 
 type Mode = "chat" | "file" | "manual";
 
@@ -254,7 +262,7 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
         ) : mode === "file" ? (
           <FileMode fileRef={fileRef} selectedFile={selectedFile} onFileSelect={setSelectedFile} />
         ) : (
-          <ManualMode />
+          <ManualMode tripId={tripId} onCreated={onConfirmed} />
         )}
 
         {error && (
@@ -264,8 +272,8 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
         )}
       </div>
 
-      {/* Footer CTA */}
-      {!parsing && (
+      {/* Footer CTA — hidden en manual (los forms tienen su propio submit) */}
+      {!parsing && mode !== "manual" && (
         <div className="px-6 md:px-7 pb-10 md:pb-5 pt-4 border-t border-[#1E1E1E]">
           {parsedItems ? (
             <button
@@ -434,12 +442,25 @@ function FileMode({
   );
 }
 
-function ManualMode() {
-  return (
-    <div className="text-center py-12 text-[#4D4D4D] text-[15px]">
-      Formulario manual — próximamente
-    </div>
-  );
+function ManualMode({ tripId, onCreated }: { tripId: string; onCreated: () => void }) {
+  const [type, setType] = useState<ManualType | null>(null);
+
+  if (!type) {
+    return (
+      <div>
+        <p className="text-[#A0A0A0] text-[13px] mb-4">
+          Elegí qué querés agregar al viaje:
+        </p>
+        <ManualTypePicker onSelect={setType} />
+      </div>
+    );
+  }
+
+  const back = () => setType(null);
+  if (type === "flight") return <ManualFlightForm tripId={tripId} onCreated={onCreated} onBack={back} />;
+  if (type === "hotel") return <ManualHotelForm tripId={tripId} onCreated={onCreated} onBack={back} />;
+  if (type === "city") return <ManualCityForm tripId={tripId} onCreated={onCreated} onBack={back} />;
+  return <ManualTransportForm tripId={tripId} mode={type} onCreated={onCreated} onBack={back} />;
 }
 
 function PreviewSection({ items, onEdit, onRemove }: { items: ParsedItem[]; onEdit: () => void; onRemove: (idx: number) => void }) {
