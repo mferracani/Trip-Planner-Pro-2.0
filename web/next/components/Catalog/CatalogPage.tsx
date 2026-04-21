@@ -19,9 +19,10 @@ import { CreateTripModal } from "../CreateTripModal";
 import { FlightForm } from "../forms/FlightForm";
 import { HotelForm } from "../forms/HotelForm";
 import { TransportForm } from "../forms/TransportForm";
-import { Plane, Hotel as HotelIcon, Car, Train, Bus, Ship, Search } from "lucide-react";
+import { Plane, Hotel as HotelIcon, Car, Train, Bus, Ship, Search, Globe } from "lucide-react";
+import { CitiesCatalog } from "./CitiesCatalog";
 
-type Tab = "flights" | "hotels" | "transports";
+type Tab = "flights" | "hotels" | "transports" | "cities";
 type TransportFilter = "all" | "train" | "car" | "bus" | "ferry" | "taxi" | "subway" | "other";
 
 // ─── date helpers ────────────────────────────────────────────────────────────
@@ -78,15 +79,17 @@ export function CatalogPage() {
         </div>
 
         {/* Sub-tabs */}
-        <div className="flex gap-2 mt-4 mb-6 border-b border-[#1E1E1E]">
+        <div className="flex gap-2 mt-4 mb-6 border-b border-[#1E1E1E] overflow-x-auto">
           <TabBtn active={tab === "flights"} onClick={() => setTab("flights")} icon={<Plane size={14} />} label="Vuelos" />
           <TabBtn active={tab === "hotels"} onClick={() => setTab("hotels")} icon={<HotelIcon size={14} />} label="Hoteles" />
           <TabBtn active={tab === "transports"} onClick={() => setTab("transports")} icon={<Car size={14} />} label="Traslados" />
+          <TabBtn active={tab === "cities"} onClick={() => setTab("cities")} icon={<Globe size={14} />} label="Ciudades" />
         </div>
 
         {user && tab === "flights" && <FlightsList uid={user.uid} />}
         {user && tab === "hotels" && <HotelsList uid={user.uid} />}
         {user && tab === "transports" && <TransportsList uid={user.uid} />}
+        {tab === "cities" && <CitiesCatalog />}
       </div>
 
       <BottomNav active="catalog" onAdd={() => setCreateOpen(true)} />

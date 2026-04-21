@@ -164,6 +164,7 @@ export function CostView({
   const [newExpense, setNewExpense] = useState({
     title: "",
     amount: "",
+    paid: "",
     currency: "USD",
     category: "other" as ExpenseCategory,
   });
@@ -200,7 +201,7 @@ export function CostView({
       type: "expense",
       currency: e.currency,
       total: e.amount,
-      paid: e.amount, // expenses are fully paid by definition
+      paid: e.paid_amount ?? e.amount,
     })),
   ].filter((r) => r.total != null || r.paid > 0);
 
@@ -240,7 +241,7 @@ export function CostView({
     setEditingRowId(row.id);
     setEditValues({
       total: row.total != null ? String(row.total) : "",
-      paid: row.type !== "expense" && row.paid > 0 ? String(row.paid) : "",
+      paid: row.paid > 0 ? String(row.paid) : "",
     });
   }
 
@@ -255,7 +256,7 @@ export function CostView({
       const newTotal = parseFloat(editValues.total);
       const newPaid = parseFloat(editValues.paid);
       const hasTotal = !isNaN(newTotal) && editValues.total !== "";
-      const hasPaid = !isNaN(newPaid) && editValues.paid !== "" && row.type !== "expense";
+      const hasPaid = !isNaN(newPaid) && editValues.paid !== "";
 
       if (!hasTotal && !hasPaid) {
         setEditingRowId(null);
@@ -278,12 +279,10 @@ export function CostView({
           ...(hasPaid && { paid_amount: newPaid }),
         });
       } else if (row.type === "expense") {
-        if (hasTotal) {
-          await updateExpense(userId, tripId, row.id, {
-            amount: newTotal,
-            amount_usd: toUSD(newTotal, row.currency),
-          });
-        }
+        await updateExpense(userId, tripId, row.id, {
+          ...(hasTotal && { amount: newTotal, amount_usd: toUSD(newTotal, row.currency) }),
+          ...(hasPaid && { paid_amount: newPaid }),
+        });
       }
 
       await recalcTripAggregates(userId, tripId);
@@ -312,19 +311,21 @@ export function CostView({
     setSaving(true);
     try {
       const today = new Date().toISOString().split("T")[0];
+      const paidAmt = parseFloat(newExpense.paid);
       await createExpense(userId, tripId, {
         trip_id: tripId,
         title: newExpense.title.trim(),
         amount,
         currency: newExpense.currency,
         amount_usd: toUSD(amount, newExpense.currency),
+        paid_amount: !isNaN(paidAmt) && newExpense.paid !== "" ? paidAmt : undefined,
         date: today,
         category: newExpense.category,
       });
       await recalcTripAggregates(userId, tripId);
       onChanged();
       setAddingExpense(false);
-      setNewExpense({ title: "", amount: "", currency: "USD", category: "other" });
+      setNewExpense({ title: "", amount: "", paid: "", currency: "USD", category: "other" });
     } catch (e) {
       console.error("saveNewExpense failed", e);
     } finally {
@@ -450,7 +451,7 @@ export function CostView({
                 const displayTotal = isEditing && editValues.total !== ""
                   ? (parseFloat(editValues.total) || null)
                   : row.total;
-                const displayPaid = isEditing && row.type !== "expense" && editValues.paid !== ""
+                const displayPaid = isEditing && editValues.paid !== ""
                   ? (parseFloat(editValues.paid) || 0)
                   : row.paid;
                 const pending = displayTotal != null ? displayTotal - displayPaid : null;
@@ -498,7 +499,7 @@ export function CostView({
                           </td>
                           <td key={c + "_p"} className={`${CELL_STYLE} ${COL_W}`}>
                             {isThis ? (
-                              isEditing && row.type !== "expense" ? (
+                              isEditing ? (
                                 <input
                                   type="number"
                                   value={editValues.paid}
@@ -631,7 +632,7 @@ export function CostView({
           <p className="text-[12px] font-semibold text-[#707070] uppercase tracking-wide mb-3">
             Nuevo gasto
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div className="col-span-2 md:col-span-1">
               <input
                 type="text"
@@ -646,9 +647,19 @@ export function CostView({
             <div>
               <input
                 type="number"
-                placeholder="Monto"
+                placeholder="Total"
                 value={newExpense.amount}
                 onChange={(e) => setNewExpense((p) => ({ ...p, amount: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === "Enter") saveNewExpense(); if (e.key === "Escape") setAddingExpense(false); }}
+                className="w-full bg-[#0D0D0D] border border-[#333] rounded-[8px] px-3 py-2 text-white text-[13px] outline-none focus:border-[#BF5AF2] placeholder:text-[#3D3D3D]"
+              />
+            </div>
+            <div>
+              <input
+                type="number"
+                placeholder="Pagado"
+                value={newExpense.paid}
+                onChange={(e) => setNewExpense((p) => ({ ...p, paid: e.target.value }))}
                 onKeyDown={(e) => { if (e.key === "Enter") saveNewExpense(); if (e.key === "Escape") setAddingExpense(false); }}
                 className="w-full bg-[#0D0D0D] border border-[#333] rounded-[8px] px-3 py-2 text-white text-[13px] outline-none focus:border-[#BF5AF2] placeholder:text-[#3D3D3D]"
               />
@@ -691,7 +702,7 @@ export function CostView({
             <button
               onClick={() => {
                 setAddingExpense(false);
-                setNewExpense({ title: "", amount: "", currency: "USD", category: "other" });
+                setNewExpense({ title: "", amount: "", paid: "", currency: "USD", category: "other" });
               }}
               className="flex items-center gap-1.5 px-4 py-2 rounded-[8px] text-[13px] font-semibold bg-[#1E1E1E] text-[#707070] hover:text-white transition-colors"
             >

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter_Tight } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -10,8 +10,27 @@ const interTight = Inter_Tight({
 });
 
 export const metadata: Metadata = {
-  title: "Trip Planner Pro 2",
+  title: "Trip Planner Pro",
   description: "Organizá tus viajes sin tipear.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Trip Planner",
+    startupImage: [],
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+    icon: "/icon-192.png",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

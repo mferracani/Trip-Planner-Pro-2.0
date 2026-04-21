@@ -6,12 +6,13 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  setDoc,
   query,
   orderBy,
   serverTimestamp,
 } from "firebase/firestore";
 import { getFirebaseDb } from "./firebase";
-import type { Trip, City, Flight, Hotel, Transport, Expense } from "./types";
+import type { Trip, City, Flight, Hotel, Transport, Expense, CitySetting } from "./types";
 
 // Base path helpers
 const tripsRef = (uid: string) => collection(getFirebaseDb(), "users", uid, "trips");
@@ -26,6 +27,8 @@ const transportsRef = (uid: string, tripId: string) => collection(getFirebaseDb(
 const transportRef = (uid: string, tripId: string, id: string) => doc(getFirebaseDb(), "users", uid, "trips", tripId, "transports", id);
 const expensesRef = (uid: string, tripId: string) => collection(getFirebaseDb(), "users", uid, "trips", tripId, "expenses");
 const expenseRef = (uid: string, tripId: string, id: string) => doc(getFirebaseDb(), "users", uid, "trips", tripId, "expenses", id);
+export const citySettingsRef = (uid: string) => collection(getFirebaseDb(), "users", uid, "city_settings");
+const citySettingRef = (uid: string, normalizedName: string) => doc(getFirebaseDb(), "users", uid, "city_settings", normalizedName);
 
 // Firestore rejects undefined values; strip them before writing.
 function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
@@ -196,6 +199,37 @@ export async function getAllTransports(uid: string): Promise<TransportWithTrip[]
   return results.flat().sort((a, b) =>
     (b.departure_local_time ?? "").localeCompare(a.departure_local_time ?? "")
   );
+}
+
+// City settings — global catalog keyed by normalized city name
+export async function getCitySettings(uid: string): Promise<CitySetting[]> {
+  const snap = await getDocs(citySettingsRef(uid));
+  return snap.docs.map((d) => ({ normalized_name: d.id, ...d.data() } as CitySetting));
+}
+
+export async function upsertCitySetting(
+  uid: string,
+  normalizedName: string,
+  data: Partial<Omit<CitySetting, "normalized_name">>
+): Promise<void> {
+  await setDoc(
+    citySettingRef(uid, normalizedName),
+    stripUndefined({ ...data, normalized_name: normalizedName } as Record<string, unknown>),
+    { merge: true }
+  );
+}
+
+export type CityWithTrip = City & { trip_name: string; trip_start: string };
+
+export async function getAllCities(uid: string): Promise<CityWithTrip[]> {
+  const trips = await getTrips(uid);
+  const results = await Promise.all(
+    trips.map(async (t) => {
+      const cities = await getCities(uid, t.id);
+      return cities.map((c) => ({ ...c, trip_name: t.name, trip_start: t.start_date }));
+    })
+  );
+  return results.flat().sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // Fetches today's FX rates. Returns { EUR: 0.92, ARS: 1050, ... } (1 USD = N currency).
