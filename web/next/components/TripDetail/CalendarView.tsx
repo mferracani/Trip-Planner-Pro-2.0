@@ -588,6 +588,70 @@ function SelectionActionBar({
   );
 }
 
+// ─── copyable booking ref ──────────────────────────────────────────────────
+
+function CopyableBookingRef({ value, color }: { value: string; color: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy(e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      if (typeof navigator.vibrate === "function") navigator.vibrate(10);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // clipboard not available — noop
+    }
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="w-full flex items-center justify-between gap-3 rounded-[12px] px-3.5 py-2.5 transition-all active:scale-[0.98] press-feedback"
+      style={{
+        background: `${color}12`,
+        border: `1px solid ${color}30`,
+      }}
+      aria-label={`Copiar número de reserva ${value}`}
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="text-[14px] flex-shrink-0">🎫</span>
+        <div className="min-w-0 text-left">
+          <div className="text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: `${color}B0` }}>
+            Reserva
+          </div>
+          <div
+            className="text-[16px] font-mono font-bold tracking-[0.08em] truncate"
+            style={{ color }}
+          >
+            {value}
+          </div>
+        </div>
+      </div>
+      <div
+        className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full flex-shrink-0"
+        style={{
+          background: copied ? "#30D15825" : `${color}20`,
+          color: copied ? "#30D158" : color,
+        }}
+      >
+        {copied ? (
+          <>
+            <span className="text-[11px]">✓</span>
+            <span>Copiado</span>
+          </>
+        ) : (
+          <>
+            <span className="text-[12px]">⧉</span>
+            <span>Copiar</span>
+          </>
+        )}
+      </div>
+    </button>
+  );
+}
+
 // ─── day detail helpers ─────────────────────────────────────────────────────
 
 function extractTime(iso?: string | null): string {
@@ -737,24 +801,14 @@ function FlightCard({ flight: f, dateStr, delay }: { flight: Flight; dateStr: st
       <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#4D96FF]" />
 
       {/* Header row */}
-      <div className="flex items-center justify-between mb-2.5 pl-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[14px]">✈️</span>
-          <span className="text-[12px] font-bold text-[#4D96FF] uppercase tracking-wide">
-            {isArrival ? "Llegada" : "Vuelo"}
-          </span>
-          {f.airline && (
-            <span className="text-[12px] text-[#A0A0A0]">
-              · {f.airline} {f.flight_number}
-            </span>
-          )}
-        </div>
-        {f.booking_ref && (
-          <span
-            className="text-[10.5px] font-mono font-semibold px-2 py-0.5 rounded-full"
-            style={{ background: "#BF5AF220", color: "#BF5AF2" }}
-          >
-            🎫 {f.booking_ref}
+      <div className="flex items-center gap-2 mb-2.5 pl-1">
+        <span className="text-[14px]">✈️</span>
+        <span className="text-[12px] font-bold text-[#4D96FF] uppercase tracking-wide">
+          {isArrival ? "Llegada" : "Vuelo"}
+        </span>
+        {f.airline && (
+          <span className="text-[12px] text-[#A0A0A0]">
+            · {f.airline} {f.flight_number}
           </span>
         )}
       </div>
@@ -808,6 +862,13 @@ function FlightCard({ flight: f, dateStr, delay }: { flight: Flight; dateStr: st
         </div>
       )}
 
+      {/* Booking ref — prominent + copyable */}
+      {f.booking_ref && (
+        <div className="mt-3 pl-1">
+          <CopyableBookingRef value={f.booking_ref} color="#4D96FF" />
+        </div>
+      )}
+
       {/* Metadata row */}
       {(f.seat || f.cabin_class || f.price != null) && (
         <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-[#1E2A40] pl-1 flex-wrap">
@@ -856,19 +917,9 @@ function HotelCard({ hotel: h, dateStr, delay }: { hotel: Hotel; dateStr: string
       <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#FFD93D]" />
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-2 pl-1">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-[14px]">🏨</span>
-          <span className="text-[15px] font-bold text-white truncate">{h.name}</span>
-        </div>
-        {h.booking_ref && (
-          <span
-            className="text-[10.5px] font-mono font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
-            style={{ background: "#BF5AF220", color: "#BF5AF2" }}
-          >
-            🎫 {h.booking_ref}
-          </span>
-        )}
+      <div className="flex items-center gap-2 mb-2 pl-1 min-w-0">
+        <span className="text-[14px]">🏨</span>
+        <span className="text-[15px] font-bold text-white truncate">{h.name}</span>
       </div>
 
       {/* Brand / meta */}
@@ -903,6 +954,13 @@ function HotelCard({ hotel: h, dateStr, delay }: { hotel: Hotel; dateStr: string
         <div className="text-[#333]">·</div>
         <span className="text-[#A0A0A0]">{totalNights} {totalNights === 1 ? "noche" : "noches"}</span>
       </div>
+
+      {/* Booking ref — prominent + copyable */}
+      {h.booking_ref && (
+        <div className="mt-3 pl-1">
+          <CopyableBookingRef value={h.booking_ref} color="#FFD93D" />
+        </div>
+      )}
 
       {/* Metadata */}
       {(h.room_type || h.price_per_night != null) && (
@@ -948,21 +1006,11 @@ function TransportCard({ transport: t, delay }: { transport: Transport; delay: n
       <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#4ECDC4]" />
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-2 pl-1">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-[14px]">{typeEmoji[t.type]}</span>
-          <span className="text-[12px] font-bold text-[#4ECDC4] uppercase tracking-wide">{typeLabel[t.type]}</span>
-          {t.operator && (
-            <span className="text-[12px] text-[#A0A0A0] truncate">· {t.operator}</span>
-          )}
-        </div>
-        {t.booking_ref && (
-          <span
-            className="text-[10.5px] font-mono font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
-            style={{ background: "#BF5AF220", color: "#BF5AF2" }}
-          >
-            🎫 {t.booking_ref}
-          </span>
+      <div className="flex items-center gap-2 mb-2 pl-1 min-w-0">
+        <span className="text-[14px]">{typeEmoji[t.type]}</span>
+        <span className="text-[12px] font-bold text-[#4ECDC4] uppercase tracking-wide">{typeLabel[t.type]}</span>
+        {t.operator && (
+          <span className="text-[12px] text-[#A0A0A0] truncate">· {t.operator}</span>
         )}
       </div>
 
@@ -984,6 +1032,13 @@ function TransportCard({ transport: t, delay }: { transport: Transport; delay: n
           </div>
         </div>
       </div>
+
+      {/* Booking ref — prominent + copyable */}
+      {t.booking_ref && (
+        <div className="mt-3 pl-1">
+          <CopyableBookingRef value={t.booking_ref} color="#4ECDC4" />
+        </div>
+      )}
 
       {/* Price */}
       {t.price != null && (
