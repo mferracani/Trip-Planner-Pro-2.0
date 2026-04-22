@@ -27,6 +27,8 @@ packages:
     from: "4.0.1"
 
 targets:
+
+  # ── Main App ───────────────────────────────────────────────────────────────
   TripPlannerPro:
     type: application
     platform: iOS
@@ -57,3 +59,20 @@ targets:
       - package: Firebase
         product: FirebaseFunctions
       - package: SwiftKeychainWrapper
+
+  # ── Share Extension ────────────────────────────────────────────────────────
+  ShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ShareExtension
+        excludes:
+          - "**/*.md"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mferracani.tripplannerpro.share
+        PRODUCT_NAME: ShareExtension
+        INFOPLIST_FILE: ShareExtension/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ShareExtension/Resources/ShareExtension.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        APPLICATION_EXTENSION_API_ONLY: YES

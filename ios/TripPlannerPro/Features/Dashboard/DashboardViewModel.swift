@@ -6,16 +6,26 @@ import Observation
 final class DashboardViewModel {
     private(set) var trips: [Trip] = []
     private(set) var isLoading = true
+    private(set) var isOffline = false
     private(set) var error: Error?
 
     private var streamTask: Task<Void, Never>?
     private let client: FirestoreClient
+    private let cache: CacheManager?
 
-    init(client: FirestoreClient) {
+    init(client: FirestoreClient, cache: CacheManager? = nil) {
         self.client = client
+        self.cache = cache
     }
 
     func start() {
+        // Show cached data immediately while Firestore loads
+        if let cached = cache?.cachedTrips(), !cached.isEmpty {
+            trips = cached
+            isLoading = false
+            isOffline = true
+        }
+
         streamTask?.cancel()
         streamTask = Task {
             do {
@@ -23,11 +33,17 @@ final class DashboardViewModel {
                     guard !Task.isCancelled else { break }
                     trips = t
                     isLoading = false
+                    isOffline = false
+                    cache?.upsertTrips(t)
                 }
             } catch {
                 guard !Task.isCancelled else { return }
-                self.error = error
-                isLoading = false
+                // If Firestore fails and we have no cache yet, show error
+                if trips.isEmpty {
+                    self.error = error
+                    isLoading = false
+                }
+                isOffline = true
             }
         }
     }

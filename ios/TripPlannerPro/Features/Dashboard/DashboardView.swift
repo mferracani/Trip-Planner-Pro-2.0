@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct DashboardView: View {
+    var cache: CacheManager? = nil
+    var onTripsLoaded: (([Trip]) -> Void)? = nil
+
     @Environment(FirestoreClient.self) private var client
     @State private var vm: DashboardViewModel?
     @State private var showCreateTrip = false
@@ -38,9 +41,12 @@ struct DashboardView: View {
             }
         }
         .onAppear {
-            let viewModel = DashboardViewModel(client: client)
+            let viewModel = DashboardViewModel(client: client, cache: cache)
             vm = viewModel
             viewModel.start()
+        }
+        .onChange(of: vm?.trips) { _, trips in
+            if let trips { onTripsLoaded?(trips) }
         }
         .onDisappear { vm?.stop() }
         .onReceive(timer) { now = $0 }

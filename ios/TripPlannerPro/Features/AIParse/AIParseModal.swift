@@ -14,6 +14,8 @@ enum ParseMode: String, CaseIterable {
 
 struct AIParseModal: View {
     let trip: Trip
+    var prefillText: String = ""
+
     @Environment(FirestoreClient.self) private var client
     @Environment(\.dismiss) private var dismiss
 
@@ -56,6 +58,11 @@ struct AIParseModal: View {
             }
             .navigationTitle("Cargar con IA")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                if !prefillText.isEmpty && inputText.isEmpty {
+                    inputText = prefillText
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cerrar") { dismiss() }
