@@ -2,24 +2,23 @@ import SwiftUI
 
 struct MainTabView: View {
     let user: AuthUser
+    @State private var firestoreClient = FirestoreClient()
 
     var body: some View {
         TabView {
             DashboardView()
-                .tabItem {
-                    Label("Viajes", systemImage: "airplane")
-                }
+                .tabItem { Label("Viajes", systemImage: "airplane") }
 
             CatalogView()
-                .tabItem {
-                    Label("Catálogo", systemImage: "square.grid.2x2")
-                }
+                .tabItem { Label("Catálogo", systemImage: "square.grid.2x2") }
 
             SettingsView()
-                .tabItem {
-                    Label("Ajustes", systemImage: "gearshape")
-                }
+                .tabItem { Label("Ajustes", systemImage: "gearshape") }
         }
         .tint(Tokens.Color.accentBlue)
+        .environment(firestoreClient)
+        .onAppear {
+            HouseholdConfig.ownerUID = user.uid
+        }
     }
 }

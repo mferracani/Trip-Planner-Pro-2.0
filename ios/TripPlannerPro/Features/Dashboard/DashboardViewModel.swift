@@ -1,0 +1,81 @@
+import Foundation
+import Observation
+
+@MainActor
+@Observable
+final class DashboardViewModel {
+    private(set) var trips: [Trip] = []
+    private(set) var isLoading = true
+    private(set) var error: Error?
+
+    private var streamTask: Task<Void, Never>?
+    private let client: FirestoreClient
+
+    init(client: FirestoreClient) {
+        self.client = client
+    }
+
+    func start() {
+        streamTask?.cancel()
+        streamTask = Task {
+            do {
+                for try await t in try client.tripsStream() {
+                    guard !Task.isCancelled else { break }
+                    trips = t
+                    isLoading = false
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+                self.error = error
+                isLoading = false
+            }
+        }
+    }
+
+    func stop() {
+        streamTask?.cancel()
+        streamTask = nil
+    }
+
+    // MARK: - Greeting
+
+    var greeting: String {
+        let now = Date()
+
+        if let active = trips.first(where: { $0.status_computed == .active }) {
+            let day = active.currentDayNumber
+            return "Día \(day) de tu viaje"
+        }
+
+        if let next = upcomingTrip {
+            let days = next.daysUntilStart
+            if days == 0 { return "Buen viaje, Mati ✈️" }
+            if days == 1 { return "Mañana empieza" }
+            if days <= 7 { return "Esta semana · faltan \(days) días" }
+        }
+
+        return "Hola, Mati"
+    }
+
+    var countdownText: String? {
+        guard let next = upcomingTrip else { return nil }
+        let days = next.daysUntilStart
+        if days <= 0 { return nil }
+        if days > 30 { return "Faltan \(days) días" }
+        if days <= 7 { return "Faltan \(days) días" }
+        return "Faltan \(days) días"
+    }
+
+    var countdownUrgent: Bool {
+        guard let days = upcomingTrip?.daysUntilStart else { return false }
+        return days <= 7
+    }
+
+    var upcomingTrip: Trip? {
+        trips.filter { $0.status_computed == .planned }.min(by: { $0.startDate < $1.startDate })
+    }
+
+    var plannedTrips: [Trip] { trips.filter { $0.status_computed == .planned } }
+    var activeTrips: [Trip] { trips.filter { $0.status_computed == .active } }
+    var pastTrips: [Trip] { trips.filter { $0.status_computed == .past } }
+}
