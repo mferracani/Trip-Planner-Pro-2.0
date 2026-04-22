@@ -10,13 +10,16 @@ final class TripDetailViewModel {
     private(set) var hotels: [Hotel] = []
     private(set) var transports: [Transport] = []
     private(set) var isLoading = true
+    private(set) var isOffline = false
 
     private var tasks: [Task<Void, Never>] = []
     private let client: FirestoreClient
+    private let cache: CacheManager?
 
-    init(trip: Trip, client: FirestoreClient) {
+    init(trip: Trip, client: FirestoreClient, cache: CacheManager? = nil) {
         self.trip = trip
         self.client = client
+        self.cache = cache
     }
 
     func start() {
@@ -24,14 +27,35 @@ final class TripDetailViewModel {
         tasks.forEach { $0.cancel() }
         tasks = []
 
+        // Load cached data immediately as offline fallback while Firestore connects
+        if let cache {
+            let cachedFlights = cache.cachedFlights(tripID: tripID)
+            let cachedHotels = cache.cachedHotels(tripID: tripID)
+            let cachedTransports = cache.cachedTransports(tripID: tripID)
+
+            let hasCachedData = !cachedFlights.isEmpty || !cachedHotels.isEmpty || !cachedTransports.isEmpty
+            if hasCachedData {
+                flights = cachedFlights
+                hotels = cachedHotels
+                transports = cachedTransports
+                isLoading = false
+                isOffline = true
+            }
+        }
+
         tasks.append(Task {
             do {
                 for try await c in try client.citiesStream(tripID: tripID) {
                     guard !Task.isCancelled else { break }
                     cities = c
                     isLoading = false
+                    isOffline = false
                 }
-            } catch { isLoading = false }
+            } catch {
+                guard !Task.isCancelled else { return }
+                isLoading = false
+                isOffline = true
+            }
         })
 
         tasks.append(Task {
@@ -39,8 +63,13 @@ final class TripDetailViewModel {
                 for try await f in try client.flightsStream(tripID: tripID) {
                     guard !Task.isCancelled else { break }
                     flights = f
+                    isOffline = false
+                    cache?.upsertFlights(f, tripID: tripID)
                 }
-            } catch {}
+            } catch {
+                guard !Task.isCancelled else { return }
+                isOffline = true
+            }
         })
 
         tasks.append(Task {
@@ -48,8 +77,13 @@ final class TripDetailViewModel {
                 for try await h in try client.hotelsStream(tripID: tripID) {
                     guard !Task.isCancelled else { break }
                     hotels = h
+                    isOffline = false
+                    cache?.upsertHotels(h, tripID: tripID)
                 }
-            } catch {}
+            } catch {
+                guard !Task.isCancelled else { return }
+                isOffline = true
+            }
         })
 
         tasks.append(Task {
@@ -57,8 +91,13 @@ final class TripDetailViewModel {
                 for try await t in try client.transportsStream(tripID: tripID) {
                     guard !Task.isCancelled else { break }
                     transports = t
+                    isOffline = false
+                    cache?.upsertTransports(t, tripID: tripID)
                 }
-            } catch {}
+            } catch {
+                guard !Task.isCancelled else { return }
+                isOffline = true
+            }
         })
     }
 

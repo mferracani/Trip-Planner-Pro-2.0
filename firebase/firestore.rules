@@ -14,15 +14,38 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // User profile document
+    // Household pattern:
+    // A single document `households/main` holds { memberUids: ["uid1", "uid2"] }.
+    // This enables Mati and a second member (e.g., his wife) to share all trip data
+    // that lives under the owner's uid subtree, without duplicating documents.
+    // Reading the household doc is needed by the rules engine itself (via get()) so
+    // any authenticated user must be able to read it.
+    // Writes are restricted to existing members only, so only a current member can
+    // add the second UID after first login.
+    match /households/main {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.uid in resource.data.memberUids;
+    }
+
+    // Helper function: returns true if the requester belongs to the household that
+    // owns userId's data. The get() call is cached by Firestore per request.
+    function isHouseholdMember() {
+      return request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/households/main).data.memberUids;
+    }
+
+    // User profile document (top-level)
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null
+                         && (request.auth.uid == userId || isHouseholdMember());
     }
 
     // All subcollections under a user's document:
     // trips/{tripId}/cities, trip_days, flights, hotels, transports, parse_jobs
     match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null
+                         && (request.auth.uid == userId || isHouseholdMember());
     }
 
     // Deny everything else by default (made explicit for clarity)

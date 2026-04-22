@@ -118,7 +118,7 @@ struct AIParseModal: View {
                 if mode == .chat {
                     chatInput
                 } else {
-                    ManualItemsPlaceholder(trip: trip)
+                    ManualItemsView(trip: trip)
                 }
             }
             .padding(Tokens.Spacing.base)
@@ -477,15 +477,3 @@ struct ConfidenceBadge: View {
     }
 }
 
-// MARK: - Manual Placeholder
-
-private struct ManualItemsPlaceholder: View {
-    let trip: Trip
-
-    var body: some View {
-        Text("Formulario manual — próximamente")
-            .font(.system(size: 14))
-            .foregroundStyle(Tokens.Color.textTertiary)
-            .frame(maxWidth: .infinity, minHeight: 200, alignment: .center)
-    }
-}

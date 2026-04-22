@@ -58,6 +58,10 @@ struct DashboardView: View {
             LazyVStack(spacing: Tokens.Spacing.lg, pinnedViews: []) {
                 headerSection(vm)
 
+                if vm.isOffline {
+                    offlineBanner
+                }
+
                 if vm.isLoading {
                     ProgressView()
                         .tint(Tokens.Color.textSecondary)
@@ -70,6 +74,7 @@ struct DashboardView: View {
             }
             .padding(.horizontal, Tokens.Spacing.base)
             .padding(.bottom, Tokens.Spacing.xl)
+            .animation(.easeInOut(duration: 0.3), value: vm.isOffline)
         }
     }
 
@@ -112,6 +117,20 @@ struct DashboardView: View {
         if !vm.pastTrips.isEmpty {
             TripSection(title: "Pasados", trips: vm.pastTrips)
         }
+    }
+
+    private var offlineBanner: some View {
+        HStack(spacing: Tokens.Spacing.xs) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 12))
+            Text("Sin conexión — mostrando datos guardados")
+                .font(.system(size: 12))
+        }
+        .foregroundStyle(Tokens.Color.textTertiary)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(Tokens.Color.elevated)
+        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
     private var emptyState: some View {
