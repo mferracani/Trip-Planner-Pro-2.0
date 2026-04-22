@@ -21,6 +21,7 @@ struct TripDetailView: View {
     @Environment(FirestoreClient.self) private var client
     @State private var vm: TripDetailViewModel?
     @State private var selectedTab: TripTab = .calendar
+    @State private var showAIParse = false
 
     var body: some View {
         ZStack {
@@ -37,6 +38,24 @@ struct TripDetailView: View {
         }
         .navigationTitle(trip.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showAIParse = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                        Text("IA")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    .foregroundStyle(Tokens.Color.accentPurple)
+                }
+            }
+        }
+        .sheet(isPresented: $showAIParse) {
+            AIParseModal(trip: trip)
+                .environment(client)
+        }
         .onAppear {
             let viewModel = TripDetailViewModel(trip: trip, client: client)
             vm = viewModel
