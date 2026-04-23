@@ -110,6 +110,13 @@ final class TripDetailViewModel {
         return cities.first { $0.days.contains(key) }
     }
 
+    /// All cities whose `days` array includes this date — a single day can
+    /// belong to multiple cities (e.g. travel days or overlapping stays).
+    func cities(for date: Date) -> [TripCity] {
+        let key = Trip.isoDateFormatter.string(from: date)
+        return cities.filter { $0.days.contains(key) }
+    }
+
     func cityColor(for date: Date) -> Color? {
         city(for: date)?.swiftColor
     }

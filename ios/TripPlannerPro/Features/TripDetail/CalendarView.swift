@@ -43,6 +43,13 @@ struct CalendarView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                // Moved to the TOP so "X días en Alcúdia" is the first info
+                // a user sees — matches the user's mental model ("in the
+                // moment, I want to see which city").
+                cityLegend
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
+
                 LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(tripDays, id: \.self) { day in
                         DayCard(date: day, vm: vm, calendar: calendar) {
@@ -53,12 +60,8 @@ struct CalendarView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 18)
-
-                cityLegend
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                    .padding(.bottom, 100)
+                .padding(.top, 4)
+                .padding(.bottom, 100)
             }
         }
         .background(Tokens.Color.bgPrimary)
@@ -79,11 +82,18 @@ struct CalendarView: View {
     // MARK: - City legend
 
     private var cityLegend: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("CIUDADES DEL VIAJE")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .tracking(Tokens.Track.labelWider)
-                .foregroundStyle(Tokens.Color.textTertiary)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("CIUDADES")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .tracking(Tokens.Track.labelWider)
+                    .foregroundStyle(Tokens.Color.textTertiary)
+                Spacer()
+                Text("\(vm.cities.count) · \(totalCityDays) D")
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .tracking(Tokens.Track.labelWide)
+                    .foregroundStyle(Tokens.Color.textQuaternary)
+            }
 
             if vm.cities.isEmpty {
                 Text("Aún no agregaste ciudades a este viaje")
@@ -93,33 +103,61 @@ struct CalendarView: View {
             } else {
                 FlowLayout(spacing: 8) {
                     ForEach(vm.cities) { city in
-                        let color = city.swiftColor
                         Button { selectedCity = city } label: {
-                            HStack(spacing: 8) {
-                                Circle().fill(color).frame(width: 7, height: 7)
-                                Text(city.name)
-                                    .font(Tokens.Typo.strongS)
-                                    .foregroundStyle(Tokens.Color.textPrimary)
-                                Text("\(city.days.count)d")
-                                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                                    .foregroundStyle(Tokens.Color.textTertiary)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 9)
-                            .background(
-                                Capsule()
-                                    .fill(color.opacity(0.15))
-                                    .overlay(
-                                        Capsule()
-                                            .strokeBorder(color.opacity(0.35), lineWidth: 0.5)
-                                    )
-                            )
+                            CityLegendPill(city: city)
                         }
                         .buttonStyle(.plain)
                     }
                 }
             }
         }
+    }
+
+    private var totalCityDays: Int {
+        vm.cities.reduce(0) { $0 + $1.days.count }
+    }
+}
+
+// MARK: - CityLegendPill
+
+private struct CityLegendPill: View {
+    let city: TripCity
+
+    var body: some View {
+        let color = city.swiftColor
+        HStack(spacing: 10) {
+            // Strong color dot with outer ring
+            ZStack {
+                Circle().fill(color.opacity(0.25)).frame(width: 16, height: 16)
+                Circle().fill(color).frame(width: 9, height: 9)
+            }
+
+            Text(city.name)
+                .font(.system(size: 14, weight: .semibold))
+                .tracking(-0.2)
+                .foregroundStyle(Tokens.Color.textPrimary)
+
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text("\(city.days.count)")
+                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+                    .tracking(-0.3)
+                    .foregroundStyle(color)
+                Text("d")
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(color.opacity(0.75))
+            }
+        }
+        .padding(.leading, 6)
+        .padding(.trailing, 12)
+        .padding(.vertical, 7)
+        .background(
+            Capsule()
+                .fill(Tokens.Color.elevated)
+                .overlay(
+                    Capsule()
+                        .strokeBorder(color.opacity(0.3), lineWidth: 0.8)
+                )
+        )
     }
 }
 
@@ -137,14 +175,14 @@ private struct DayCard: View {
     private var hotels: [Hotel] { vm.hotels(on: date) }
     private var transports: [Transport] { vm.transports(on: date) }
     private var expenses: [Expense] { vm.expenses(on: date).filter { $0.linkedItemId == nil } }
-    private var city: TripCity? { vm.city(for: date) }
+    private var dayCities: [TripCity] { vm.cities(for: date) }
 
     private var hasAnyItem: Bool {
         !flights.isEmpty || !hotels.isEmpty || !transports.isEmpty || !expenses.isEmpty
     }
 
     private var isTravelDay: Bool {
-        !flights.isEmpty || !transports.isEmpty
+        !flights.isEmpty || !transports.isEmpty || dayCities.count >= 2
     }
 
     private var dateShort: String {
@@ -153,73 +191,87 @@ private struct DayCard: View {
         return f.string(from: date)
     }
 
-    private var flagEmoji: String? {
-        guard let cc = city?.countryCode?.uppercased(), cc.count == 2 else { return nil }
-        return cc.unicodeScalars.compactMap {
-            UnicodeScalar(127_397 + Int($0.value))
-        }.reduce("") { $0 + String($1) }
+    /// 3-letter uppercase weekday, localized. "lun" → "LUN" etc.
+    private var weekdayShort: String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es-AR")
+        f.dateFormat = "EEE"
+        return f.string(from: date)
+            .uppercased()
+            .replacingOccurrences(of: ".", with: "")
     }
 
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 8) {
-                // Top: date + flag
-                HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 7) {
+                // Top row: weekday + date. Weekday leads so a quick scan
+                // reads the day name first (more intuitive for travelers).
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(weekdayShort)
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .tracking(1.0)
+                        .foregroundStyle(
+                            isToday ? Tokens.Color.accentBlue : Tokens.Color.textTertiary
+                        )
                     Text(dateShort)
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .tracking(-0.2)
                         .foregroundStyle(
                             isToday ? Tokens.Color.accentBlue : Tokens.Color.textPrimary
                         )
-                    Spacer(minLength: 2)
-                    if let flag = flagEmoji {
-                        Text(flag)
-                            .font(.system(size: 14))
-                    }
+                    Spacer(minLength: 0)
                 }
 
-                // Chips
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(flights.prefix(1), id: \.id) { flight in
-                        DayItemChip(
-                            icon: "airplane",
-                            text: flightBadgeText(flight),
-                            color: Tokens.Color.Category.flight,
-                            isStrong: true
-                        )
-                    }
-                    ForEach(hotels.prefix(1), id: \.id) { hotel in
-                        DayItemChip(
-                            icon: "bed.double.fill",
-                            text: hotelBadgeText(hotel),
-                            color: Tokens.Color.Category.hotel,
-                            isStrong: true
-                        )
-                    }
-                    ForEach(transports.prefix(1), id: \.id) { transport in
-                        DayItemChip(
-                            icon: transportIconName(transport),
-                            text: transportBadgeText(transport),
-                            color: Tokens.Color.Category.transit,
-                            isStrong: true
-                        )
-                    }
-                    ForEach(expenses.prefix(2), id: \.id) { exp in
-                        DayItemChip(
-                            icon: exp.categoryKind.systemImage,
-                            text: shortName(exp.title),
-                            color: exp.categoryKind.tint,
-                            isStrong: false
-                        )
+                // City row — one name (colored) or two if split day.
+                if !dayCities.isEmpty {
+                    cityLine
+                }
+
+                // Item chips
+                if hasAnyItem {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(flights.prefix(1), id: \.id) { flight in
+                            DayItemChip(
+                                icon: "airplane",
+                                text: flightBadgeText(flight),
+                                color: Tokens.Color.Category.flight,
+                                isStrong: true
+                            )
+                        }
+                        ForEach(hotels.prefix(1), id: \.id) { hotel in
+                            DayItemChip(
+                                icon: "bed.double.fill",
+                                text: hotelBadgeText(hotel),
+                                color: Tokens.Color.Category.hotel,
+                                isStrong: true
+                            )
+                        }
+                        ForEach(transports.prefix(1), id: \.id) { transport in
+                            DayItemChip(
+                                icon: transportIconName(transport),
+                                text: transportBadgeText(transport),
+                                color: Tokens.Color.Category.transit,
+                                isStrong: true
+                            )
+                        }
+                        ForEach(expenses.prefix(2), id: \.id) { exp in
+                            DayItemChip(
+                                icon: exp.categoryKind.systemImage,
+                                text: shortName(exp.title),
+                                color: exp.categoryKind.tint,
+                                isStrong: false
+                            )
+                        }
                     }
                 }
 
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(minHeight: 110, alignment: .topLeading)
-            .padding(10)
+            .frame(minHeight: 120, alignment: .topLeading)
+            .padding(EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 10))
             .background(cardBackground)
+            .overlay(alignment: .top) { cityColorBar }
             .overlay(cardBorder)
             .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.md))
             .contentShape(RoundedRectangle(cornerRadius: Tokens.Radius.md))
@@ -227,9 +279,71 @@ private struct DayCard: View {
         .buttonStyle(DayCardButtonStyle())
     }
 
+    // MARK: - City row
+
+    /// One row (single city) or two short chips (split day).
+    @ViewBuilder
+    private var cityLine: some View {
+        if dayCities.count <= 1, let city = dayCities.first {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(city.swiftColor)
+                    .frame(width: 6, height: 6)
+                Text(cityName(city))
+                    .font(.system(size: 11, weight: .bold))
+                    .tracking(-0.1)
+                    .foregroundStyle(city.swiftColor)
+                    .lineLimit(1)
+            }
+        } else {
+            // Two or more cities on the same day — render each on its own
+            // row so the user can read the full name (not just a dot).
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(dayCities.prefix(2)) { city in
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(city.swiftColor)
+                            .frame(width: 6, height: 6)
+                        Text(cityName(city))
+                            .font(.system(size: 10, weight: .bold))
+                            .tracking(-0.1)
+                            .foregroundStyle(city.swiftColor)
+                            .lineLimit(1)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Top color bar(s) — solid for 1 city, split 50/50 for 2+ cities.
+    /// Makes the card's city identity readable at a glance even if the
+    /// name text is truncated.
+    @ViewBuilder
+    private var cityColorBar: some View {
+        if !dayCities.isEmpty {
+            HStack(spacing: 0) {
+                ForEach(dayCities.prefix(2)) { city in
+                    Rectangle()
+                        .fill(city.swiftColor)
+                        .frame(height: 3)
+                }
+            }
+        }
+    }
+
+    // MARK: - Card styling
+
     @ViewBuilder
     private var cardBackground: some View {
-        if hasAnyItem {
+        if dayCities.count >= 2 {
+            // Split tint — left half first city, right half second city
+            HStack(spacing: 0) {
+                dayCities[0].swiftColor.opacity(0.12)
+                dayCities[1].swiftColor.opacity(0.12)
+            }
+        } else if let city = dayCities.first {
+            city.swiftColor.opacity(0.10)
+        } else if hasAnyItem {
             Tokens.Color.accentBlue.opacity(0.08)
         } else {
             Tokens.Color.elevated.opacity(0.45)
@@ -245,6 +359,15 @@ private struct DayCard: View {
                     : (hasAnyItem ? Tokens.Color.accentBlue.opacity(0.3) : Tokens.Color.borderSoft),
                 lineWidth: isTravelDay ? 1 : 0.5
             )
+    }
+
+    // MARK: - Text helpers
+
+    /// Short version of the city name for the card — first word, max 10 chars.
+    private func cityName(_ city: TripCity) -> String {
+        let first = city.name.split(separator: " ").first.map(String.init) ?? city.name
+        if first.count <= 10 { return first }
+        return String(first.prefix(10))
     }
 
     // MARK: Helpers
