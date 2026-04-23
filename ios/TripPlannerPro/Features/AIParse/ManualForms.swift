@@ -337,7 +337,8 @@ struct ManualTransportForm: View {
         ("train", "Tren"),
         ("bus", "Bus"),
         ("ferry", "Ferry"),
-        ("car", "Auto / rental"),
+        ("car", "Auto (alquiler)"),
+        ("taxi", "Taxi / Uber"),
         ("other", "Otro"),
     ]
 
@@ -476,6 +477,216 @@ struct ManualTransportForm: View {
                 saveError = error.localizedDescription
             }
         }
+    }
+}
+
+// MARK: - ManualExpenseForm
+//
+// Freeform expense entry — for things that don't fit flight/hotel/transport:
+// meals, activities, shopping, misc. User picks a category, amount, date.
+
+struct ManualExpenseForm: View {
+    let trip: Trip
+
+    @Environment(FirestoreClient.self) private var client
+    @Environment(\.dismiss) private var dismiss
+
+    private struct CategoryOption {
+        let value: String
+        let label: String
+        let icon: String
+        let color: Color
+    }
+
+    private let categoryOptions: [CategoryOption] = [
+        CategoryOption(value: "food", label: "Comida", icon: "fork.knife", color: Tokens.Color.accentOrange),
+        CategoryOption(value: "activity", label: "Actividad", icon: "ticket.fill", color: Tokens.Color.accentGreen),
+        CategoryOption(value: "shopping", label: "Compras", icon: "bag.fill", color: Tokens.Color.accentRed),
+        CategoryOption(value: "transit", label: "Transporte", icon: "tram.fill", color: Tokens.Color.Category.transit),
+        CategoryOption(value: "lodging", label: "Alojamiento", icon: "bed.double.fill", color: Tokens.Color.Category.hotel),
+        CategoryOption(value: "other", label: "Otros", icon: "sparkles", color: Tokens.Color.textSecondary),
+    ]
+
+    @State private var title = ""
+    @State private var amount = ""
+    @State private var currency = "USD"
+    @State private var category: String = "food"
+    @State private var date = Date()
+    @State private var notes = ""
+
+    @State private var isSaving = false
+    @State private var saveError: String?
+    @State private var showSuccess = false
+
+    private var isValid: Bool {
+        !title.trimmingCharacters(in: .whitespaces).isEmpty
+            && Double(amount.replacingOccurrences(of: ",", with: ".")) != nil
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Tokens.Spacing.lg) {
+                if showSuccess { SavedBanner() }
+                if let error = saveError {
+                    ErrorBanner(message: error)
+                }
+
+                // Title
+                FormField(label: "Título", placeholder: "Cena en Can Manolo", text: $title)
+
+                // Category picker
+                FormSection(title: "Categoría") {
+                    VStack(spacing: 0) {
+                        ForEach(categoryOptions, id: \.value) { option in
+                            Button {
+                                withAnimation(.easeInOut(duration: Tokens.Motion.fast)) {
+                                    category = option.value
+                                }
+                            } label: {
+                                HStack(spacing: Tokens.Spacing.md) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 7)
+                                            .fill(option.color.opacity(0.18))
+                                        Image(systemName: option.icon)
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundStyle(option.color)
+                                    }
+                                    .frame(width: 26, height: 26)
+
+                                    Text(option.label)
+                                        .font(.system(size: 14))
+                                        .foregroundStyle(Tokens.Color.textPrimary)
+                                    Spacer()
+                                    if category == option.value {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundStyle(option.color)
+                                    }
+                                }
+                                .padding(.vertical, Tokens.Spacing.sm)
+                                .padding(.horizontal, Tokens.Spacing.md)
+                            }
+                            .buttonStyle(.plain)
+                            if option.value != categoryOptions.last?.value {
+                                Divider().background(Tokens.Color.border)
+                                    .padding(.leading, Tokens.Spacing.md)
+                            }
+                        }
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                            .fill(Tokens.Color.elevated)
+                    )
+                }
+
+                // Amount
+                VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
+                    Text("Monto")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Tokens.Color.textSecondary)
+
+                    HStack(spacing: Tokens.Spacing.sm) {
+                        Menu {
+                            ForEach(["USD", "EUR", "ARS", "GBP", "BRL", "CLP", "MXN", "COP"], id: \.self) { c in
+                                Button { currency = c } label: {
+                                    Label(c, systemImage: currency == c ? "checkmark" : "")
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(currency)
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundStyle(Tokens.Color.textPrimary)
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(Tokens.Color.textTertiary)
+                            }
+                            .padding(.horizontal, Tokens.Spacing.md)
+                            .padding(.vertical, Tokens.Spacing.sm)
+                            .background(
+                                RoundedRectangle(cornerRadius: Tokens.Radius.sm)
+                                    .fill(Tokens.Color.elevated)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: Tokens.Radius.sm)
+                                            .stroke(Tokens.Color.border, lineWidth: 1)
+                                    )
+                            )
+                        }
+
+                        TextField("0.00", text: $amount)
+                            .font(.system(size: 14))
+                            .foregroundStyle(Tokens.Color.textPrimary)
+                            .tint(Tokens.Color.accentBlue)
+                            .keyboardType(.decimalPad)
+                            .padding(.horizontal, Tokens.Spacing.md)
+                            .padding(.vertical, Tokens.Spacing.sm)
+                            .background(
+                                RoundedRectangle(cornerRadius: Tokens.Radius.sm)
+                                    .fill(Tokens.Color.elevated)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: Tokens.Radius.sm)
+                                            .stroke(Tokens.Color.border, lineWidth: 1)
+                                    )
+                            )
+                    }
+                }
+
+                // Date
+                FormSection(title: "Fecha") {
+                    DatePickerRow(label: "Fecha", selection: $date)
+                }
+
+                // Notes
+                FormField(label: "Notas (opcional)", placeholder: "Detalles", text: $notes)
+
+                SaveButton(isValid: isValid, isSaving: isSaving, action: save)
+            }
+            .padding(Tokens.Spacing.base)
+        }
+    }
+
+    private func save() {
+        guard let tripID = trip.id, isValid else { return }
+        isSaving = true
+        saveError = nil
+
+        let amountValue = Double(amount.replacingOccurrences(of: ",", with: ".")) ?? 0
+        let dateString = dateOnlyISO(date)
+        let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
+        let trimmedNotes = notes.trimmingCharacters(in: .whitespaces)
+
+        let expense = Expense(
+            tripId: tripID,
+            title: trimmedTitle,
+            amount: amountValue,
+            currency: currency,
+            amountUSD: nil,
+            paidAmount: nil,
+            date: dateString,
+            category: category,
+            notes: trimmedNotes.isEmpty ? nil : trimmedNotes,
+            linkedItemId: nil,
+            linkedItemType: nil
+        )
+
+        Task {
+            do {
+                try await client.createExpense(expense, tripID: tripID)
+                isSaving = false
+                withAnimation { showSuccess = true }
+                resetForm()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                    dismiss()
+                }
+            } catch {
+                isSaving = false
+                saveError = error.localizedDescription
+            }
+        }
+    }
+
+    private func resetForm() {
+        title = ""; amount = ""; notes = ""
     }
 }
 

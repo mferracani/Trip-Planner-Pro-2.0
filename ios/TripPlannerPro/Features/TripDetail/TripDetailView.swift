@@ -25,6 +25,8 @@ struct TripDetailView: View {
     @State private var selectedTab: TripTab = .calendar
     @State private var showAIParse = false
     @State private var showTripEdit = false
+    @State private var showAddChooser = false
+    @State private var activeManualForm: ManualFormType?
 
     private var cityColor: Color {
         Tokens.Color.cityPalette[abs(trip.name.hashValue) % Tokens.Color.cityPalette.count]
@@ -75,6 +77,38 @@ struct TripDetailView: View {
             TripEditSheet(trip: trip, onClose: { showTripEdit = false })
                 .environment(client)
                 .presentationBackground(Tokens.Color.bgPrimary)
+        }
+        .sheet(isPresented: $showAddChooser) {
+            AddItemChooser(
+                trip: trip,
+                highlight: highlightForCurrentTab,
+                onClose: { showAddChooser = false },
+                onSelect: { choice in
+                    showAddChooser = false
+                    // Defer: let the chooser sheet finish dismissing before
+                    // presenting the next sheet. iOS blocks back-to-back
+                    // sheet presentations otherwise.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        switch choice {
+                        case .aiParse:
+                            showAIParse = true
+                        case .manual(let type):
+                            activeManualForm = type
+                        }
+                    }
+                }
+            )
+            .environment(client)
+            .presentationBackground(Tokens.Color.bgPrimary)
+        }
+        .sheet(item: $activeManualForm) { type in
+            ManualFormSheet(
+                trip: trip,
+                type: type,
+                onClose: { activeManualForm = nil }
+            )
+            .environment(client)
+            .presentationBackground(Tokens.Color.bgPrimary)
         }
         .onAppear {
             withAnimation(Tokens.Motion.spring) {
@@ -250,13 +284,21 @@ struct TripDetailView: View {
         }
     }
 
-    // MARK: - AI sparkle FAB
+    // MARK: - Add FAB
+    //
+    // Contextual add button — opens the AddItemChooser. When the active tab
+    // is "Costos" the chooser highlights the Expense row so the primary
+    // action aligns with where the user is.
+
+    private var highlightForCurrentTab: ManualFormType? {
+        selectedTab == .costs ? .expense : nil
+    }
 
     private var aiSparkleButton: some View {
         Button {
             let h = UIImpactFeedbackGenerator(style: .medium)
             h.impactOccurred()
-            showAIParse = true
+            showAddChooser = true
         } label: {
             ZStack {
                 RoundedRectangle(cornerRadius: 18)
@@ -277,7 +319,7 @@ struct TripDetailView: View {
                     )
                     .shadow(color: Tokens.Color.accentBlue.opacity(0.55), radius: 18, x: 0, y: 8)
 
-                Image(systemName: "sparkles")
+                Image(systemName: "plus")
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(Tokens.Color.bgPrimary)
             }
