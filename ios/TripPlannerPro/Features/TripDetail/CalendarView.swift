@@ -58,7 +58,7 @@ struct CalendarView: View {
                 cityLegend
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
-                    .padding(.bottom, 160)
+                    .padding(.bottom, 100)
             }
         }
         .background(Tokens.Color.bgPrimary)

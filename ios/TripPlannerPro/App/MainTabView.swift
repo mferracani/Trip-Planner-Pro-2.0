@@ -17,37 +17,34 @@ struct MainTabView: View {
     private var cacheManager: CacheManager { CacheManager(modelContext: modelContext) }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Tokens.Color.bgPrimary.ignoresSafeArea()
-
-            // Active screen — crossfade between tabs for a smoother transition
-            // than a hard swap. Never a page-swipe: nav selection is discrete.
-            Group {
-                switch selection {
-                case 0, 1:
-                    DashboardView(cache: cacheManager, onTripsLoaded: { trips in
-                        availableTrips = trips
-                        let summaries = trips.compactMap { trip -> AppGroupBridge.TripSummary? in
-                            guard let id = trip.id else { return nil }
-                            return AppGroupBridge.TripSummary(
-                                id: id,
-                                name: trip.name,
-                                startDate: trip.startDate,
-                                endDate: trip.endDate
-                            )
-                        }
-                        AppGroupBridge.writeTripSummaries(summaries)
-                    })
-                case 2:
-                    CatalogView()
-                default:
-                    SettingsView()
-                }
+        // Using .safeAreaInset for the tab bar so the ScrollViews inside each
+        // tab know where their bottom edge is — avoids the ZStack-overlay
+        // issue where the tab bar eats scroll gestures in its hit area.
+        Group {
+            switch selection {
+            case 0, 1:
+                DashboardView(cache: cacheManager, onTripsLoaded: { trips in
+                    availableTrips = trips
+                    let summaries = trips.compactMap { trip -> AppGroupBridge.TripSummary? in
+                        guard let id = trip.id else { return nil }
+                        return AppGroupBridge.TripSummary(
+                            id: id,
+                            name: trip.name,
+                            startDate: trip.startDate,
+                            endDate: trip.endDate
+                        )
+                    }
+                    AppGroupBridge.writeTripSummaries(summaries)
+                })
+            case 2:
+                CatalogView()
+            default:
+                SettingsView()
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .transition(.opacity)
-            .id(selection)
-
+        }
+        .id(selection)
+        .background(Tokens.Color.bgPrimary.ignoresSafeArea())
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             if tabBarVisible {
                 AtlasTabBar(
                     selection: $selection,

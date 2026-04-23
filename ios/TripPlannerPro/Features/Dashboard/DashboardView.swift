@@ -89,7 +89,7 @@ struct DashboardView: View {
                         .padding(.horizontal, 20)
                 }
             }
-            .padding(.bottom, 120)
+            .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
     }

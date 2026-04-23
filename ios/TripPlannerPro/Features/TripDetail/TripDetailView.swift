@@ -34,7 +34,7 @@ struct TripDetailView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
+        ZStack {
             Tokens.Color.bgPrimary.ignoresSafeArea()
             backgroundGlow
 
@@ -43,20 +43,31 @@ struct TripDetailView: View {
                 tripSummary
                 tabPills
                     .padding(.top, 8)
+                    .padding(.bottom, 4)
 
                 if let vm {
                     tabContent(vm)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     Spacer()
                     ProgressView().tint(Tokens.Color.textSecondary)
                     Spacer()
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
-            // Floating AI parse button — restyled as amber rounded square
-            aiSparkleButton
-                .padding(.trailing, 20)
-                .padding(.bottom, 24)
+            // Floating AI parse button anchored bottom-right. The outer
+            // VStack+Spacer trick positions the button without affecting the
+            // content VStack's layout.
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    aiSparkleButton
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 24)
+                }
+            }
         }
         .toolbar(.hidden, for: .navigationBar)
         .hideTabBar()
