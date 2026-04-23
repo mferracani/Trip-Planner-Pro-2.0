@@ -123,6 +123,27 @@ private struct CompassNavButton: View {
     }
 }
 
+// MARK: - Visibility preference
+//
+// A deep screen (like TripDetailView) can call `.hideCompassNav()` to signal
+// MainTabView to slide the nav away. This is how iOS apps like Linear or
+// Revolut handle immersive detail screens without stacking bottom UI.
+
+struct CompassNavVisibilityKey: PreferenceKey {
+    static let defaultValue: Bool = true
+    static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = nextValue()
+    }
+}
+
+extension View {
+    /// Hide the global CompassNav while this view is on screen.
+    /// Call at the root of any detail view that owns its own bottom actions.
+    func hideCompassNav(_ hidden: Bool = true) -> some View {
+        preference(key: CompassNavVisibilityKey.self, value: !hidden)
+    }
+}
+
 // MARK: - Atlas icon set
 //
 // Consistent icon choices for the 3 app tabs. Kept as SF Symbols for now

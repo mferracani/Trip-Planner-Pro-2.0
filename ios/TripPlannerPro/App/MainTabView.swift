@@ -11,6 +11,7 @@ struct MainTabView: View {
     @State private var selection: Int = 0
     @State private var showTripPickerForParse = false
     @State private var availableTrips: [Trip] = []
+    @State private var compassVisible: Bool = true
 
     private var cacheManager: CacheManager { CacheManager(modelContext: modelContext) }
 
@@ -46,10 +47,18 @@ struct MainTabView: View {
             .transition(.opacity)
             .id(selection)
 
-            CompassNav(selection: $selection, tabs: CompassTab.mainTabs)
-                .padding(.bottom, 12)
+            if compassVisible {
+                CompassNav(selection: $selection, tabs: CompassTab.mainTabs)
+                    .padding(.bottom, 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
         .environment(firestoreClient)
+        .onPreferenceChange(CompassNavVisibilityKey.self) { visible in
+            withAnimation(Tokens.Motion.spring) {
+                compassVisible = visible
+            }
+        }
         .onAppear {
             HouseholdConfig.ownerUID = user.uid
         }

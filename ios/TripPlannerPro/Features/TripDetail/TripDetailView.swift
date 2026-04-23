@@ -62,6 +62,7 @@ struct TripDetailView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .hideCompassNav()
         .sheet(isPresented: $showAIParse) {
             AIParseModal(trip: trip)
                 .environment(client)
