@@ -25,20 +25,25 @@ struct TripDetailView: View {
     @State private var showAIParse = false
     @State private var showTripEdit = false
 
-    @Namespace private var tabNamespace
-
     private var cityColor: Color {
         Tokens.Color.cityPalette[abs(trip.name.hashValue) % Tokens.Color.cityPalette.count]
     }
 
+    private var tripDays: Int {
+        (Calendar.current.dateComponents([.day], from: trip.startDate, to: trip.endDate).day ?? 0) + 1
+    }
+
     var body: some View {
-        ZStack(alignment: .bottom) {
-            AtmosphericBackground(accent: cityColor, intensity: 0.06)
+        ZStack(alignment: .bottomTrailing) {
+            Tokens.Color.bgPrimary.ignoresSafeArea()
+            backgroundGlow
 
             VStack(spacing: 0) {
                 customNavBar
-                tabBar
-                Hairline()
+                tripSummary
+                tabPills
+                    .padding(.top, 8)
+
                 if let vm {
                     tabContent(vm)
                 } else {
@@ -48,21 +53,13 @@ struct TripDetailView: View {
                 }
             }
 
-            // Floating AI parse button
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    SparklesFAB {
-                        showAIParse = true
-                    }
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 24)
-                }
-            }
+            // Floating AI parse button — restyled as amber rounded square
+            aiSparkleButton
+                .padding(.trailing, 20)
+                .padding(.bottom, 24)
         }
         .toolbar(.hidden, for: .navigationBar)
-        .hideCompassNav()
+        .hideTabBar()
         .sheet(isPresented: $showAIParse) {
             AIParseModal(trip: trip)
                 .environment(client)
@@ -80,16 +77,28 @@ struct TripDetailView: View {
         .onDisappear { vm?.stop() }
     }
 
-    // MARK: - Custom nav bar
+    // MARK: - Background
+
+    private var backgroundGlow: some View {
+        RadialGradient(
+            colors: [cityColor.opacity(0.08), .clear],
+            center: UnitPoint(x: 0.5, y: 0.05),
+            startRadius: 10,
+            endRadius: 340
+        )
+        .ignoresSafeArea()
+    }
+
+    // MARK: - Nav bar
 
     private var customNavBar: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top) {
             Button {
                 dismiss()
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                     Text("Viajes")
                         .font(Tokens.Typo.strongS)
                 }
@@ -99,49 +108,117 @@ struct TripDetailView: View {
 
             Spacer()
 
-            CircleIconButton(systemImage: "pencil", size: 32, iconSize: 13) {
-                showTripEdit = true
+            VStack(spacing: 2) {
+                Text(trip.name)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Tokens.Color.textPrimary)
+                    .lineLimit(1)
+                Text(dateRangeText)
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundStyle(Tokens.Color.textTertiary)
+                    .lineLimit(1)
             }
+
+            Spacer()
+
+            Button {
+                showTripEdit = true
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(Tokens.Color.elevated)
+                        .overlay(
+                            Circle()
+                                .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
+                        )
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Tokens.Color.textSecondary)
+                }
+                .frame(width: 34, height: 34)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
         .padding(.top, 6)
         .padding(.bottom, 12)
     }
 
-    // MARK: - Tab bar
+    private var dateRangeText: String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es-AR")
+        f.dateFormat = "d MMM"
+        return "\(f.string(from: trip.startDate)) – \(f.string(from: trip.endDate))"
+    }
 
-    private var tabBar: some View {
-        HStack(spacing: 0) {
-            ForEach(TripTab.allCases, id: \.self) { tab in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.18)) {
-                        selectedTab = tab
-                    }
-                } label: {
-                    VStack(spacing: 6) {
-                        Text(tab.rawValue.uppercased())
-                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                            .tracking(Tokens.Track.labelWidest)
-                            .foregroundStyle(selectedTab == tab ? Tokens.Color.textPrimary : Tokens.Color.textTertiary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
+    // MARK: - Trip summary (two stat cards)
 
-                        ZStack {
-                            Rectangle()
-                                .fill(.clear)
-                                .frame(height: 1.5)
-                            if selectedTab == tab {
-                                Rectangle()
-                                    .fill(Tokens.Color.textPrimary)
-                                    .frame(height: 1.5)
-                                    .matchedGeometryEffect(id: "tab_indicator", in: tabNamespace)
-                            }
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-            }
+    private var tripSummary: some View {
+        HStack(spacing: 10) {
+            TripSummaryCard(
+                label: "PRESUPUESTO",
+                value: budgetText,
+                accent: Tokens.Color.accentBlue
+            )
+            TripSummaryCard(
+                label: "DURACIÓN",
+                value: "\(tripDays) d",
+                accent: Tokens.Color.textPrimary
+            )
         }
+        .padding(.horizontal, 16)
+    }
+
+    private var budgetText: String {
+        let total = Int(vm?.grandTotalUSD.rounded() ?? 0)
+        if total == 0 { return "—" }
+        return "USD \(total.formatted(.number.grouping(.automatic)))"
+    }
+
+    // MARK: - Tab pills
+
+    private var tabPills: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(TripTab.allCases, id: \.self) { tab in
+                    Button {
+                        withAnimation(Tokens.Motion.snap) {
+                            selectedTab = tab
+                        }
+                    } label: {
+                        Text(tab.rawValue)
+                            .font(Tokens.Typo.strongS)
+                            .foregroundStyle(
+                                selectedTab == tab
+                                    ? Tokens.Color.textPrimary
+                                    : Tokens.Color.textTertiary
+                            )
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 9)
+                            .background(
+                                Capsule()
+                                    .fill(
+                                        selectedTab == tab
+                                            ? Tokens.Color.elevated
+                                            : .clear
+                                    )
+                                    .overlay(
+                                        Capsule()
+                                            .strokeBorder(
+                                                selectedTab == tab
+                                                    ? Tokens.Color.borderSoft
+                                                    : .clear,
+                                                lineWidth: 0.5
+                                            )
+                                    )
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+        .scrollClipDisabled()
     }
 
     @ViewBuilder
@@ -156,5 +233,74 @@ struct TripDetailView: View {
         case .costs:
             CostsView(vm: vm)
         }
+    }
+
+    // MARK: - AI sparkle FAB
+
+    private var aiSparkleButton: some View {
+        Button {
+            let h = UIImpactFeedbackGenerator(style: .medium)
+            h.impactOccurred()
+            showAIParse = true
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Tokens.Color.accentBlue,
+                                Color(hex: 0xE8A94A)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 54, height: 54)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18)
+                            .strokeBorder(.white.opacity(0.25), lineWidth: 0.8)
+                    )
+                    .shadow(color: Tokens.Color.accentBlue.opacity(0.55), radius: 18, x: 0, y: 8)
+
+                Image(systemName: "sparkles")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(Tokens.Color.bgPrimary)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - TripSummaryCard
+
+private struct TripSummaryCard: View {
+    let label: String
+    let value: String
+    let accent: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .tracking(Tokens.Track.labelWider)
+                .foregroundStyle(Tokens.Color.textTertiary)
+            Text(value)
+                .font(.system(size: 20, weight: .bold, design: .monospaced))
+                .tracking(-0.4)
+                .foregroundStyle(accent)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                .fill(Tokens.Color.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                        .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
+                )
+        )
     }
 }

@@ -2,10 +2,9 @@ import SwiftUI
 
 // MARK: - CalendarView
 //
-// "Flight Plan Matrix" — a dense, editorial month calendar. Sticky month
-// header, monospaced day numbers with leading zeros, city color bands that
-// span the days a city is assigned, badges with mono times. The most
-// information-rich surface in the app.
+// 3-column grid of trip-days (not a month calendar). Each card shows the
+// date, an optional country flag for the day's city, and a compact stack of
+// item chips (flight / hotel / transport / expense). Tap → DayDetailSheet.
 
 private struct SelectedDate: Identifiable {
     let date: Date
@@ -18,7 +17,11 @@ struct CalendarView: View {
     @State private var selectedDate: SelectedDate?
     @State private var selectedCity: TripCity?
 
-    private let weekdayLabels = ["L", "M", "M", "J", "V", "S", "D"]
+    private let columns = [
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10),
+    ]
     private let calendar: Calendar = {
         var c = Calendar(identifier: .gregorian)
         c.firstWeekday = 2
@@ -26,33 +29,36 @@ struct CalendarView: View {
         return c
     }()
 
+    private var tripDays: [Date] {
+        var result: [Date] = []
+        var day = vm.trip.startDate
+        while day <= vm.trip.endDate {
+            result.append(day)
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+        return result
+    }
+
     var body: some View {
         ScrollView {
-            VStack(spacing: 0) {
-                tripMeta
-                Hairline()
-                weekdayRow
-                Hairline()
-
-                ForEach(Array(vm.weeks.enumerated()), id: \.offset) { weekIdx, week in
-                    WeekRow(
-                        week: week,
-                        weekIndex: weekIdx,
-                        vm: vm,
-                        calendar: calendar,
-                        onTap: { date in
-                            let generator = UIImpactFeedbackGenerator(style: .soft)
-                            generator.impactOccurred()
-                            selectedDate = SelectedDate(date: date)
+            VStack(alignment: .leading, spacing: 16) {
+                LazyVGrid(columns: columns, spacing: 10) {
+                    ForEach(tripDays, id: \.self) { day in
+                        DayCard(date: day, vm: vm, calendar: calendar) {
+                            let h = UIImpactFeedbackGenerator(style: .soft)
+                            h.impactOccurred()
+                            selectedDate = SelectedDate(date: day)
                         }
-                    )
-                    Hairline()
+                    }
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 18)
 
                 cityLegend
-                    .padding(.top, 18)
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 40)
+                    .padding(.top, 20)
+                    .padding(.bottom, 160)
             }
         }
         .background(Tokens.Color.bgPrimary)
@@ -70,117 +76,39 @@ struct CalendarView: View {
         }
     }
 
-    // MARK: - Trip meta header (inside scroll, before the grid)
-
-    private var tripMeta: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 6) {
-                MonoLabel(text: monthSpan, color: Tokens.Color.textTertiary, size: .xs)
-                Text(vm.trip.name)
-                    .font(.system(size: 22, weight: .bold))
-                    .tracking(Tokens.Track.headlineTight)
-                    .foregroundStyle(Tokens.Color.textPrimary)
-                    .lineLimit(1)
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text("\(totalDays)")
-                        .font(.system(size: 22, weight: .bold, design: .monospaced))
-                        .foregroundStyle(Tokens.Color.textPrimary)
-                    Text("d")
-                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(Tokens.Color.textTertiary)
-                }
-                MonoLabel(text: cityCount, color: Tokens.Color.textTertiary, size: .xs)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-    }
-
-    private var monthSpan: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es-AR")
-        let fromM = DateFormatter()
-        fromM.locale = Locale(identifier: "es-AR")
-        fromM.setLocalizedDateFormatFromTemplate("MMMMyyyy")
-        let s = fromM.string(from: vm.trip.startDate)
-        let e = fromM.string(from: vm.trip.endDate)
-        if s == e { return s }
-        return "\(s) → \(e)"
-    }
-
-    private var totalDays: Int {
-        (calendar.dateComponents([.day], from: vm.trip.startDate, to: vm.trip.endDate).day ?? 0) + 1
-    }
-
-    private var cityCount: String {
-        let n = vm.cities.count
-        if n == 0 { return "sin ciudades" }
-        if n == 1 { return "1 ciudad" }
-        return "\(n) ciudades"
-    }
-
-    // MARK: - Weekday row
-
-    private var weekdayRow: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(weekdayLabels.enumerated()), id: \.offset) { idx, letter in
-                let isWeekend = idx >= 5
-                VStack(spacing: 4) {
-                    Text(letter)
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .tracking(Tokens.Track.labelWidest)
-                        .foregroundStyle(isWeekend ? Tokens.Color.textSecondary : Tokens.Color.textTertiary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-
-                if idx < 6 {
-                    Hairline(vertical: true)
-                }
-            }
-        }
-        .background(Tokens.Color.bgPrimary)
-    }
-
     // MARK: - City legend
 
     private var cityLegend: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Ciudades del viaje")
+            Text("CIUDADES DEL VIAJE")
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .tracking(Tokens.Track.labelWider)
+                .foregroundStyle(Tokens.Color.textTertiary)
 
             if vm.cities.isEmpty {
-                HStack {
-                    Text("Aún no agregaste ciudades a este viaje")
-                        .font(Tokens.Typo.bodyS)
-                        .foregroundStyle(Tokens.Color.textTertiary)
-                    Spacer()
-                }
-                .padding(.vertical, 14)
+                Text("Aún no agregaste ciudades a este viaje")
+                    .font(Tokens.Typo.bodyS)
+                    .foregroundStyle(Tokens.Color.textTertiary)
+                    .padding(.vertical, 10)
             } else {
-                FlowLayout(spacing: 6) {
+                FlowLayout(spacing: 8) {
                     ForEach(vm.cities) { city in
                         let color = city.swiftColor
                         Button { selectedCity = city } label: {
-                            HStack(spacing: 7) {
-                                Circle().fill(color).frame(width: 6, height: 6)
+                            HStack(spacing: 8) {
+                                Circle().fill(color).frame(width: 7, height: 7)
                                 Text(city.name)
                                     .font(Tokens.Typo.strongS)
                                     .foregroundStyle(Tokens.Color.textPrimary)
-                                Text("\(cityDayCount(city))d")
+                                Text("\(city.days.count)d")
                                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
                                     .foregroundStyle(Tokens.Color.textTertiary)
-                                Image(systemName: "pencil")
-                                    .font(.system(size: 8, weight: .semibold))
-                                    .foregroundStyle(Tokens.Color.textTertiary.opacity(0.6))
                             }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 9)
                             .background(
                                 Capsule()
-                                    .fill(color.opacity(0.14))
+                                    .fill(color.opacity(0.15))
                                     .overlay(
                                         Capsule()
                                             .strokeBorder(color.opacity(0.35), lineWidth: 0.5)
@@ -193,205 +121,145 @@ struct CalendarView: View {
             }
         }
     }
-
-    private func cityDayCount(_ city: TripCity) -> Int {
-        city.days.count
-    }
 }
 
-// MARK: - WeekRow
+// MARK: - DayCard
 
-private struct WeekRow: View {
-    let week: [Date?]
-    let weekIndex: Int
+private struct DayCard: View {
+    let date: Date
     let vm: TripDetailViewModel
     let calendar: Calendar
-    let onTap: (Date) -> Void
+    let onTap: () -> Void
+
+    @State private var pressed = false
+
+    private var isToday: Bool { calendar.isDateInToday(date) }
+
+    private var flights: [Flight] { vm.flights(on: date) }
+    private var hotels: [Hotel] { vm.hotels(on: date) }
+    private var transports: [Transport] { vm.transports(on: date) }
+    private var expenses: [Expense] { vm.expenses(on: date).filter { $0.linkedItemId == nil } }
+    private var city: TripCity? { vm.city(for: date) }
+
+    private var hasAnyItem: Bool {
+        !flights.isEmpty || !hotels.isEmpty || !transports.isEmpty || !expenses.isEmpty
+    }
+
+    private var isTravelDay: Bool {
+        !flights.isEmpty || !transports.isEmpty
+    }
+
+    private var dateShort: String {
+        let f = DateFormatter()
+        f.dateFormat = "dd/MM"
+        return f.string(from: date)
+    }
+
+    private var flagEmoji: String? {
+        guard let cc = city?.countryCode?.uppercased(), cc.count == 2 else { return nil }
+        return cc.unicodeScalars.compactMap {
+            UnicodeScalar(127_397 + Int($0.value))
+        }.reduce("") { $0 + String($1) }
+    }
 
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(week.enumerated()), id: \.offset) { idx, date in
-                DayCell(
-                    date: date,
-                    isWeekend: idx >= 5,
-                    vm: vm,
-                    calendar: calendar,
-                    onTap: onTap
-                )
-                if idx < 6 {
-                    Hairline(vertical: true)
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 8) {
+                // Top: date + flag
+                HStack(alignment: .center) {
+                    Text(dateShort)
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .tracking(-0.2)
+                        .foregroundStyle(
+                            isToday ? Tokens.Color.accentBlue : Tokens.Color.textPrimary
+                        )
+                    Spacer(minLength: 2)
+                    if let flag = flagEmoji {
+                        Text(flag)
+                            .font(.system(size: 14))
+                    }
                 }
-            }
-        }
-        .frame(minHeight: 100)
-    }
-}
 
-// MARK: - DayCell
-
-private struct DayCell: View {
-    let date: Date?
-    let isWeekend: Bool
-    let vm: TripDetailViewModel
-    let calendar: Calendar
-    let onTap: (Date) -> Void
-
-    private var isToday: Bool {
-        guard let date else { return false }
-        return calendar.isDateInToday(date)
-    }
-
-    private var cityColor: Color? {
-        guard let date else { return nil }
-        return vm.cityColor(for: date)
-    }
-
-    private var flights: [Flight] {
-        guard let date else { return [] }
-        return vm.flights(on: date)
-    }
-
-    private var hotels: [Hotel] {
-        guard let date else { return [] }
-        return vm.hotels(on: date)
-    }
-
-    private var transports: [Transport] {
-        guard let date else { return [] }
-        return vm.transports(on: date)
-    }
-
-    private var expenses: [Expense] {
-        guard let date else { return [] }
-        // Skip expenses that are linked to flights/hotels/transports — those are
-        // already shown via the dedicated subcollections (avoid double badges).
-        return vm.expenses(on: date).filter { $0.linkedItemId == nil }
-    }
-
-    private var dayNumber: Int {
-        guard let date else { return 0 }
-        return calendar.component(.day, from: date)
-    }
-
-    var body: some View {
-        Button {
-            if let date { onTap(date) }
-        } label: {
-            ZStack {
-                // Background fill (city color or weekend tint)
-                backgroundFill
-
-                // Content
+                // Chips
                 VStack(alignment: .leading, spacing: 4) {
-                    // Top row: day number + today indicator
-                    HStack(alignment: .firstTextBaseline, spacing: 0) {
-                        if date != nil {
-                            MonoNumber(
-                                value: dayNumber,
-                                size: 13,
-                                color: isToday ? Tokens.Color.accentBlue : Tokens.Color.textPrimary,
-                                padded: true
-                            )
-                        } else {
-                            Color.clear.frame(width: 1, height: 13)
-                        }
-                        Spacer()
-                        if isToday {
-                            Circle()
-                                .fill(Tokens.Color.accentBlue)
-                                .frame(width: 5, height: 5)
-                        }
+                    ForEach(flights.prefix(1), id: \.id) { flight in
+                        DayItemChip(
+                            icon: "airplane",
+                            text: flightBadgeText(flight),
+                            color: Tokens.Color.Category.flight,
+                            isStrong: true
+                        )
                     }
-                    .padding(.horizontal, 6)
-                    .padding(.top, 6)
-
-                    // Badges — flights, hotels, transports, then unlinked expenses.
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(flights.prefix(2), id: \.id) { flight in
-                            ItemBadge(
-                                icon: "✈",
-                                text: flightBadgeText(flight),
-                                color: Tokens.Color.Category.flight
-                            )
-                        }
-                        ForEach(hotels.prefix(1), id: \.id) { hotel in
-                            ItemBadge(
-                                icon: "🏨",
-                                text: hotelBadgeText(hotel),
-                                color: Tokens.Color.Category.hotel
-                            )
-                        }
-                        ForEach(transports.prefix(1), id: \.id) { transport in
-                            ItemBadge(
-                                icon: transportIcon(transport),
-                                text: transportBadgeText(transport),
-                                color: Tokens.Color.Category.transit
-                            )
-                        }
-                        ForEach(prioritizedExpenses.prefix(2), id: \.id) { exp in
-                            ItemBadge(
-                                icon: exp.categoryKind.emoji,
-                                text: shortName(exp.title),
-                                color: exp.categoryKind.tint
-                            )
-                        }
+                    ForEach(hotels.prefix(1), id: \.id) { hotel in
+                        DayItemChip(
+                            icon: "bed.double.fill",
+                            text: hotelBadgeText(hotel),
+                            color: Tokens.Color.Category.hotel,
+                            isStrong: true
+                        )
                     }
-                    .padding(.horizontal, 5)
-
-                    Spacer(minLength: 0)
-
-                    // Bottom: city tag
-                    if let date, let city = vm.city(for: date), let color = cityColor {
-                        Text(cityShort(city.name))
-                            .font(.system(size: 8, weight: .bold, design: .monospaced))
-                            .tracking(1.0)
-                            .foregroundStyle(color)
-                            .padding(.horizontal, 6)
-                            .padding(.bottom, 5)
+                    ForEach(transports.prefix(1), id: \.id) { transport in
+                        DayItemChip(
+                            icon: transportIconName(transport),
+                            text: transportBadgeText(transport),
+                            color: Tokens.Color.Category.transit,
+                            isStrong: true
+                        )
+                    }
+                    ForEach(expenses.prefix(2), id: \.id) { exp in
+                        DayItemChip(
+                            icon: exp.categoryKind.systemImage,
+                            text: shortName(exp.title),
+                            color: exp.categoryKind.tint,
+                            isStrong: false
+                        )
                     }
                 }
+
+                Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: 110, alignment: .topLeading)
+            .padding(10)
+            .background(cardBackground)
+            .overlay(cardBorder)
+            .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.md))
+            .scaleEffect(pressed ? 0.96 : 1.0)
+            .animation(Tokens.Motion.snap, value: pressed)
         }
-        .buttonStyle(DayCellButtonStyle())
-        .frame(maxWidth: .infinity)
-        .frame(minHeight: 100)
-        .opacity(date == nil ? 0.25 : 1)
-        .disabled(date == nil)
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in pressed = true }
+                .onEnded { _ in pressed = false }
+        )
     }
 
     @ViewBuilder
-    private var backgroundFill: some View {
-        if let color = cityColor {
-            color.opacity(0.13)
-        } else if isWeekend, date != nil {
-            Tokens.Color.surface.opacity(0.4)
+    private var cardBackground: some View {
+        if hasAnyItem {
+            Tokens.Color.accentBlue.opacity(0.08)
         } else {
-            Tokens.Color.bgPrimary
+            Tokens.Color.elevated.opacity(0.45)
         }
     }
 
-    private var prioritizedExpenses: [Expense] {
-        // Food/activity/shopping — items that aren't already shown as
-        // flight/hotel/transport badges.
-        let priority: [ExpenseCategory] = [
-            .food, .meal, .restaurant,
-            .activity, .tour, .ticket,
-            .shopping, .other
-        ]
-        return expenses.sorted { a, b in
-            let ia = priority.firstIndex(of: a.categoryKind) ?? Int.max
-            let ib = priority.firstIndex(of: b.categoryKind) ?? Int.max
-            return ia < ib
-        }
+    @ViewBuilder
+    private var cardBorder: some View {
+        RoundedRectangle(cornerRadius: Tokens.Radius.md)
+            .strokeBorder(
+                isTravelDay
+                    ? Tokens.Color.signalSky.opacity(0.55)
+                    : (hasAnyItem ? Tokens.Color.accentBlue.opacity(0.3) : Tokens.Color.borderSoft),
+                lineWidth: isTravelDay ? 1 : 0.5
+            )
     }
+
+    // MARK: Helpers
 
     private func flightBadgeText(_ flight: Flight) -> String {
-        // Show destination IATA + departure time ("21:35 MAD").
-        // On the arrival date we show the arrival time instead.
-        guard let date else { return flight.destinationIATA }
-        let key = Trip.isoDateFormatter.string(from: date)
-        let time = key == flight.arrivalDate ? flight.arrivalTime : flight.departureTime
-        return time.isEmpty ? flight.destinationIATA : "\(time) \(flight.destinationIATA)"
+        let time = flight.departureTime
+        return time.isEmpty ? flight.destinationIATA : time
     }
 
     private func hotelBadgeText(_ hotel: Hotel) -> String {
@@ -403,65 +271,57 @@ private struct DayCell: View {
         return time.isEmpty ? shortName(transport.destination) : time
     }
 
-    private func transportIcon(_ transport: Transport) -> String {
+    private func transportIconName(_ transport: Transport) -> String {
         switch transport.type.lowercased() {
-        case "train":  return "🚆"
-        case "bus":    return "🚌"
-        case "ferry":  return "⛴"
-        case "car":    return "🚗"
-        case "taxi":   return "🚕"
-        case "subway": return "🚇"
-        default:       return "🚆"
+        case "train", "subway": return "tram.fill"
+        case "bus":             return "bus.fill"
+        case "ferry":           return "ferry.fill"
+        case "car", "taxi":     return "car.fill"
+        default:                return "tram.fill"
         }
     }
 
     private func shortName(_ name: String) -> String {
-        String(name.split(separator: " ").first ?? "").prefix(8).description
-    }
-
-    private func cityShort(_ name: String) -> String {
-        name.prefix(3).description
+        if name.count <= 9 { return name }
+        return String(name.prefix(9))
     }
 }
 
-// MARK: - ItemBadge (calendar)
+// MARK: - DayItemChip
 
-private struct ItemBadge: View {
+private struct DayItemChip: View {
     let icon: String
     let text: String
     let color: Color
+    let isStrong: Bool
 
     var body: some View {
-        HStack(spacing: 2) {
-            Text(icon).font(.system(size: 8))
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(color)
             Text(text)
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .font(.system(size: 10, weight: .semibold, design: .monospaced))
                 .tracking(-0.2)
                 .lineLimit(1)
+                .foregroundStyle(
+                    isStrong ? Tokens.Color.textPrimary : Tokens.Color.textSecondary
+                )
+            Spacer(minLength: 0)
         }
-        .foregroundStyle(color)
-        .padding(.horizontal, 4)
-        .padding(.vertical, 2)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 3)
-                .fill(color.opacity(0.18))
+            RoundedRectangle(cornerRadius: 5)
+                .fill(isStrong ? color.opacity(0.22) : Tokens.Color.elevated.opacity(0.55))
         )
-    }
-}
-
-// MARK: - DayCellButtonStyle
-
-private struct DayCellButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.96 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
 // MARK: - FlowLayout
 //
-// Simple wrap layout for the city legend chips.
+// Wrap layout for the city legend pills.
 private struct FlowLayout: Layout {
     var spacing: CGFloat = 8
 
@@ -539,7 +399,6 @@ struct DayDetailSheet: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        // Day number + weekday
                         HStack(alignment: .firstTextBaseline, spacing: 14) {
                             Text("\(Calendar.current.component(.day, from: date))")
                                 .font(.system(size: 72, weight: .bold))
