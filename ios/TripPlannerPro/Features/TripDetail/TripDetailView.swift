@@ -19,39 +19,48 @@ enum TripTab: String, CaseIterable {
 struct TripDetailView: View {
     let trip: Trip
     @Environment(FirestoreClient.self) private var client
+    @Environment(\.dismiss) private var dismiss
     @State private var vm: TripDetailViewModel?
     @State private var selectedTab: TripTab = .calendar
     @State private var showAIParse = false
 
-    var body: some View {
-        ZStack {
-            Tokens.Color.bgPrimary.ignoresSafeArea()
+    @Namespace private var tabNamespace
 
-            if let vm {
-                VStack(spacing: 0) {
-                    tabBar
+    private var cityColor: Color {
+        Tokens.Color.cityPalette[abs(trip.name.hashValue) % Tokens.Color.cityPalette.count]
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            AtmosphericBackground(accent: cityColor, intensity: 0.06)
+
+            VStack(spacing: 0) {
+                customNavBar
+                tabBar
+                Hairline()
+                if let vm {
                     tabContent(vm)
+                } else {
+                    Spacer()
+                    ProgressView().tint(Tokens.Color.textSecondary)
+                    Spacer()
                 }
-            } else {
-                ProgressView().tint(Tokens.Color.textSecondary)
             }
-        }
-        .navigationTitle(trip.name)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showAIParse = true
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "sparkles")
-                        Text("IA")
-                            .font(.system(size: 13, weight: .semibold))
+
+            // Floating AI parse button
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    SparklesFAB {
+                        showAIParse = true
                     }
-                    .foregroundStyle(Tokens.Color.accentPurple)
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 24)
                 }
             }
         }
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showAIParse) {
             AIParseModal(trip: trip)
                 .environment(client)
@@ -64,41 +73,67 @@ struct TripDetailView: View {
         .onDisappear { vm?.stop() }
     }
 
+    // MARK: - Custom nav bar
+
+    private var customNavBar: some View {
+        HStack(spacing: 12) {
+            Button {
+                dismiss()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Viajes")
+                        .font(Tokens.Typo.strongS)
+                }
+                .foregroundStyle(Tokens.Color.accentBlue)
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            CircleIconButton(systemImage: "ellipsis", size: 32, iconSize: 13) { }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 6)
+        .padding(.bottom, 12)
+    }
+
+    // MARK: - Tab bar
+
     private var tabBar: some View {
         HStack(spacing: 0) {
             ForEach(TripTab.allCases, id: \.self) { tab in
                 Button {
-                    withAnimation(.easeInOut(duration: Tokens.Motion.fast)) {
+                    withAnimation(.easeInOut(duration: 0.18)) {
                         selectedTab = tab
                     }
                 } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: tab.icon)
-                            .font(.system(size: 14, weight: .medium))
-                        Text(tab.rawValue)
-                            .font(.system(size: 10, weight: .medium))
-                    }
-                    .foregroundStyle(selectedTab == tab ? Tokens.Color.accentBlue : Tokens.Color.textTertiary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Tokens.Spacing.sm)
-                    .overlay(alignment: .bottom) {
-                        if selectedTab == tab {
+                    VStack(spacing: 6) {
+                        Text(tab.rawValue.uppercased())
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                            .tracking(Tokens.Track.labelWidest)
+                            .foregroundStyle(selectedTab == tab ? Tokens.Color.textPrimary : Tokens.Color.textTertiary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+
+                        ZStack {
                             Rectangle()
-                                .fill(Tokens.Color.accentBlue)
-                                .frame(height: 2)
-                                .matchedGeometryEffect(id: "tab_indicator", in: tabNamespace)
+                                .fill(.clear)
+                                .frame(height: 1.5)
+                            if selectedTab == tab {
+                                Rectangle()
+                                    .fill(Tokens.Color.textPrimary)
+                                    .frame(height: 1.5)
+                                    .matchedGeometryEffect(id: "tab_indicator", in: tabNamespace)
+                            }
                         }
                     }
                 }
+                .buttonStyle(.plain)
             }
         }
-        .background(Tokens.Color.surface)
-        .overlay(alignment: .bottom) {
-            Divider().background(Tokens.Color.border)
-        }
     }
-
-    @Namespace private var tabNamespace
 
     @ViewBuilder
     private func tabContent(_ vm: TripDetailViewModel) -> some View {

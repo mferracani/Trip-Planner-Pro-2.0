@@ -19,7 +19,7 @@ enum AuthState: Equatable {
 @Observable
 final class AuthManager {
     private(set) var state: AuthState = .loading
-    private var handle: AuthStateDidChangeListenerHandle?
+    private nonisolated(unsafe) var handle: AuthStateDidChangeListenerHandle?
 
     init() {
         handle = Auth.auth().addStateDidChangeListener { [weak self] _, user in

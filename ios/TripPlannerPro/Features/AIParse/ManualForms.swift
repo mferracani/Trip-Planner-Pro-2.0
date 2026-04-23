@@ -197,13 +197,14 @@ struct ManualFlightForm: View {
                 let durationMin = max(0, Int(arrUTC.timeIntervalSince(depUTC) / 60))
 
                 let flight = Flight(
+                    tripId: tripID,
                     airline: airline.trimmingCharacters(in: .whitespaces),
                     flightNumber: flightNumber.trimmingCharacters(in: .whitespaces).uppercased(),
                     originIATA: originIATA.trimmingCharacters(in: .whitespaces).uppercased(),
-                    destIATA: destIATA.trimmingCharacters(in: .whitespaces).uppercased(),
-                    departureLocal: depISO,
-                    arrivalLocal: arrISO,
+                    destinationIATA: destIATA.trimmingCharacters(in: .whitespaces).uppercased(),
+                    departureLocalTime: depISO,
                     departureUTC: depUTC,
+                    arrivalLocalTime: arrISO,
                     arrivalUTC: arrUTC,
                     durationMinutes: durationMin,
                     bookingRef: bookingRef.isEmpty ? nil : bookingRef.uppercased(),
@@ -300,13 +301,12 @@ struct ManualHotelForm: View {
                 let checkOutISO = dateOnlyISO(checkOut)
 
                 let hotel = Hotel(
+                    tripId: tripID,
                     name: name.trimmingCharacters(in: .whitespaces),
-                    checkInLocal: checkInISO,
-                    checkOutLocal: checkOutISO,
-                    checkInUTC: startOfDay(checkIn),
-                    checkOutUTC: startOfDay(checkOut),
+                    checkIn: checkInISO,
+                    checkOut: checkOutISO,
                     bookingRef: bookingRef.isEmpty ? nil : bookingRef.uppercased(),
-                    price: Double(price.replacingOccurrences(of: ",", with: ".")),
+                    totalPrice: Double(price.replacingOccurrences(of: ",", with: ".")),
                     currency: price.isEmpty ? nil : currency
                 )
 
@@ -452,9 +452,11 @@ struct ManualTransportForm: View {
                 let desc = "\(origin.trimmingCharacters(in: .whitespaces)) → \(destination.trimmingCharacters(in: .whitespaces))"
 
                 let transport = Transport(
+                    tripId: tripID,
                     type: type,
-                    description: desc,
-                    departureLocal: depISO,
+                    origin: origin.trimmingCharacters(in: .whitespaces),
+                    destination: destination.trimmingCharacters(in: .whitespaces),
+                    departureLocalTime: depISO,
                     departureUTC: depUTC,
                     bookingRef: bookingRef.isEmpty ? nil : bookingRef.uppercased(),
                     price: Double(price.replacingOccurrences(of: ",", with: ".")),

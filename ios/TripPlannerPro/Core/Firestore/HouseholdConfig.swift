@@ -5,5 +5,5 @@ import Foundation
 /// Wife's UID gets added to Security Rules allowlist separately — she reads from this same path.
 /// Replace the placeholder before first TestFlight build.
 enum HouseholdConfig {
-    static var ownerUID: String? = nil  // Set at runtime after first auth
+    nonisolated(unsafe) static var ownerUID: String? = nil  // Set at runtime after first auth
 }

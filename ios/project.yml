@@ -36,9 +36,8 @@ targets:
       - path: TripPlannerPro
         excludes:
           - "**/*.md"
-    resources:
-      - path: TripPlannerPro/Resources
-        optional: true
+          - "Resources/Info.plist"
+          - "Resources/TripPlannerPro.entitlements"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.mferracani.tripplannerpro

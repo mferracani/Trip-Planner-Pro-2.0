@@ -136,7 +136,7 @@ private struct FlightsTab: View {
         let q = search.lowercased()
         return entries.filter { entry in
             let f = entry.flight
-            return [f.airline, f.flightNumber, f.originIATA, f.destIATA, f.bookingRef, entry.trip.name]
+            return [f.airline, f.flightNumber, f.originIATA, f.destinationIATA, f.bookingRef, entry.trip.name]
                 .compactMap { $0 }
                 .contains { $0.lowercased().contains(q) }
         }
@@ -176,7 +176,7 @@ private struct HotelsTab: View {
         let q = search.lowercased()
         return entries.filter { entry in
             let h = entry.hotel
-            return [h.name, h.address, h.bookingRef, entry.trip.name]
+            return [h.name, h.brand, h.roomType, h.bookingRef, entry.trip.name]
                 .compactMap { $0 }
                 .contains { $0.lowercased().contains(q) }
         }
@@ -231,7 +231,7 @@ private struct TransportsTab: View {
         let q = search.lowercased()
         return afterTypeFilter.filter { entry in
             let t = entry.transport
-            return [t.type, t.description, t.bookingRef, entry.trip.name]
+            return [t.type, t.origin, t.destination, t.operator, t.bookingRef, entry.trip.name]
                 .compactMap { $0 }
                 .contains { $0.lowercased().contains(q) }
         }
@@ -312,7 +312,7 @@ private struct FlightCatalogCard: View {
                     .tracking(0.5)
 
                 HStack(spacing: Tokens.Spacing.xs) {
-                    Text("\(flight.originIATA) → \(flight.destIATA)")
+                    Text("\(flight.originIATA) → \(flight.destinationIATA)")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(Tokens.Color.textPrimary)
                     if !flight.airline.isEmpty || !flight.flightNumber.isEmpty {
@@ -325,9 +325,9 @@ private struct FlightCatalogCard: View {
                 }
 
                 HStack(spacing: Tokens.Spacing.xs) {
-                    let depDate = formatLocalDate(flight.departureLocal)
-                    let depTime = formatLocalTime(flight.departureLocal)
-                    let arrTime = formatLocalTime(flight.arrivalLocal)
+                    let depDate = formatLocalDate(flight.departureLocalTime)
+                    let depTime = formatLocalTime(flight.departureLocalTime)
+                    let arrTime = formatLocalTime(flight.arrivalLocalTime)
 
                     if !depDate.isEmpty {
                         Text(depDate)
@@ -402,9 +402,9 @@ private struct HotelCatalogCard: View {
                     .foregroundStyle(Tokens.Color.textPrimary)
 
                 HStack(spacing: Tokens.Spacing.xs) {
-                    let checkIn = formatISODate(hotel.checkInLocal)
-                    let checkOut = formatISODate(hotel.checkOutLocal)
-                    let nights = nightsBetween(hotel.checkInUTC, hotel.checkOutUTC)
+                    let checkIn = formatISODate(hotel.checkIn)
+                    let checkOut = formatISODate(hotel.checkOut)
+                    let nights = nightsBetween(hotel.checkIn, hotel.checkOut)
 
                     Text("\(checkIn) → \(checkOut)")
                         .font(.system(size: 12))
@@ -429,7 +429,7 @@ private struct HotelCatalogCard: View {
 
             Spacer(minLength: 0)
 
-            if let price = hotel.price, let currency = hotel.currency {
+            if let price = hotel.totalPrice, let currency = hotel.currency {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(currency)
                         .font(.system(size: 11, weight: .semibold))
@@ -493,7 +493,7 @@ private struct TransportCatalogCard: View {
                     .tracking(0.5)
 
                 HStack(spacing: Tokens.Spacing.xs) {
-                    Text(transport.description)
+                    Text(transport.destination)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(Tokens.Color.textPrimary)
                     Text("·")
@@ -504,8 +504,8 @@ private struct TransportCatalogCard: View {
                 }
 
                 HStack(spacing: Tokens.Spacing.xs) {
-                    let depDate = formatLocalDate(transport.departureLocal)
-                    let depTime = formatLocalTime(transport.departureLocal)
+                    let depDate = formatLocalDate(transport.departureLocalTime)
+                    let depTime = formatLocalTime(transport.departureLocalTime)
 
                     if !depDate.isEmpty {
                         Text(depDate)
@@ -779,8 +779,10 @@ private func formatISODate(_ iso: String) -> String {
     formatLocalDate(iso)
 }
 
-private func nightsBetween(_ a: Date, _ b: Date) -> Int {
-    max(0, Int(b.timeIntervalSince(a) / 86400))
+private func nightsBetween(_ checkIn: String, _ checkOut: String) -> Int {
+    guard let a = Trip.isoDateFormatter.date(from: checkIn),
+          let b = Trip.isoDateFormatter.date(from: checkOut) else { return 0 }
+    return max(0, Calendar.current.dateComponents([.day], from: a, to: b).day ?? 0)
 }
 
 private func formatPrice(_ price: Double) -> String {

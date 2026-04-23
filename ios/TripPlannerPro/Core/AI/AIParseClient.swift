@@ -4,16 +4,25 @@ import Foundation
 // TODO: Después del primer deploy, reemplazá esto con la URL real de la Cloud Function.
 // La encontrás en: Firebase Console → Functions → parseWithAI → "Trigger URL"
 // Ejemplo: https://us-east1-trip-planner-pro-2.cloudfunctions.net/parseWithAI
-private let PARSE_FUNCTION_URL = "https://us-east1-REPLACE_WITH_PROJECT_ID.cloudfunctions.net/parseWithAI"
+private let PARSE_FUNCTION_URL = "https://parsewithai-onxomw4ntq-ue.a.run.app"
 
-enum AIProvider: String, CaseIterable {
+enum AIProvider: String, CaseIterable, Identifiable {
     case claude = "claude"
     case gemini = "gemini"
+
+    var id: String { rawValue }
 
     var label: String {
         switch self {
         case .claude: return "Claude"
         case .gemini: return "Gemini"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .claude: return "brain"
+        case .gemini: return "sparkles"
         }
     }
 }

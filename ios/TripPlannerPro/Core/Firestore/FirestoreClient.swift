@@ -1,5 +1,5 @@
 import FirebaseAuth
-import FirebaseFirestore
+@preconcurrency import FirebaseFirestore
 import Foundation
 
 @MainActor
@@ -13,7 +13,7 @@ final class FirestoreClient {
         HouseholdConfig.ownerUID ?? Auth.auth().currentUser?.uid
     }
 
-    private func userCollection(_ name: String) throws -> CollectionReference {
+    func userCollection(_ name: String) throws -> CollectionReference {
         guard let uid = userUID else { throw FirestoreError.notAuthenticated }
         return db.collection("users").document(uid).collection(name)
     }
@@ -24,7 +24,7 @@ final class FirestoreClient {
         let ref = try userCollection("trips")
         return AsyncThrowingStream { continuation in
             let listener = ref
-                .order(by: "startDate")
+                .order(by: "start_date")
                 .addSnapshotListener { snapshot, error in
                     if let error {
                         continuation.finish(throwing: error)
@@ -69,6 +69,11 @@ final class FirestoreClient {
 
     func citiesStream(tripID: String) throws -> AsyncThrowingStream<[TripCity], Error> {
         let ref = try userCollection("trips").document(tripID).collection("cities")
+        return streamCollection(ref)
+    }
+
+    func expensesStream(tripID: String) throws -> AsyncThrowingStream<[Expense], Error> {
+        let ref = try userCollection("trips").document(tripID).collection("expenses")
         return streamCollection(ref)
     }
 
@@ -131,11 +136,11 @@ final class FirestoreClient {
                         }
 
                         let allFlights = batches.flatMap(\.flights)
-                            .sorted { $0.flight.departureUTC < $1.flight.departureUTC }
+                            .sorted { $0.flight.departureLocalTime < $1.flight.departureLocalTime }
                         let allHotels = batches.flatMap(\.hotels)
-                            .sorted { $0.hotel.checkInUTC < $1.hotel.checkInUTC }
+                            .sorted { $0.hotel.checkIn < $1.hotel.checkIn }
                         let allTransports = batches.flatMap(\.transports)
-                            .sorted { $0.transport.departureUTC < $1.transport.departureUTC }
+                            .sorted { $0.transport.departureLocalTime < $1.transport.departureLocalTime }
 
                         continuation.yield(CatalogItems(
                             flights: allFlights,
