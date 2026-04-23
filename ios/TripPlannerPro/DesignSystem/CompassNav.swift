@@ -3,33 +3,36 @@ import SwiftUI
 // MARK: - AtlasTabBar
 //
 // Solid bottom bar inspired by Revolut/Nubank: 4 tabs flanking a centered
-// elevated FAB. The FAB is the primary "create" action; it overlaps the bar
-// by 18pt with a violet glow. Tabs use icon (outlined→filled) + lowercase
-// sans label. No uppercase mono here — that tone is reserved for metadata.
+// elevated FAB. The FAB is the primary "create" action; its hit area is
+// fully within the bar's layout height (no .offset — that breaks hits).
+// Uses ButtonStyle for press feedback rather than simultaneousGesture,
+// which can steal taps in iOS when combined with Button actions.
 
 struct AtlasTab: Identifiable, Hashable {
     let id: String
     let title: String
-    /// SF Symbol shown when inactive.
     let icon: String
-    /// SF Symbol shown when active. Usually the `.fill` variant.
     let iconActive: String
 }
 
 struct AtlasTabBar: View {
     @Binding var selection: Int
-    /// Exactly 4 tabs expected (2 before FAB, 2 after).
     let tabs: [AtlasTab]
     let onFABTap: () -> Void
 
-    @State private var fabPressed = false
-
     var body: some View {
         ZStack(alignment: .top) {
+            // Bar sits 28pt below top — leaves room for the FAB half that
+            // extends upward. Entire AtlasTabBar layout height is ~106pt,
+            // all fully interactive.
             barBody
+                .padding(.top, 28)
+
+            // FAB at the top, centered — its vertical center aligns with
+            // the bar's top edge (which is at y = 28).
             fabButton
-                .offset(y: -22)
         }
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: Tabs bar
@@ -46,12 +49,11 @@ struct AtlasTabBar: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: 58)
-        .padding(.bottom, 20)
+        .padding(.bottom, 18)
         .background(
             Rectangle()
                 .fill(Tokens.Color.surface)
                 .overlay(
-                    // Top hairline for a clean separation from content
                     VStack(spacing: 0) {
                         Rectangle()
                             .fill(Tokens.Color.borderSoft)
@@ -60,20 +62,23 @@ struct AtlasTabBar: View {
                     }
                 )
                 .ignoresSafeArea(edges: .bottom)
-                .shadow(color: .black.opacity(0.35), radius: 14, x: 0, y: -2)
+                .shadow(color: .black.opacity(0.3), radius: 14, x: 0, y: -2)
         )
     }
 
     @ViewBuilder
     private func tabButton(at idx: Int) -> some View {
         let tab = tabs[idx]
-        AtlasTabButton(tab: tab, isActive: selection == idx) {
+        Button {
             let h = UIImpactFeedbackGenerator(style: .soft)
             h.impactOccurred()
             withAnimation(Tokens.Motion.snap) {
                 selection = idx
             }
+        } label: {
+            AtlasTabLabel(tab: tab, isActive: selection == idx)
         }
+        .buttonStyle(AtlasTabButtonStyle())
         .frame(maxWidth: .infinity)
     }
 
@@ -86,14 +91,12 @@ struct AtlasTabBar: View {
             onFABTap()
         } label: {
             ZStack {
-                // Outer glow halo
                 Circle()
                     .fill(Tokens.Color.accentPurpleDeep)
                     .frame(width: 62, height: 62)
                     .blur(radius: 14)
                     .opacity(0.55)
 
-                // Main disk
                 Circle()
                     .fill(
                         LinearGradient(
@@ -111,7 +114,6 @@ struct AtlasTabBar: View {
                             .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.8)
                     )
 
-                // Subtle inner highlight
                 Circle()
                     .stroke(
                         LinearGradient(
@@ -127,81 +129,73 @@ struct AtlasTabBar: View {
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(.white)
             }
-            .scaleEffect(fabPressed ? 0.92 : 1.0)
-            .shadow(color: Color(hex: 0x8C74BA).opacity(0.45), radius: 16, x: 0, y: 8)
+            .frame(width: 62, height: 62)
+            .contentShape(Circle())
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    withAnimation(Tokens.Motion.snap) { fabPressed = true }
-                }
-                .onEnded { _ in
-                    withAnimation(Tokens.Motion.snap) { fabPressed = false }
-                }
-        )
+        .buttonStyle(AtlasFABButtonStyle())
     }
 }
 
-// MARK: - AtlasTabButton
+// MARK: - AtlasTabLabel
 
-private struct AtlasTabButton: View {
+private struct AtlasTabLabel: View {
     let tab: AtlasTab
     let isActive: Bool
-    let action: () -> Void
-
-    @State private var pressed = false
 
     var body: some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                ZStack {
-                    Image(systemName: isActive ? tab.iconActive : tab.icon)
-                        .font(.system(size: 20, weight: isActive ? .semibold : .regular))
-                        .foregroundStyle(
-                            isActive
-                                ? Tokens.Color.textPrimary
-                                : Tokens.Color.textQuaternary
-                        )
-                        .symbolRenderingMode(.hierarchical)
-                        .contentTransition(.symbolEffect(.replace))
-                }
+        VStack(spacing: 4) {
+            Image(systemName: isActive ? tab.iconActive : tab.icon)
+                .font(.system(size: 20, weight: isActive ? .semibold : .regular))
+                .foregroundStyle(
+                    isActive
+                        ? Tokens.Color.textPrimary
+                        : Tokens.Color.textQuaternary
+                )
+                .symbolRenderingMode(.hierarchical)
                 .frame(height: 22)
 
-                Text(tab.title)
-                    .font(.system(size: 10, weight: .medium))
-                    .tracking(0.2)
-                    .foregroundStyle(
-                        isActive
-                            ? Tokens.Color.textPrimary
-                            : Tokens.Color.textQuaternary
-                    )
+            Text(tab.title)
+                .font(.system(size: 10, weight: .medium))
+                .tracking(0.2)
+                .foregroundStyle(
+                    isActive
+                        ? Tokens.Color.textPrimary
+                        : Tokens.Color.textQuaternary
+                )
 
-                // Active dot indicator under the label
-                Circle()
-                    .fill(
-                        isActive ? Tokens.Color.accentBlue : .clear
-                    )
-                    .frame(width: 3, height: 3)
-                    .offset(y: -1)
-            }
-            .scaleEffect(pressed ? 0.92 : 1.0)
-            .animation(Tokens.Motion.snap, value: pressed)
-            .animation(Tokens.Motion.snap, value: isActive)
+            Circle()
+                .fill(isActive ? Tokens.Color.accentBlue : .clear)
+                .frame(width: 3, height: 3)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in pressed = true }
-                .onEnded { _ in pressed = false }
-        )
+        .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Button styles
+
+private struct AtlasTabButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
+            .animation(Tokens.Motion.snap, value: configuration.isPressed)
+    }
+}
+
+private struct AtlasFABButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.9 : 1.0)
+            .shadow(
+                color: Color(hex: 0x8C74BA).opacity(0.5),
+                radius: configuration.isPressed ? 8 : 16,
+                x: 0,
+                y: configuration.isPressed ? 4 : 8
+            )
+            .animation(Tokens.Motion.snap, value: configuration.isPressed)
     }
 }
 
 // MARK: - Visibility preference
-//
-// A deep screen (like TripDetailView) can call `.hideTabBar()` to slide the
-// global tab bar away. Standard pattern for immersive detail screens.
 
 struct TabBarVisibilityKey: PreferenceKey {
     static let defaultValue: Bool = true

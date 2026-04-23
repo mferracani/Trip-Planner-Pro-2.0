@@ -131,8 +131,6 @@ private struct DayCard: View {
     let calendar: Calendar
     let onTap: () -> Void
 
-    @State private var pressed = false
-
     private var isToday: Bool { calendar.isDateInToday(date) }
 
     private var flights: [Flight] { vm.flights(on: date) }
@@ -224,15 +222,9 @@ private struct DayCard: View {
             .background(cardBackground)
             .overlay(cardBorder)
             .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.md))
-            .scaleEffect(pressed ? 0.96 : 1.0)
-            .animation(Tokens.Motion.snap, value: pressed)
+            .contentShape(RoundedRectangle(cornerRadius: Tokens.Radius.md))
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in pressed = true }
-                .onEnded { _ in pressed = false }
-        )
+        .buttonStyle(DayCardButtonStyle())
     }
 
     @ViewBuilder
@@ -284,6 +276,16 @@ private struct DayCard: View {
     private func shortName(_ name: String) -> String {
         if name.count <= 9 { return name }
         return String(name.prefix(9))
+    }
+}
+
+// MARK: - DayCardButtonStyle
+
+private struct DayCardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .animation(Tokens.Motion.snap, value: configuration.isPressed)
     }
 }
 

@@ -56,18 +56,14 @@ struct TripDetailView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
-            // Floating AI parse button anchored bottom-right. The outer
-            // VStack+Spacer trick positions the button without affecting the
-            // content VStack's layout.
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    aiSparkleButton
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 24)
-                }
-            }
+            // Floating AI parse button anchored bottom-right.
+            // allowsHitTesting controls: Spacers are non-interactive;
+            // the button itself still receives taps.
+        }
+        .overlay(alignment: .bottomTrailing) {
+            aiSparkleButton
+                .padding(.trailing, 20)
+                .padding(.bottom, 24)
         }
         .toolbar(.hidden, for: .navigationBar)
         .hideTabBar()

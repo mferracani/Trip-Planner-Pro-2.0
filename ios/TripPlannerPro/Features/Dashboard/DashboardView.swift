@@ -579,8 +579,6 @@ private struct TripRowCard: View {
     let trip: Trip
     let index: Int
 
-    @State private var pressed = false
-
     private var color: Color {
         Tokens.Color.cityPalette[(index + 1) % Tokens.Color.cityPalette.count]
     }
@@ -658,13 +656,7 @@ private struct TripRowCard: View {
                         .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
                 )
         )
-        .scaleEffect(pressed ? 0.98 : 1.0)
-        .animation(Tokens.Motion.snap, value: pressed)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in pressed = true }
-                .onEnded { _ in pressed = false }
-        )
+        .contentShape(RoundedRectangle(cornerRadius: Tokens.Radius.lg))
     }
 
     private var dateRangeText: String {
