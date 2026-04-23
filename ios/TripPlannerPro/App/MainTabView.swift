@@ -11,7 +11,8 @@ struct MainTabView: View {
     @State private var selection: Int = 0
     @State private var showTripPickerForParse = false
     @State private var availableTrips: [Trip] = []
-    @State private var compassVisible: Bool = true
+    @State private var tabBarVisible: Bool = true
+    @State private var showCreateTrip = false
 
     private var cacheManager: CacheManager { CacheManager(modelContext: modelContext) }
 
@@ -23,7 +24,7 @@ struct MainTabView: View {
             // than a hard swap. Never a page-swipe: nav selection is discrete.
             Group {
                 switch selection {
-                case 0:
+                case 0, 1:
                     DashboardView(cache: cacheManager, onTripsLoaded: { trips in
                         availableTrips = trips
                         let summaries = trips.compactMap { trip -> AppGroupBridge.TripSummary? in
@@ -37,7 +38,7 @@ struct MainTabView: View {
                         }
                         AppGroupBridge.writeTripSummaries(summaries)
                     })
-                case 1:
+                case 2:
                     CatalogView()
                 default:
                     SettingsView()
@@ -47,16 +48,19 @@ struct MainTabView: View {
             .transition(.opacity)
             .id(selection)
 
-            if compassVisible {
-                CompassNav(selection: $selection, tabs: CompassTab.mainTabs)
-                    .padding(.bottom, 12)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            if tabBarVisible {
+                AtlasTabBar(
+                    selection: $selection,
+                    tabs: AtlasTab.mainTabs,
+                    onFABTap: { showCreateTrip = true }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .environment(firestoreClient)
-        .onPreferenceChange(CompassNavVisibilityKey.self) { visible in
+        .onPreferenceChange(TabBarVisibilityKey.self) { visible in
             withAnimation(Tokens.Motion.spring) {
-                compassVisible = visible
+                tabBarVisible = visible
             }
         }
         .onAppear {
@@ -65,6 +69,10 @@ struct MainTabView: View {
         .onChange(of: pendingParseText) { _, newText in
             guard newText != nil else { return }
             showTripPickerForParse = true
+        }
+        .sheet(isPresented: $showCreateTrip) {
+            CreateTripSheet()
+                .environment(firestoreClient)
         }
         .sheet(isPresented: $showTripPickerForParse) {
             TripPickerForParseSheet(

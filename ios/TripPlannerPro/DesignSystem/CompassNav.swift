@@ -1,118 +1,193 @@
 import SwiftUI
 
-// MARK: - CompassNav
+// MARK: - AtlasTabBar
 //
-// Atlas OS bottom navigation — a floating pill that replaces the stock iOS
-// tab bar. The active tab expands to show a UPPERCASE mono label on an amber
-// capsule; inactive tabs collapse to just an icon. Selection slides between
-// tabs via matchedGeometryEffect + spring animation. Haptic on tap.
-//
-// Intentionally ignores SF Symbols conventions — this is the navigation a
-// Revolut or Linear would ship, not what Apple's HIG prescribes.
+// Solid bottom bar inspired by Revolut/Nubank: 4 tabs flanking a centered
+// elevated FAB. The FAB is the primary "create" action; it overlaps the bar
+// by 18pt with a violet glow. Tabs use icon (outlined→filled) + lowercase
+// sans label. No uppercase mono here — that tone is reserved for metadata.
 
-struct CompassTab: Identifiable, Hashable {
+struct AtlasTab: Identifiable, Hashable {
     let id: String
     let title: String
+    /// SF Symbol shown when inactive.
     let icon: String
+    /// SF Symbol shown when active. Usually the `.fill` variant.
+    let iconActive: String
 }
 
-struct CompassNav: View {
+struct AtlasTabBar: View {
     @Binding var selection: Int
-    let tabs: [CompassTab]
+    /// Exactly 4 tabs expected (2 before FAB, 2 after).
+    let tabs: [AtlasTab]
+    let onFABTap: () -> Void
 
-    @Namespace private var indicator
+    @State private var fabPressed = false
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(Array(tabs.enumerated()), id: \.offset) { idx, tab in
-                CompassNavButton(
-                    tab: tab,
-                    isSelected: selection == idx,
-                    indicatorNamespace: indicator
-                ) {
-                    let h = UIImpactFeedbackGenerator(style: .soft)
-                    h.impactOccurred()
-                    withAnimation(Tokens.Motion.spring) {
-                        selection = idx
-                    }
-                }
+        ZStack(alignment: .top) {
+            barBody
+            fabButton
+                .offset(y: -22)
+        }
+    }
+
+    // MARK: Tabs bar
+
+    private var barBody: some View {
+        HStack(spacing: 0) {
+            if tabs.count >= 4 {
+                tabButton(at: 0)
+                tabButton(at: 1)
+                Spacer().frame(width: 72) // FAB cutout
+                tabButton(at: 2)
+                tabButton(at: 3)
             }
         }
-        .padding(5)
+        .frame(maxWidth: .infinity)
+        .frame(height: 58)
+        .padding(.bottom, 20)
         .background(
-            Capsule()
-                .fill(Tokens.Color.elevated)
+            Rectangle()
+                .fill(Tokens.Color.surface)
                 .overlay(
-                    Capsule()
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [
-                                    Tokens.Color.textPrimary.opacity(0.08),
-                                    Tokens.Color.textPrimary.opacity(0.02)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            lineWidth: 0.5
-                        )
+                    // Top hairline for a clean separation from content
+                    VStack(spacing: 0) {
+                        Rectangle()
+                            .fill(Tokens.Color.borderSoft)
+                            .frame(height: 0.5)
+                        Spacer()
+                    }
                 )
-                .shadow(color: .black.opacity(0.45), radius: 28, x: 0, y: 14)
-                .shadow(color: .black.opacity(0.35), radius: 8, x: 0, y: 4)
+                .ignoresSafeArea(edges: .bottom)
+                .shadow(color: .black.opacity(0.35), radius: 14, x: 0, y: -2)
         )
-        .padding(.horizontal, 20)
+    }
+
+    @ViewBuilder
+    private func tabButton(at idx: Int) -> some View {
+        let tab = tabs[idx]
+        AtlasTabButton(tab: tab, isActive: selection == idx) {
+            let h = UIImpactFeedbackGenerator(style: .soft)
+            h.impactOccurred()
+            withAnimation(Tokens.Motion.snap) {
+                selection = idx
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: FAB
+
+    private var fabButton: some View {
+        Button {
+            let h = UIImpactFeedbackGenerator(style: .medium)
+            h.impactOccurred()
+            onFABTap()
+        } label: {
+            ZStack {
+                // Outer glow halo
+                Circle()
+                    .fill(Tokens.Color.accentPurpleDeep)
+                    .frame(width: 62, height: 62)
+                    .blur(radius: 14)
+                    .opacity(0.55)
+
+                // Main disk
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(hex: 0xB19CD9),
+                                Color(hex: 0x8C74BA)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 56, height: 56)
+                    .overlay(
+                        Circle()
+                            .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.8)
+                    )
+
+                // Subtle inner highlight
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.35), .clear],
+                            startPoint: .top,
+                            endPoint: .center
+                        ),
+                        lineWidth: 1
+                    )
+                    .frame(width: 56, height: 56)
+
+                Image(systemName: "plus")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .scaleEffect(fabPressed ? 0.92 : 1.0)
+            .shadow(color: Color(hex: 0x8C74BA).opacity(0.45), radius: 16, x: 0, y: 8)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    withAnimation(Tokens.Motion.snap) { fabPressed = true }
+                }
+                .onEnded { _ in
+                    withAnimation(Tokens.Motion.snap) { fabPressed = false }
+                }
+        )
     }
 }
 
-// MARK: - CompassNavButton
+// MARK: - AtlasTabButton
 
-private struct CompassNavButton: View {
-    let tab: CompassTab
-    let isSelected: Bool
-    let indicatorNamespace: Namespace.ID
+private struct AtlasTabButton: View {
+    let tab: AtlasTab
+    let isActive: Bool
     let action: () -> Void
 
     @State private var pressed = false
 
     var body: some View {
         Button(action: action) {
-            ZStack {
-                if isSelected {
-                    Capsule()
-                        .fill(Tokens.Color.accentBlue)
-                        .matchedGeometryEffect(id: "compass_active", in: indicatorNamespace)
-                        .shadow(color: Tokens.Color.accentBlue.opacity(0.35), radius: 10, x: 0, y: 4)
-                }
-
-                HStack(spacing: 7) {
-                    Image(systemName: tab.icon)
-                        .font(.system(size: 14, weight: .semibold))
+            VStack(spacing: 4) {
+                ZStack {
+                    Image(systemName: isActive ? tab.iconActive : tab.icon)
+                        .font(.system(size: 20, weight: isActive ? .semibold : .regular))
                         .foregroundStyle(
-                            isSelected
-                                ? Tokens.Color.bgPrimary
-                                : Tokens.Color.textSecondary.opacity(0.75)
+                            isActive
+                                ? Tokens.Color.textPrimary
+                                : Tokens.Color.textQuaternary
                         )
-                        .scaleEffect(isSelected ? 1.0 : 0.95)
-
-                    if isSelected {
-                        Text(tab.title.uppercased())
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
-                            .tracking(Tokens.Track.labelWider)
-                            .foregroundStyle(Tokens.Color.bgPrimary)
-                            .fixedSize(horizontal: true, vertical: false)
-                            .transition(
-                                .asymmetric(
-                                    insertion: .opacity.combined(with: .scale(scale: 0.8, anchor: .leading)),
-                                    removal: .opacity
-                                )
-                            )
-                    }
+                        .symbolRenderingMode(.hierarchical)
+                        .contentTransition(.symbolEffect(.replace))
                 }
-                .padding(.horizontal, isSelected ? 16 : 12)
+                .frame(height: 22)
+
+                Text(tab.title)
+                    .font(.system(size: 10, weight: .medium))
+                    .tracking(0.2)
+                    .foregroundStyle(
+                        isActive
+                            ? Tokens.Color.textPrimary
+                            : Tokens.Color.textQuaternary
+                    )
+
+                // Active dot indicator under the label
+                Circle()
+                    .fill(
+                        isActive ? Tokens.Color.accentBlue : .clear
+                    )
+                    .frame(width: 3, height: 3)
+                    .offset(y: -1)
             }
-            .frame(height: 42)
-            .frame(maxWidth: isSelected ? .infinity : nil)
-            .scaleEffect(pressed ? 0.94 : 1.0)
+            .scaleEffect(pressed ? 0.92 : 1.0)
             .animation(Tokens.Motion.snap, value: pressed)
+            .animation(Tokens.Motion.snap, value: isActive)
         }
         .buttonStyle(.plain)
         .simultaneousGesture(
@@ -125,11 +200,10 @@ private struct CompassNavButton: View {
 
 // MARK: - Visibility preference
 //
-// A deep screen (like TripDetailView) can call `.hideCompassNav()` to signal
-// MainTabView to slide the nav away. This is how iOS apps like Linear or
-// Revolut handle immersive detail screens without stacking bottom UI.
+// A deep screen (like TripDetailView) can call `.hideTabBar()` to slide the
+// global tab bar away. Standard pattern for immersive detail screens.
 
-struct CompassNavVisibilityKey: PreferenceKey {
+struct TabBarVisibilityKey: PreferenceKey {
     static let defaultValue: Bool = true
     static func reduce(value: inout Bool, nextValue: () -> Bool) {
         value = nextValue()
@@ -137,21 +211,24 @@ struct CompassNavVisibilityKey: PreferenceKey {
 }
 
 extension View {
-    /// Hide the global CompassNav while this view is on screen.
-    /// Call at the root of any detail view that owns its own bottom actions.
+    /// Hide the global AtlasTabBar while this view is on screen.
+    func hideTabBar(_ hidden: Bool = true) -> some View {
+        preference(key: TabBarVisibilityKey.self, value: !hidden)
+    }
+
+    /// Deprecated alias kept so existing callers still compile.
     func hideCompassNav(_ hidden: Bool = true) -> some View {
-        preference(key: CompassNavVisibilityKey.self, value: !hidden)
+        hideTabBar(hidden)
     }
 }
 
-// MARK: - Atlas icon set
-//
-// Consistent icon choices for the 3 app tabs. Kept as SF Symbols for now
-// (Phase 2 will swap for custom monoline set).
-extension CompassTab {
-    static let trips = CompassTab(id: "trips", title: "Viajes", icon: "paperplane.fill")
-    static let catalog = CompassTab(id: "catalog", title: "Items", icon: "square.stack.3d.up.fill")
-    static let settings = CompassTab(id: "settings", title: "Tú", icon: "circle.grid.2x2.fill")
+// MARK: - Atlas tab set
 
-    static let mainTabs: [CompassTab] = [.trips, .catalog, .settings]
+extension AtlasTab {
+    static let home = AtlasTab(id: "home", title: "Inicio", icon: "house", iconActive: "house.fill")
+    static let trips = AtlasTab(id: "trips", title: "Viajes", icon: "paperplane", iconActive: "paperplane.fill")
+    static let catalog = AtlasTab(id: "catalog", title: "Catálogo", icon: "square.stack", iconActive: "square.stack.fill")
+    static let settings = AtlasTab(id: "settings", title: "Perfil", icon: "person", iconActive: "person.fill")
+
+    static let mainTabs: [AtlasTab] = [.home, .trips, .catalog, .settings]
 }

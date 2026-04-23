@@ -107,26 +107,27 @@ enum Tokens {
     // MARK: - Typography
     //
     // Philosophy:
-    // - DISPLAY uses `.serif` design → iOS ships "New York" (Matthew Carter-
-    //   inspired). Warm, editorial, unmistakably NOT SF. Zero bundle cost.
-    // - BODY stays SF Pro for legibility at small sizes.
-    // - MONO stays SF Mono for now; Phase 2 will bundle JetBrains Mono.
+    // - DISPLAY uses semibold sans with tight negative tracking — matches the
+    //   Revolut/Nubank visual register the user wants (not serif/editorial).
+    // - BODY stays SF Pro for legibility.
+    // - MONO reserved exclusively for metadata (dates, codes, prices).
+    // Phase 4 will bundle a custom sans (Geist or Satoshi) as a final polish.
     enum Typo {
-        // DISPLAY — serif, editorial, the "voice" of the app
-        static let displayXXL = Font.system(size: 44, weight: .semibold, design: .serif)
-        static let displayXL = Font.system(size: 36, weight: .semibold, design: .serif)
-        static let displayL = Font.system(size: 28, weight: .semibold, design: .serif)
-        static let displayM = Font.system(size: 22, weight: .semibold, design: .serif)
-        static let displayS = Font.system(size: 18, weight: .semibold, design: .serif)
+        // DISPLAY — large semibold sans with tight kerning
+        static let displayXXL = Font.system(size: 40, weight: .semibold)
+        static let displayXL = Font.system(size: 32, weight: .semibold)
+        static let displayL = Font.system(size: 26, weight: .semibold)
+        static let displayM = Font.system(size: 20, weight: .semibold)
+        static let displayS = Font.system(size: 17, weight: .semibold)
 
         // BODY — SF Pro, readable
-        static let bodyL = Font.system(size: 17, weight: .regular)
-        static let bodyM = Font.system(size: 15, weight: .regular)
+        static let bodyL = Font.system(size: 16, weight: .regular)
+        static let bodyM = Font.system(size: 14, weight: .regular)
         static let bodyS = Font.system(size: 13, weight: .regular)
 
         // STRONG — emphasized body
-        static let strongL = Font.system(size: 17, weight: .semibold)
-        static let strongM = Font.system(size: 15, weight: .semibold)
+        static let strongL = Font.system(size: 16, weight: .semibold)
+        static let strongM = Font.system(size: 14, weight: .semibold)
         static let strongS = Font.system(size: 13, weight: .semibold)
 
         // MONO — metadata, codes, times, prices

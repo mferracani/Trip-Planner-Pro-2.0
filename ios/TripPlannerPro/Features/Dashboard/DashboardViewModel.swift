@@ -138,6 +138,37 @@ final class DashboardViewModel {
         }
     }
 
-    /// Placeholder — will be computed from trip items once catalog aggregates are available.
-    var statTotalSpentUSD: Int { 0 }
+    /// Sum of trip total_usd aggregates across all trips (past + current).
+    var statTotalSpentUSD: Int {
+        let total = trips.reduce(0.0) { $0 + ($1.totalUSD ?? 0) }
+        return Int(total.rounded())
+    }
+
+    /// Days between today and the heroTrip's start (0 if active / past).
+    var daysUntilHero: Int {
+        guard let hero = heroTrip else { return 0 }
+        if hero.status_computed == .active { return 0 }
+        return max(0, hero.daysUntilStart)
+    }
+
+    /// Progress metric for the hero ring:
+    /// - If a trip is active → % of trip time elapsed
+    /// - If a next trip exists → inverse of days-until (clamped), so the ring
+    ///   fills as the trip approaches
+    /// - Otherwise → % of year elapsed
+    var heroProgress: Double {
+        if let active = activeTrip {
+            let total = max(1, Calendar.current.dateComponents([.day], from: active.startDate, to: active.endDate).day ?? 0)
+            let elapsed = max(0, Calendar.current.dateComponents([.day], from: active.startDate, to: Date()).day ?? 0)
+            return min(1, Double(elapsed) / Double(total + 1))
+        }
+        if let next = upcomingTrip {
+            let days = max(0, next.daysUntilStart)
+            // 0 days → 1.0 (about to start); 90+ days → 0.1
+            let p = max(0.05, 1 - Double(days) / 90.0)
+            return min(1, p)
+        }
+        let dayOfYear = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 1
+        return Double(dayOfYear) / 365.0
+    }
 }

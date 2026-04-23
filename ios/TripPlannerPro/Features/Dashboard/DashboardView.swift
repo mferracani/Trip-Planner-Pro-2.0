@@ -6,21 +6,15 @@ struct DashboardView: View {
 
     @Environment(FirestoreClient.self) private var client
     @State private var vm: DashboardViewModel?
-    @State private var showCreateTrip = false
     @State private var now = Date()
 
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
-    private var atmosphericAccent: Color {
-        guard let trip = vm?.heroTrip else { return Tokens.Color.accentBlue }
-        let idx = abs(trip.name.hashValue) % Tokens.Color.cityPalette.count
-        return Tokens.Color.cityPalette[idx]
-    }
-
     var body: some View {
         NavigationStack {
             ZStack {
-                AtmosphericBackground(accent: atmosphericAccent, intensity: 0.10)
+                Tokens.Color.bgPrimary.ignoresSafeArea()
+                backgroundHaze
 
                 if let vm {
                     content(vm)
@@ -29,10 +23,6 @@ struct DashboardView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Trip.self) { trip in
                 TripDetailView(trip: trip)
-                    .environment(client)
-            }
-            .sheet(isPresented: $showCreateTrip) {
-                CreateTripSheet()
                     .environment(client)
             }
         }
@@ -49,44 +39,57 @@ struct DashboardView: View {
         .preferredColorScheme(.dark)
     }
 
+    /// Warm ambient glow behind the hero card — not a defined radial gradient,
+    /// more a subtle atmosphere.
+    private var backgroundHaze: some View {
+        ZStack {
+            RadialGradient(
+                colors: [Tokens.Color.accentPurple.opacity(0.14), .clear],
+                center: UnitPoint(x: 0.15, y: 0.05),
+                startRadius: 10,
+                endRadius: 360
+            )
+            RadialGradient(
+                colors: [Tokens.Color.accentBlue.opacity(0.10), .clear],
+                center: UnitPoint(x: 0.95, y: 0.4),
+                startRadius: 10,
+                endRadius: 300
+            )
+        }
+        .ignoresSafeArea()
+    }
+
     @ViewBuilder
     private func content(_ vm: DashboardViewModel) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 22) {
                 header(vm)
                     .padding(.horizontal, 20)
-                    .padding(.top, 8)
+                    .padding(.top, 4)
 
                 if vm.isOffline && !vm.trips.isEmpty {
                     offlineBanner
                         .padding(.horizontal, 20)
-                        .padding(.top, 16)
                 }
 
                 if vm.isLoading {
                     loadingSkeleton
                         .padding(.horizontal, 20)
-                        .padding(.top, 24)
                 } else if vm.trips.isEmpty {
                     emptyState
                         .padding(.horizontal, 20)
-                        .padding(.top, 24)
+                        .padding(.top, 16)
                 } else {
-                    if let hero = vm.heroTrip {
-                        HeroTripCard(trip: hero, now: now)
-                            .padding(.top, 24)
+                    if vm.heroTrip != nil {
+                        NextTripCard(vm: vm, now: now)
+                            .padding(.horizontal, 20)
                     }
-
-                    StatsSection(vm: vm)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 28)
 
                     TripsListSection(vm: vm)
                         .padding(.horizontal, 20)
-                        .padding(.top, 28)
                 }
             }
-            .padding(.bottom, 40)
+            .padding(.bottom, 120)
         }
         .scrollIndicators(.hidden)
     }
@@ -94,31 +97,50 @@ struct DashboardView: View {
     // MARK: - Header
 
     private func header(_ vm: DashboardViewModel) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 10) {
-                MonoLabel(
-                    text: vm.todayLabel,
-                    color: Tokens.Color.textTertiary,
-                    size: .xs
-                )
-
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(greetingTime)
+                    .font(Tokens.Typo.bodyS)
+                    .foregroundStyle(Tokens.Color.textTertiary)
                 Text(vm.greeting)
-                    .font(.system(size: 32, weight: .bold))
+                    .font(Tokens.Typo.displayL)
                     .tracking(Tokens.Track.displayTight)
                     .foregroundStyle(Tokens.Color.textPrimary)
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .transaction { $0.animation = nil }
             }
 
             Spacer(minLength: 8)
 
-            CircleIconButton(systemImage: "plus") {
-                showCreateTrip = true
-            }
-            .padding(.top, 8)
+            avatarButton
         }
+    }
+
+    private var greetingTime: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 5..<12: return "Buen día"
+        case 12..<19: return "Buenas tardes"
+        default: return "Buenas noches"
+        }
+    }
+
+    private var avatarButton: some View {
+        Button { } label: {
+            ZStack {
+                Circle()
+                    .fill(Tokens.Color.elevated)
+                    .overlay(
+                        Circle()
+                            .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
+                    )
+                Image(systemName: "person.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Tokens.Color.textSecondary)
+            }
+            .frame(width: 44, height: 44)
+        }
+        .buttonStyle(.plain)
     }
 
     private var offlineBanner: some View {
@@ -149,265 +171,351 @@ struct DashboardView: View {
         VStack(spacing: 16) {
             RoundedRectangle(cornerRadius: Tokens.Radius.xl)
                 .fill(Tokens.Color.surface)
-                .frame(height: 300)
-            HStack(spacing: 10) {
-                RoundedRectangle(cornerRadius: Tokens.Radius.md).fill(Tokens.Color.surface).frame(height: 90)
-                RoundedRectangle(cornerRadius: Tokens.Radius.md).fill(Tokens.Color.surface).frame(height: 90)
+                .frame(height: 420)
+            VStack(spacing: 10) {
+                ForEach(0..<2) { _ in
+                    RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                        .fill(Tokens.Color.surface)
+                        .frame(height: 80)
+                }
             }
         }
         .redacted(reason: .placeholder)
     }
 
     private var emptyState: some View {
-        VStack(spacing: 24) {
-            CityCover(
-                color: Tokens.Color.cityPalette[1],
-                label: "tu primer viaje",
-                height: 220,
-                cornerRadius: Tokens.Radius.xl
-            )
+        VStack(alignment: .leading, spacing: 18) {
+            // Decorative cover
+            RoundedRectangle(cornerRadius: Tokens.Radius.xl)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Tokens.Color.cityPalette[1],
+                            Tokens.Color.cityPalette[1].opacity(0.6)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(height: 220)
+                .overlay(
+                    Image(systemName: "airplane")
+                        .font(.system(size: 88, weight: .ultraLight))
+                        .foregroundStyle(.white.opacity(0.18))
+                        .rotationEffect(.degrees(-18))
+                )
 
-            VStack(spacing: 8) {
-                Text("Empezá a\nplanificar.")
-                    .font(.system(size: 32, weight: .bold))
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Empezá a planificar")
+                    .font(Tokens.Typo.displayXL)
                     .tracking(Tokens.Track.displayTight)
                     .foregroundStyle(Tokens.Color.textPrimary)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Text("Creá tu primer viaje y cargá vuelos,\nhoteles o transportes con IA.")
+                Text("Creá tu primer viaje y cargá vuelos, hoteles o transportes con IA.")
                     .font(Tokens.Typo.bodyM)
                     .foregroundStyle(Tokens.Color.textSecondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-
-            Button {
-                showCreateTrip = true
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text("Crear viaje")
-                        .font(Tokens.Typo.strongM)
-                }
-                .foregroundStyle(.white)
-                .padding(.vertical, 16)
-                .frame(maxWidth: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: Tokens.Radius.md)
-                        .fill(Tokens.Color.accentBlue)
-                )
-            }
-            .buttonStyle(.plain)
         }
     }
 }
 
-// MARK: - HeroTripCard
+// MARK: - NextTripCard
+//
+// The signature hero. A single rounded card that contains:
+//  1. Photo-style cover with "NEXT TRIP" label + title + countdown
+//  2. Stats zone: progress ring + 3 icon stat rows
+//  3. Total spent footer
 
-private struct HeroTripCard: View {
-    let trip: Trip
+private struct NextTripCard: View {
+    let vm: DashboardViewModel
     let now: Date
 
+    private var trip: Trip? { vm.heroTrip }
+
     private var cityColor: Color {
-        Tokens.Color.cityPalette[abs(trip.name.hashValue) % Tokens.Color.cityPalette.count]
+        guard let trip else { return Tokens.Color.cityPalette[1] }
+        return Tokens.Color.cityPalette[abs(trip.name.hashValue) % Tokens.Color.cityPalette.count]
     }
 
-    private var isActive: Bool { trip.status_computed == .active }
+    private var isActive: Bool { trip?.status_computed == .active }
 
-    private var statusText: String {
-        if isActive { return "En curso" }
+    private var contextLabel: String {
+        isActive ? "EN CURSO" : "PRÓXIMO VIAJE"
+    }
+
+    private var countdownText: String {
+        guard let trip else { return "—" }
+        if isActive {
+            return "Día \(trip.currentDayNumber)"
+        }
         let days = trip.daysUntilStart
         if days == 0 { return "Empieza hoy" }
-        if days < 0 { return "Pasado" }
-        return "Próximo viaje"
+        if days == 1 { return "En 1 día" }
+        return "En \(days) días"
     }
 
-    private var statusColor: Color {
-        isActive ? Tokens.Color.accentGreen : Tokens.Color.accentGreen
+    private var budgetText: String {
+        guard let total = trip?.totalUSD, total > 0 else { return "" }
+        return "USD \(Int(total.rounded()).formatted(.number.grouping(.automatic)))"
     }
 
     var body: some View {
-        NavigationLink(value: trip) {
-            VStack(spacing: 0) {
-                // Cover full-bleed
-                CityCover(
-                    color: cityColor,
-                    label: trip.name.lowercased(),
-                    height: 220,
-                    cornerRadius: 0
-                )
+        guard let trip else { return AnyView(EmptyView()) }
 
-                // Info block — black surface with architectural dividers
-                VStack(alignment: .leading, spacing: 0) {
-                    // Status row
-                    HStack {
-                        StatusDot(text: statusText, color: statusColor)
-                        Spacer()
-                        MonoLabel(
-                            text: isActive ? "Día \(trip.currentDayNumber)" : countdownShort,
-                            color: Tokens.Color.textSecondary,
-                            size: .xs
-                        )
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 18)
-                    .padding(.bottom, 16)
-
-                    Hairline()
-
-                    // Trip name + dates
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(trip.name)
-                            .font(.system(size: 28, weight: .bold))
-                            .tracking(Tokens.Track.displayTight)
-                            .foregroundStyle(Tokens.Color.textPrimary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
-                        Text(dateRangeText)
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundStyle(Tokens.Color.textSecondary)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 18)
-
-                    Hairline()
-
-                    // Big number + CTA
-                    HStack(alignment: .bottom) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                Text("\(tripDays)")
-                                    .font(.system(size: 48, weight: .bold))
-                                    .tracking(Tokens.Track.displayTight)
-                                    .foregroundStyle(Tokens.Color.textPrimary)
-                                Text("d")
-                                    .font(.system(size: 24, weight: .semibold, design: .monospaced))
-                                    .foregroundStyle(Tokens.Color.textTertiary)
-                                    .padding(.leading, 2)
-                            }
-                            MonoLabel(
-                                text: "Duración",
-                                color: Tokens.Color.textTertiary,
-                                size: .xs
-                            )
-                        }
-                        Spacer()
-                        HStack(spacing: 8) {
-                            Text("Ver viaje")
-                                .font(Tokens.Typo.strongM)
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 13, weight: .semibold))
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 12)
-                        .background(Capsule().fill(Tokens.Color.accentBlue))
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 20)
-
-                    Hairline()
-
-                    // Countdown
-                    countdownBar
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 14)
+        return AnyView(
+            NavigationLink(value: trip) {
+                VStack(spacing: 0) {
+                    coverSection(trip)
+                    Hairline(color: Tokens.Color.textPrimary.opacity(0.05))
+                    statsSection
+                    Hairline(color: Tokens.Color.textPrimary.opacity(0.05))
+                    totalSpentRow
                 }
-                .background(Tokens.Color.surface)
-            }
-            .clipShape(
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 0,
-                    bottomLeadingRadius: 0,
-                    bottomTrailingRadius: 0,
-                    topTrailingRadius: 0
+                .background(
+                    RoundedRectangle(cornerRadius: Tokens.Radius.xl)
+                        .fill(Tokens.Color.surface)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Tokens.Radius.xl)
+                                .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
+                        )
                 )
+                .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.xl))
+                .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 8)
+            }
+            .buttonStyle(.plain)
+        )
+    }
+
+    // MARK: Cover
+
+    @ViewBuilder
+    private func coverSection(_ trip: Trip) -> some View {
+        ZStack(alignment: .topLeading) {
+            // Gradient "photo"
+            LinearGradient(
+                colors: [
+                    cityColor.opacity(0.95),
+                    cityColor.opacity(0.75),
+                    Tokens.Color.surface
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
+            .frame(height: 180)
+
+            // Decorative silhouette
+            Image(systemName: "airplane")
+                .font(.system(size: 160, weight: .ultraLight))
+                .foregroundStyle(.white.opacity(0.08))
+                .rotationEffect(.degrees(-20))
+                .offset(x: 120, y: -10)
+                .clipped()
+
+            // Subtle noise bands
+            LinearGradient(
+                colors: [
+                    .white.opacity(0.05), .clear,
+                    .black.opacity(0.15), .clear
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 180)
+            .blendMode(.overlay)
+
+            // Vignette bottom for text legibility
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.35)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 180)
+
+            // Content overlay
+            VStack(alignment: .leading, spacing: 0) {
+                Text(contextLabel)
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .tracking(Tokens.Track.labelWidest)
+                    .foregroundStyle(Tokens.Color.accentBlue)
+                    .padding(.top, 16)
+
+                Spacer()
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(trip.name)
+                        .font(Tokens.Typo.displayXL)
+                        .tracking(Tokens.Track.displayTight)
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+
+                    HStack(spacing: 6) {
+                        Text(countdownText)
+                            .font(Tokens.Typo.strongS)
+                            .foregroundStyle(.white.opacity(0.9))
+                        if !budgetText.isEmpty {
+                            Text("·")
+                                .foregroundStyle(.white.opacity(0.5))
+                            Text(budgetText)
+                                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(.white.opacity(0.85))
+                        }
+                    }
+                }
+                .padding(.bottom, 16)
+            }
+            .padding(.horizontal, 18)
+            .frame(height: 180, alignment: .bottomLeading)
+
+            // Corner chevron indicator
+            VStack {
+                HStack {
+                    Spacer()
+                    ZStack {
+                        Circle()
+                            .fill(.black.opacity(0.35))
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+                    .frame(width: 32, height: 32)
+                }
+                Spacer()
+            }
+            .padding(14)
         }
-        .buttonStyle(.plain)
+        .frame(height: 180)
     }
 
-    private var dateRangeText: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es-AR")
-        f.setLocalizedDateFormatFromTemplate("dMMM")
-        let start = f.string(from: trip.startDate)
-        let end = f.string(from: trip.endDate)
-        return "\(start) – \(end)"
-    }
+    // MARK: Stats
 
-    private var tripDays: Int {
-        (Calendar.current.dateComponents([.day], from: trip.startDate, to: trip.endDate).day ?? 0) + 1
-    }
-
-    private var countdownShort: String {
-        if isActive {
-            return "Día \(trip.currentDayNumber) / \(tripDays)"
-        }
-        let days = trip.daysUntilStart
-        if days == 0 { return "Hoy" }
-        if days == 1 { return "Mañana" }
-        return "\(days) días"
-    }
-
-    private var countdownBar: some View {
-        HStack(spacing: 10) {
-            Image(systemName: isActive ? "location.fill" : "clock")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(isActive ? Tokens.Color.accentGreen : Tokens.Color.textTertiary)
-
-            if !isActive {
-                MonoLabel(text: "Faltan", color: Tokens.Color.textTertiary, size: .xs)
-            } else {
-                MonoLabel(text: "En vuelo", color: Tokens.Color.accentGreen, size: .xs)
+    private var statsSection: some View {
+        HStack(alignment: .center, spacing: 20) {
+            // Progress ring
+            ZStack {
+                ProgressRing(
+                    progress: vm.heroProgress,
+                    lineWidth: 8,
+                    size: 90,
+                    color: Tokens.Color.accentBlue
+                )
+                VStack(spacing: 2) {
+                    Text("\(Int(vm.heroProgress * 100))%")
+                        .font(.system(size: 16, weight: .bold, design: .monospaced))
+                        .foregroundStyle(Tokens.Color.textPrimary)
+                    Text("Progreso")
+                        .font(.system(size: 9, weight: .medium))
+                        .tracking(0.4)
+                        .foregroundStyle(Tokens.Color.textTertiary)
+                }
             }
 
-            Text(countdownLong)
-                .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                .tracking(-0.2)
-                .foregroundStyle(Tokens.Color.textPrimary)
+            VStack(alignment: .leading, spacing: 12) {
+                StatIconRow(
+                    icon: "paperplane.fill",
+                    value: "\(vm.statTripsThisYear)",
+                    label: "Viajes este año"
+                )
+                StatIconRow(
+                    icon: "mappin.and.ellipse",
+                    value: "\(vm.statCitiesVisited)",
+                    label: "Ciudades"
+                )
+                StatIconRow(
+                    icon: "calendar",
+                    value: "\(vm.statDaysTraveling)",
+                    label: "Días viajando"
+                )
+            }
 
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 20)
+    }
+
+    // MARK: Total spent
+
+    private var totalSpentRow: some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("USD")
+                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Tokens.Color.textTertiary)
+                    Text(formattedTotal)
+                        .font(.system(size: 28, weight: .bold, design: .monospaced))
+                        .tracking(-0.6)
+                        .foregroundStyle(Tokens.Color.accentBlue)
+                }
+                Text("Total gastado")
+                    .font(Tokens.Typo.bodyS)
+                    .foregroundStyle(Tokens.Color.textTertiary)
+            }
             Spacer()
         }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
     }
 
-    private var countdownLong: String {
-        if isActive {
-            return "Día \(trip.currentDayNumber) de \(tripDays)"
-        }
-        let total = max(0, Calendar.current.dateComponents([.second], from: now, to: trip.startDate).second ?? 0)
-        let days = total / 86_400
-        let remAfterDays = total - days * 86_400
-        let hours = remAfterDays / 3600
-        let minutes = (remAfterDays % 3600) / 60
-        if days > 0 {
-            return "\(days)d · \(hours)h \(minutes)m"
-        }
-        return "\(hours)h \(minutes)m"
+    private var formattedTotal: String {
+        let total = vm.statTotalSpentUSD
+        if total == 0 { return "—" }
+        return total.formatted(.number.grouping(.automatic))
     }
 }
 
-// MARK: - StatsSection
+// MARK: - StatIconRow
 
-private struct StatsSection: View {
-    let vm: DashboardViewModel
-
-    private let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
+private struct StatIconRow: View {
+    let icon: String
+    let value: String
+    let label: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: "Resumen \(vm.currentYear)")
+        HStack(spacing: 10) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(Tokens.Color.accentBlue.opacity(0.12))
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Tokens.Color.accentBlue)
+            }
+            .frame(width: 24, height: 24)
 
-            LazyVGrid(columns: columns, spacing: 10) {
-                StatCard(value: "\(vm.statTripsThisYear)", label: "Viajes este año")
-                StatCard(value: "\(vm.statCitiesVisited)", label: "Ciudades")
-                StatCard(value: "\(vm.statDaysTraveling)", label: "Días viajando")
-                StatCard(
-                    value: vm.statTotalSpentUSD == 0 ? "—" : "$\(vm.statTotalSpentUSD)",
-                    label: "Gastado USD"
-                )
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text(value)
+                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Tokens.Color.textPrimary)
+                Text(label)
+                    .font(Tokens.Typo.bodyS)
+                    .foregroundStyle(Tokens.Color.textSecondary)
             }
         }
+    }
+}
+
+// MARK: - ProgressRing
+
+struct ProgressRing: View {
+    let progress: Double
+    let lineWidth: CGFloat
+    let size: CGFloat
+    let color: Color
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(color.opacity(0.12), lineWidth: lineWidth)
+            Circle()
+                .trim(from: 0, to: min(1, max(0, progress)))
+                .stroke(
+                    color,
+                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+                .animation(Tokens.Motion.spring, value: progress)
+        }
+        .frame(width: size, height: size)
     }
 }
 
@@ -418,14 +526,23 @@ private struct TripsListSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: "Mis viajes")
+            HStack {
+                Text("Mis viajes")
+                    .font(Tokens.Typo.displayM)
+                    .tracking(Tokens.Track.displayTight)
+                    .foregroundStyle(Tokens.Color.textPrimary)
+                Spacer()
+                Text("\(vm.filteredTrips.count)")
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(Tokens.Color.textTertiary)
+            }
 
             // Filter pills
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(DashboardViewModel.TripsFilter.allCases) { f in
                         FilterPill(text: f.rawValue, isActive: vm.filter == f) {
-                            withAnimation(.easeInOut(duration: 0.18)) {
+                            withAnimation(Tokens.Motion.snap) {
                                 vm.filter = f
                             }
                         }
@@ -443,216 +560,128 @@ private struct TripsListSection: View {
                 }
                 .padding(.vertical, 24)
             } else {
-                VStack(spacing: 0) {
+                VStack(spacing: 10) {
                     ForEach(Array(vm.filteredTrips.enumerated()), id: \.element.id) { idx, trip in
                         NavigationLink(value: trip) {
-                            TripRow(trip: trip, index: idx)
+                            TripRowCard(trip: trip, index: idx)
                         }
                         .buttonStyle(.plain)
-
-                        if idx < vm.filteredTrips.count - 1 {
-                            Hairline()
-                        }
                     }
                 }
-                .background(
-                    RoundedRectangle(cornerRadius: Tokens.Radius.lg)
-                        .fill(Tokens.Color.surface)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Tokens.Radius.lg)
-                                .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
-                        )
-                )
             }
         }
     }
 }
 
-// MARK: - TripRow
-//
-// Departure-board style: mono index badge, trip name display, mono days count.
-private struct TripRow: View {
+// MARK: - TripRowCard
+
+private struct TripRowCard: View {
     let trip: Trip
     let index: Int
 
+    @State private var pressed = false
+
     private var color: Color {
-        // Skip the first palette color (coral — reads as red/error) for list items.
         Tokens.Color.cityPalette[(index + 1) % Tokens.Color.cityPalette.count]
     }
 
     private var statusText: String {
         switch trip.status_computed {
-        case .active:  return "En curso"
-        case .planned: return "Próximo"
-        case .past:    return "Pasado"
+        case .active: return "EN CURSO"
+        case .planned: return "FUTURO"
+        case .past: return "PASADO"
         }
     }
 
     private var statusColor: Color {
         switch trip.status_computed {
-        case .active:  return Tokens.Color.accentGreen
-        case .planned: return Tokens.Color.accentBlue
-        case .past:    return Tokens.Color.textTertiary
+        case .active: return Tokens.Color.accentGreen
+        case .planned: return Tokens.Color.signalSky
+        case .past: return Tokens.Color.textTertiary
         }
     }
 
     var body: some View {
         HStack(spacing: 14) {
-            // Mono index badge with city color
+            // Circular icon with gradient fill
             ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(color.opacity(0.18))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(color.opacity(0.4), lineWidth: 0.5)
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [color.opacity(0.85), color.opacity(0.55)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                MonoNumber(value: index + 1, size: 14, color: color, padded: true)
+                Image(systemName: "paperplane.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .rotationEffect(.degrees(-35))
             }
-            .frame(width: 42, height: 42)
+            .frame(width: 44, height: 44)
 
-            // Name + dates
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(trip.name)
                     .font(Tokens.Typo.strongM)
-                    .tracking(Tokens.Track.bodyTight)
                     .foregroundStyle(Tokens.Color.textPrimary)
                     .lineLimit(1)
                 Text(dateRangeText)
-                    .font(.system(size: 12, weight: .regular, design: .monospaced))
-                    .foregroundStyle(Tokens.Color.textSecondary)
-                    .lineLimit(1)
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .foregroundStyle(Tokens.Color.textTertiary)
             }
 
             Spacer(minLength: 8)
 
             VStack(alignment: .trailing, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 1) {
-                    MonoNumber(value: tripDays, size: 18, color: Tokens.Color.textPrimary)
-                    Text("d")
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(Tokens.Color.textTertiary)
-                }
-                MonoLabel(text: statusText, color: statusColor, size: .xs)
+                Text(amountText)
+                    .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(Tokens.Color.textPrimary)
+                Text(statusText)
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .tracking(Tokens.Track.labelWider)
+                    .foregroundStyle(statusColor)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(
+                        Capsule()
+                            .fill(statusColor.opacity(0.12))
+                    )
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: Tokens.Radius.lg)
+                .fill(Tokens.Color.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Tokens.Radius.lg)
+                        .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
+                )
+        )
+        .scaleEffect(pressed ? 0.98 : 1.0)
+        .animation(Tokens.Motion.snap, value: pressed)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in pressed = true }
+                .onEnded { _ in pressed = false }
+        )
     }
 
     private var dateRangeText: String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "es-AR")
-        f.dateFormat = "dd MMM yy"
+        f.dateFormat = "d MMM yy"
         return "\(f.string(from: trip.startDate)) – \(f.string(from: trip.endDate))"
     }
 
-    private var tripDays: Int {
-        (Calendar.current.dateComponents([.day], from: trip.startDate, to: trip.endDate).day ?? 0) + 1
+    private var amountText: String {
+        if let total = trip.totalUSD, total > 0 {
+            return "USD \(Int(total.rounded()).formatted(.number.grouping(.automatic)))"
+        }
+        let days = (Calendar.current.dateComponents([.day], from: trip.startDate, to: trip.endDate).day ?? 0) + 1
+        return "\(days)d"
     }
 }
 
-// MARK: - CreateTripSheet
-
-private struct CreateTripSheet: View {
-    @Environment(FirestoreClient.self) private var client
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var name = ""
-    @State private var startDate = Date()
-    @State private var endDate = Calendar.current.date(byAdding: .day, value: 7, to: Date())!
-    @State private var isSaving = false
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                AtmosphericBackground(accent: Tokens.Color.accentBlue, intensity: 0.08)
-
-                VStack(alignment: .leading, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        MonoLabel(text: "Nuevo viaje", color: Tokens.Color.textTertiary, size: .xs)
-                        Text("¿A dónde vamos?")
-                            .font(.system(size: 32, weight: .bold))
-                            .tracking(Tokens.Track.displayTight)
-                            .foregroundStyle(Tokens.Color.textPrimary)
-                    }
-                    .padding(.top, 8)
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        MonoLabel(text: "Nombre", color: Tokens.Color.textTertiary, size: .xs)
-                        TextField("", text: $name, prompt:
-                            Text("Europa primavera")
-                                .foregroundStyle(Tokens.Color.textTertiary)
-                        )
-                            .font(Tokens.Typo.bodyL)
-                            .foregroundStyle(Tokens.Color.textPrimary)
-                            .padding(14)
-                            .background(
-                                RoundedRectangle(cornerRadius: Tokens.Radius.md)
-                                    .fill(Tokens.Color.surface)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: Tokens.Radius.md)
-                                            .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
-                                    )
-                            )
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        MonoLabel(text: "Fechas", color: Tokens.Color.textTertiary, size: .xs)
-                        VStack(spacing: 0) {
-                            DatePicker("Inicio", selection: $startDate, displayedComponents: .date)
-                                .tint(Tokens.Color.accentBlue)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 12)
-                            Hairline()
-                            DatePicker("Fin", selection: $endDate, in: startDate..., displayedComponents: .date)
-                                .tint(Tokens.Color.accentBlue)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 12)
-                        }
-                        .background(Tokens.Color.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.md))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Tokens.Radius.md)
-                                .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
-                        )
-                    }
-
-                    Spacer()
-                }
-                .padding(20)
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
-                        .foregroundStyle(Tokens.Color.textSecondary)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Crear") { save() }
-                        .disabled(name.isEmpty || isSaving)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(
-                            name.isEmpty ? Tokens.Color.textTertiary : Tokens.Color.accentBlue
-                        )
-                }
-            }
-        }
-        .preferredColorScheme(.dark)
-    }
-
-    private func save() {
-        isSaving = true
-        let trip = Trip(
-            name: name,
-            startDate: startDate,
-            endDate: endDate,
-            status: .planned,
-            cityOrder: [],
-            createdAt: .now
-        )
-        Task {
-            try? await client.createTrip(trip)
-            dismiss()
-        }
-    }
-}
+// CreateTripSheet extracted to Features/Editing/CreateTripSheet.swift so the
+// global AtlasTabBar FAB can reuse it.
