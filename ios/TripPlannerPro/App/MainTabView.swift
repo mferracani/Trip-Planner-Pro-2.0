@@ -8,10 +8,10 @@ struct MainTabView: View {
 
     @Environment(\.modelContext) private var modelContext
     @State private var firestoreClient = FirestoreClient()
+    @State private var uiState = UIState()
     @State private var selection: Int = 0
     @State private var showTripPickerForParse = false
     @State private var availableTrips: [Trip] = []
-    @State private var tabBarVisible: Bool = true
     @State private var showCreateTrip = false
 
     private var cacheManager: CacheManager { CacheManager(modelContext: modelContext) }
@@ -45,7 +45,7 @@ struct MainTabView: View {
         .id(selection)
         .background(Tokens.Color.bgPrimary.ignoresSafeArea())
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if tabBarVisible {
+            if uiState.tabBarVisible {
                 AtlasTabBar(
                     selection: $selection,
                     tabs: AtlasTab.mainTabs,
@@ -55,11 +55,7 @@ struct MainTabView: View {
             }
         }
         .environment(firestoreClient)
-        .onPreferenceChange(TabBarVisibilityKey.self) { visible in
-            withAnimation(Tokens.Motion.spring) {
-                tabBarVisible = visible
-            }
-        }
+        .environment(uiState)
         .onAppear {
             HouseholdConfig.ownerUID = user.uid
         }

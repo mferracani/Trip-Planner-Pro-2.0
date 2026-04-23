@@ -19,6 +19,7 @@ enum TripTab: String, CaseIterable {
 struct TripDetailView: View {
     let trip: Trip
     @Environment(FirestoreClient.self) private var client
+    @Environment(UIState.self) private var uiState
     @Environment(\.dismiss) private var dismiss
     @State private var vm: TripDetailViewModel?
     @State private var selectedTab: TripTab = .calendar
@@ -66,7 +67,6 @@ struct TripDetailView: View {
                 .padding(.bottom, 24)
         }
         .toolbar(.hidden, for: .navigationBar)
-        .hideTabBar()
         .sheet(isPresented: $showAIParse) {
             AIParseModal(trip: trip)
                 .environment(client)
@@ -77,11 +77,19 @@ struct TripDetailView: View {
                 .presentationBackground(Tokens.Color.bgPrimary)
         }
         .onAppear {
+            withAnimation(Tokens.Motion.spring) {
+                uiState.tabBarVisible = false
+            }
             let viewModel = TripDetailViewModel(trip: trip, client: client)
             vm = viewModel
             viewModel.start()
         }
-        .onDisappear { vm?.stop() }
+        .onDisappear {
+            withAnimation(Tokens.Motion.spring) {
+                uiState.tabBarVisible = true
+            }
+            vm?.stop()
+        }
     }
 
     // MARK: - Background
