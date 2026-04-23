@@ -37,23 +37,25 @@ struct TripEditSheet: View {
             onSave: save,
             onDelete: nil
         ) {
-            EditField(label: "Nombre del viaje") {
-                TextFieldInput(text: $name, placeholder: "Europa 2026")
-            }
-
-            HStack(spacing: 12) {
-                EditField(label: "Inicio") {
-                    EditDatePicker(label: "Inicio", date: $startDate)
+            VStack(spacing: 12) {
+                EditField(label: "Nombre del viaje") {
+                    TextFieldInput(text: $name, placeholder: "Europa 2026")
                 }
-                EditField(label: "Fin") {
-                    EditDatePicker(label: "Fin", date: $endDate)
-                }
-            }
 
-            if endDate < startDate {
-                Text("La fecha de fin debe ser posterior al inicio")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Tokens.Color.accentOrange)
+                HStack(spacing: 12) {
+                    EditField(label: "Inicio") {
+                        EditDatePicker(label: "Inicio", date: $startDate)
+                    }
+                    EditField(label: "Fin") {
+                        EditDatePicker(label: "Fin", date: $endDate)
+                    }
+                }
+
+                if endDate < startDate {
+                    Text("La fecha de fin debe ser posterior al inicio")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Tokens.Color.accentOrange)
+                }
             }
         }
     }
@@ -93,15 +95,21 @@ struct CityEditSheet: View {
     @State private var saving = false
     @State private var error: String?
 
-    private let colorPalette: [(hex: String, color: Color)] = [
-        ("#FF6B6B", Color(hex: 0xFF6B6B)),
-        ("#4ECDC4", Color(hex: 0x4ECDC4)),
-        ("#FFD93D", Color(hex: 0xFFD93D)),
-        ("#95E1D3", Color(hex: 0x95E1D3)),
-        ("#C77DFF", Color(hex: 0xC77DFF)),
-        ("#FF8FA3", Color(hex: 0xFF8FA3)),
-        ("#6BCB77", Color(hex: 0x6BCB77)),
-        ("#4D96FF", Color(hex: 0x4D96FF)),
+    // Struct avoids Swift 6 key-path restriction on named tuples
+    private struct ColorSwatch: Identifiable {
+        let id: String  // hex value
+        let color: Color
+    }
+
+    private let swatches: [ColorSwatch] = [
+        ColorSwatch(id: "#FF6B6B", color: Color(hex: 0xFF6B6B)),
+        ColorSwatch(id: "#4ECDC4", color: Color(hex: 0x4ECDC4)),
+        ColorSwatch(id: "#FFD93D", color: Color(hex: 0xFFD93D)),
+        ColorSwatch(id: "#95E1D3", color: Color(hex: 0x95E1D3)),
+        ColorSwatch(id: "#C77DFF", color: Color(hex: 0xC77DFF)),
+        ColorSwatch(id: "#FF8FA3", color: Color(hex: 0xFF8FA3)),
+        ColorSwatch(id: "#6BCB77", color: Color(hex: 0x6BCB77)),
+        ColorSwatch(id: "#4D96FF", color: Color(hex: 0x4D96FF)),
     ]
 
     init(city: TripCity, tripID: String, onClose: @escaping () -> Void) {
@@ -129,37 +137,39 @@ struct CityEditSheet: View {
             onSave: save,
             onDelete: { deleteCity() }
         ) {
-            EditField(label: "Ciudad") {
-                TextFieldInput(text: $name, placeholder: "Madrid")
-            }
+            VStack(spacing: 12) {
+                EditField(label: "Ciudad") {
+                    TextFieldInput(text: $name, placeholder: "Madrid")
+                }
 
-            EditField(label: "País (opcional)") {
-                TextFieldInput(text: $country, placeholder: "España")
-            }
+                EditField(label: "País (opcional)") {
+                    TextFieldInput(text: $country, placeholder: "España")
+                }
 
-            EditField(label: "Color") {
-                colorSwatches
-            }
+                EditField(label: "Color") {
+                    colorSwatchRow
+                }
 
-            EditField(label: "Timezone") {
-                PickerInput(
-                    selection: $timezone,
-                    options: CommonTimezones.options.map { ($0, $0) }
-                )
+                EditField(label: "Timezone") {
+                    PickerInput(
+                        selection: $timezone,
+                        options: CommonTimezones.options.map { ($0, $0) }
+                    )
+                }
             }
         }
     }
 
-    private var colorSwatches: some View {
+    private var colorSwatchRow: some View {
         HStack(spacing: 10) {
-            ForEach(colorPalette, id: \.hex) { entry in
-                let isSelected = selectedColorHex.uppercased() == entry.hex.uppercased()
+            ForEach(swatches) { swatch in
+                let isSelected = selectedColorHex.uppercased() == swatch.id.uppercased()
                 Button {
-                    selectedColorHex = entry.hex
+                    selectedColorHex = swatch.id
                 } label: {
                     ZStack {
                         Circle()
-                            .fill(entry.color)
+                            .fill(swatch.color)
                             .frame(width: 34, height: 34)
                         if isSelected {
                             Circle()
