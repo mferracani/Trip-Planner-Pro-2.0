@@ -14,7 +14,9 @@ private struct SelectedDate: Identifiable {
 
 struct CalendarView: View {
     let vm: TripDetailViewModel
+    @Environment(FirestoreClient.self) private var client
     @State private var selectedDate: SelectedDate?
+    @State private var selectedCity: TripCity?
 
     private let weekdayLabels = ["L", "M", "M", "J", "V", "S", "D"]
     private let calendar: Calendar = {
@@ -59,6 +61,11 @@ struct CalendarView: View {
             DayDetailSheet(date: wrapper.date, vm: vm)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(Tokens.Color.bgPrimary)
+        }
+        .sheet(item: $selectedCity) { city in
+            CityEditSheet(city: city, tripID: vm.trip.id ?? "", onClose: { selectedCity = nil })
+                .environment(client)
                 .presentationBackground(Tokens.Color.bgPrimary)
         }
     }
@@ -156,25 +163,31 @@ struct CalendarView: View {
                 FlowLayout(spacing: 6) {
                     ForEach(vm.cities) { city in
                         let color = city.swiftColor
-                        HStack(spacing: 7) {
-                            Circle().fill(color).frame(width: 6, height: 6)
-                            Text(city.name)
-                                .font(Tokens.Typo.strongS)
-                                .foregroundStyle(Tokens.Color.textPrimary)
-                            Text("\(cityDayCount(city))d")
-                                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                                .foregroundStyle(Tokens.Color.textTertiary)
+                        Button { selectedCity = city } label: {
+                            HStack(spacing: 7) {
+                                Circle().fill(color).frame(width: 6, height: 6)
+                                Text(city.name)
+                                    .font(Tokens.Typo.strongS)
+                                    .foregroundStyle(Tokens.Color.textPrimary)
+                                Text("\(cityDayCount(city))d")
+                                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(Tokens.Color.textTertiary)
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 8, weight: .semibold))
+                                    .foregroundStyle(Tokens.Color.textTertiary.opacity(0.6))
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(color.opacity(0.14))
+                                    .overlay(
+                                        Capsule()
+                                            .strokeBorder(color.opacity(0.35), lineWidth: 0.5)
+                                    )
+                            )
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(
-                            Capsule()
-                                .fill(color.opacity(0.14))
-                                .overlay(
-                                    Capsule()
-                                        .strokeBorder(color.opacity(0.35), lineWidth: 0.5)
-                                )
-                        )
+                        .buttonStyle(.plain)
                     }
                 }
             }

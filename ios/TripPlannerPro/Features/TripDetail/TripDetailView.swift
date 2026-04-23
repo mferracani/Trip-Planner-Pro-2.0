@@ -23,6 +23,7 @@ struct TripDetailView: View {
     @State private var vm: TripDetailViewModel?
     @State private var selectedTab: TripTab = .calendar
     @State private var showAIParse = false
+    @State private var showTripEdit = false
 
     @Namespace private var tabNamespace
 
@@ -65,6 +66,11 @@ struct TripDetailView: View {
             AIParseModal(trip: trip)
                 .environment(client)
         }
+        .sheet(isPresented: $showTripEdit) {
+            TripEditSheet(trip: trip, onClose: { showTripEdit = false })
+                .environment(client)
+                .presentationBackground(Tokens.Color.bgPrimary)
+        }
         .onAppear {
             let viewModel = TripDetailViewModel(trip: trip, client: client)
             vm = viewModel
@@ -92,7 +98,9 @@ struct TripDetailView: View {
 
             Spacer()
 
-            CircleIconButton(systemImage: "ellipsis", size: 32, iconSize: 13) { }
+            CircleIconButton(systemImage: "pencil", size: 32, iconSize: 13) {
+                showTripEdit = true
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 6)

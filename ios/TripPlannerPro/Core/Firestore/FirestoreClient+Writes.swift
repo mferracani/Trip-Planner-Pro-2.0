@@ -74,6 +74,34 @@ extension FirestoreClient {
         try await recalcTripAggregates(tripID: tripID)
     }
 
+    // MARK: Trip
+
+    func updateTrip(_ trip: Trip) async throws {
+        guard let id = trip.id else { return }
+        let ref = try userCollection("trips").document(id)
+        try await ref.updateData([
+            "name": trip.name,
+            "start_date": trip.startDateString,
+            "end_date": trip.endDateString,
+            "updated_at": FieldValue.serverTimestamp()
+        ])
+    }
+
+    // MARK: Cities
+
+    func updateCity(_ city: TripCity, tripID: String) async throws {
+        guard let id = city.id else { return }
+        let ref = try userCollection("trips").document(tripID).collection("cities").document(id)
+        try ref.setData(from: city, merge: true)
+        try await recalcTripAggregates(tripID: tripID)
+    }
+
+    func deleteCity(id: String, tripID: String) async throws {
+        let ref = try userCollection("trips").document(tripID).collection("cities").document(id)
+        try await ref.delete()
+        try await recalcTripAggregates(tripID: tripID)
+    }
+
     // MARK: - Recalc
 
     /// Recomputes total_usd and cities_count for a trip — matches the web's
