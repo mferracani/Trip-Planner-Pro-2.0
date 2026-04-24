@@ -30,7 +30,6 @@ struct CatalogView: View {
     @Environment(FirestoreClient.self) private var client
     @State private var loadState: LoadState = .loading
     @State private var activeTab: CatalogTab = .flights
-    @State private var selectedDetail: CatalogDetailItem?
 
     private enum LoadState {
         case loading
@@ -55,11 +54,6 @@ struct CatalogView: View {
             .navigationTitle("Catálogo")
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(Tokens.Color.bgPrimary, for: .navigationBar)
-            .sheet(item: $selectedDetail) { item in
-                CatalogDetailSheet(item: item)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-            }
         }
         .task {
             await loadItems()
@@ -75,17 +69,11 @@ struct CatalogView: View {
 
             switch activeTab {
             case .flights:
-                FlightsTab(entries: items.flights) { trip, flight in
-                    selectedDetail = .flight(trip, flight)
-                }
+                FlightsTab(entries: items.flights)
             case .hotels:
-                HotelsTab(entries: items.hotels) { trip, hotel in
-                    selectedDetail = .hotel(trip, hotel)
-                }
+                HotelsTab(entries: items.hotels)
             case .transports:
-                TransportsTab(entries: items.transports) { trip, transport in
-                    selectedDetail = .transport(trip, transport)
-                }
+                TransportsTab(entries: items.transports)
             }
         }
     }
@@ -141,7 +129,6 @@ struct CatalogView: View {
 
 private struct FlightsTab: View {
     let entries: [(trip: Trip, flight: Flight)]
-    let onSelect: (Trip, Flight) -> Void
     @State private var search = ""
 
     private var filtered: [(trip: Trip, flight: Flight)] {
@@ -149,7 +136,7 @@ private struct FlightsTab: View {
         let q = search.lowercased()
         return entries.filter { entry in
             let f = entry.flight
-            return [f.airline, f.flightNumber, f.originIATA, f.destIATA, f.bookingRef, entry.trip.name]
+            return [f.airline, f.flightNumber, f.originIATA, f.destinationIATA, f.bookingRef, entry.trip.name]
                 .compactMap { $0 }
                 .contains { $0.lowercased().contains(q) }
         }
@@ -167,12 +154,7 @@ private struct FlightsTab: View {
                 ScrollView {
                     LazyVStack(spacing: Tokens.Spacing.sm) {
                         ForEach(filtered, id: \.flight.id) { entry in
-                            Button {
-                                onSelect(entry.trip, entry.flight)
-                            } label: {
-                                FlightCatalogCard(trip: entry.trip, flight: entry.flight)
-                            }
-                            .buttonStyle(.plain)
+                            FlightCatalogCard(trip: entry.trip, flight: entry.flight)
                         }
                     }
                     .padding(.horizontal, Tokens.Spacing.base)
@@ -187,7 +169,6 @@ private struct FlightsTab: View {
 
 private struct HotelsTab: View {
     let entries: [(trip: Trip, hotel: Hotel)]
-    let onSelect: (Trip, Hotel) -> Void
     @State private var search = ""
 
     private var filtered: [(trip: Trip, hotel: Hotel)] {
@@ -195,7 +176,7 @@ private struct HotelsTab: View {
         let q = search.lowercased()
         return entries.filter { entry in
             let h = entry.hotel
-            return [h.name, h.address, h.bookingRef, entry.trip.name]
+            return [h.name, h.brand, h.roomType, h.bookingRef, entry.trip.name]
                 .compactMap { $0 }
                 .contains { $0.lowercased().contains(q) }
         }
@@ -213,12 +194,7 @@ private struct HotelsTab: View {
                 ScrollView {
                     LazyVStack(spacing: Tokens.Spacing.sm) {
                         ForEach(filtered, id: \.hotel.id) { entry in
-                            Button {
-                                onSelect(entry.trip, entry.hotel)
-                            } label: {
-                                HotelCatalogCard(trip: entry.trip, hotel: entry.hotel)
-                            }
-                            .buttonStyle(.plain)
+                            HotelCatalogCard(trip: entry.trip, hotel: entry.hotel)
                         }
                     }
                     .padding(.horizontal, Tokens.Spacing.base)
@@ -233,7 +209,6 @@ private struct HotelsTab: View {
 
 private struct TransportsTab: View {
     let entries: [(trip: Trip, transport: Transport)]
-    let onSelect: (Trip, Transport) -> Void
     @State private var search = ""
     @State private var typeFilter: String = "all"
 
@@ -256,7 +231,7 @@ private struct TransportsTab: View {
         let q = search.lowercased()
         return afterTypeFilter.filter { entry in
             let t = entry.transport
-            return [t.type, t.description, t.bookingRef, entry.trip.name]
+            return [t.type, t.origin, t.destination, t.operator, t.bookingRef, entry.trip.name]
                 .compactMap { $0 }
                 .contains { $0.lowercased().contains(q) }
         }
@@ -299,12 +274,7 @@ private struct TransportsTab: View {
                 ScrollView {
                     LazyVStack(spacing: Tokens.Spacing.sm) {
                         ForEach(filtered, id: \.transport.id) { entry in
-                            Button {
-                                onSelect(entry.trip, entry.transport)
-                            } label: {
-                                TransportCatalogCard(trip: entry.trip, transport: entry.transport)
-                            }
-                            .buttonStyle(.plain)
+                            TransportCatalogCard(trip: entry.trip, transport: entry.transport)
                         }
                     }
                     .padding(.horizontal, Tokens.Spacing.base)
@@ -342,7 +312,7 @@ private struct FlightCatalogCard: View {
                     .tracking(0.5)
 
                 HStack(spacing: Tokens.Spacing.xs) {
-                    Text("\(flight.originIATA) → \(flight.destIATA)")
+                    Text("\(flight.originIATA) → \(flight.destinationIATA)")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(Tokens.Color.textPrimary)
                     if !flight.airline.isEmpty || !flight.flightNumber.isEmpty {
@@ -355,9 +325,9 @@ private struct FlightCatalogCard: View {
                 }
 
                 HStack(spacing: Tokens.Spacing.xs) {
-                    let depDate = formatLocalDate(flight.departureLocal)
-                    let depTime = formatLocalTime(flight.departureLocal)
-                    let arrTime = formatLocalTime(flight.arrivalLocal)
+                    let depDate = formatLocalDate(flight.departureLocalTime)
+                    let depTime = formatLocalTime(flight.departureLocalTime)
+                    let arrTime = formatLocalTime(flight.arrivalLocalTime)
 
                     if !depDate.isEmpty {
                         Text(depDate)
@@ -389,15 +359,11 @@ private struct FlightCatalogCard: View {
                     Text(currency)
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Tokens.Color.textTertiary)
-                    Text(MoneyFormatter.amount(price, currency: currency))
+                    Text(formatPrice(price))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Tokens.Color.accentGreen)
                 }
             }
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Tokens.Color.textTertiary)
         }
         .padding(Tokens.Spacing.md)
         .background(
@@ -436,9 +402,9 @@ private struct HotelCatalogCard: View {
                     .foregroundStyle(Tokens.Color.textPrimary)
 
                 HStack(spacing: Tokens.Spacing.xs) {
-                    let checkIn = formatISODate(hotel.checkInLocal)
-                    let checkOut = formatISODate(hotel.checkOutLocal)
-                    let nights = nightsBetween(hotel.checkInUTC, hotel.checkOutUTC)
+                    let checkIn = formatISODate(hotel.checkIn)
+                    let checkOut = formatISODate(hotel.checkOut)
+                    let nights = nightsBetween(hotel.checkIn, hotel.checkOut)
 
                     Text("\(checkIn) → \(checkOut)")
                         .font(.system(size: 12))
@@ -463,20 +429,16 @@ private struct HotelCatalogCard: View {
 
             Spacer(minLength: 0)
 
-            if let price = hotel.price, let currency = hotel.currency {
+            if let price = hotel.totalPrice, let currency = hotel.currency {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(currency)
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Tokens.Color.textTertiary)
-                    Text(MoneyFormatter.amount(price, currency: currency))
+                    Text(formatPrice(price))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Tokens.Color.accentGreen)
                 }
             }
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Tokens.Color.textTertiary)
         }
         .padding(Tokens.Spacing.md)
         .background(
@@ -531,7 +493,7 @@ private struct TransportCatalogCard: View {
                     .tracking(0.5)
 
                 HStack(spacing: Tokens.Spacing.xs) {
-                    Text(transport.description)
+                    Text(transport.destination)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(Tokens.Color.textPrimary)
                     Text("·")
@@ -542,8 +504,8 @@ private struct TransportCatalogCard: View {
                 }
 
                 HStack(spacing: Tokens.Spacing.xs) {
-                    let depDate = formatLocalDate(transport.departureLocal)
-                    let depTime = formatLocalTime(transport.departureLocal)
+                    let depDate = formatLocalDate(transport.departureLocalTime)
+                    let depTime = formatLocalTime(transport.departureLocalTime)
 
                     if !depDate.isEmpty {
                         Text(depDate)
@@ -574,207 +536,17 @@ private struct TransportCatalogCard: View {
                     Text(currency)
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Tokens.Color.textTertiary)
-                    Text(MoneyFormatter.amount(price, currency: currency))
+                    Text(formatPrice(price))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Tokens.Color.accentGreen)
                 }
             }
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Tokens.Color.textTertiary)
         }
         .padding(Tokens.Spacing.md)
         .background(
             RoundedRectangle(cornerRadius: Tokens.Radius.md)
                 .fill(Tokens.Color.surface)
         )
-    }
-}
-
-// MARK: - Catalog Detail
-
-private enum CatalogDetailItem: Identifiable {
-    case flight(Trip, Flight)
-    case hotel(Trip, Hotel)
-    case transport(Trip, Transport)
-
-    var id: String {
-        switch self {
-        case .flight(let trip, let flight):
-            return "flight-\(trip.id ?? trip.name)-\(flight.id ?? flight.flightNumber)"
-        case .hotel(let trip, let hotel):
-            return "hotel-\(trip.id ?? trip.name)-\(hotel.id ?? hotel.name)"
-        case .transport(let trip, let transport):
-            return "transport-\(trip.id ?? trip.name)-\(transport.id ?? transport.description)"
-        }
-    }
-}
-
-private struct CatalogDetailSheet: View {
-    let item: CatalogDetailItem
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                Tokens.Color.bgPrimary.ignoresSafeArea()
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: Tokens.Spacing.lg) {
-                        header
-                        detailRows
-                    }
-                    .padding(Tokens.Spacing.base)
-                }
-            }
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-        }
-        .preferredColorScheme(.dark)
-    }
-
-    private var title: String {
-        switch item {
-        case .flight: return "Vuelo"
-        case .hotel: return "Hotel"
-        case .transport: return "Traslado"
-        }
-    }
-
-    private var accent: Color {
-        switch item {
-        case .flight: return Tokens.Color.Category.flight
-        case .hotel: return Tokens.Color.Category.hotel
-        case .transport: return Tokens.Color.Category.transit
-        }
-    }
-
-    private var icon: String {
-        switch item {
-        case .flight: return "airplane"
-        case .hotel: return "bed.double.fill"
-        case .transport: return "tram.fill"
-        }
-    }
-
-    private var header: some View {
-        HStack(alignment: .center, spacing: Tokens.Spacing.md) {
-            ZStack {
-                Circle()
-                    .fill(accent.opacity(0.15))
-                    .frame(width: 54, height: 54)
-                Image(systemName: icon)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(accent)
-            }
-
-            VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
-                Text(primaryText)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(Tokens.Color.textPrimary)
-                Text(tripName)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Tokens.Color.textSecondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(Tokens.Spacing.md)
-        .background(RoundedRectangle(cornerRadius: Tokens.Radius.lg).fill(Tokens.Color.surface))
-    }
-
-    @ViewBuilder
-    private var detailRows: some View {
-        VStack(alignment: .leading, spacing: Tokens.Spacing.sm) {
-            switch item {
-            case .flight(_, let flight):
-                DetailRow(label: "Ruta", value: "\(flight.originIATA) → \(flight.destIATA)")
-                DetailRow(label: "Aerolínea", value: [flight.airline, flight.flightNumber].filter { !$0.isEmpty }.joined(separator: " "))
-                DetailRow(label: "Salida", value: "\(formatLocalDate(flight.departureLocal)) · \(formatLocalTime(flight.departureLocal))")
-                DetailRow(label: "Llegada", value: "\(formatLocalDate(flight.arrivalLocal)) · \(formatLocalTime(flight.arrivalLocal))")
-                DetailRow(label: "Duración", value: durationText(minutes: flight.durationMinutes))
-                optionalRow(label: "Booking", value: flight.bookingRef)
-                priceRow(price: flight.price, currency: flight.currency)
-
-            case .hotel(_, let hotel):
-                DetailRow(label: "Hotel", value: hotel.name)
-                optionalRow(label: "Dirección", value: hotel.address)
-                DetailRow(label: "Check-in", value: formatISODate(hotel.checkInLocal))
-                DetailRow(label: "Check-out", value: formatISODate(hotel.checkOutLocal))
-                DetailRow(label: "Noches", value: "\(nightsBetween(hotel.checkInUTC, hotel.checkOutUTC))")
-                optionalRow(label: "Booking", value: hotel.bookingRef)
-                priceRow(price: hotel.price, currency: hotel.currency)
-
-            case .transport(_, let transport):
-                DetailRow(label: "Descripción", value: transport.description)
-                DetailRow(label: "Tipo", value: transport.type)
-                DetailRow(label: "Salida", value: "\(formatLocalDate(transport.departureLocal)) · \(formatLocalTime(transport.departureLocal))")
-                if let arrivalLocal = transport.arrivalLocal {
-                    DetailRow(label: "Llegada", value: "\(formatLocalDate(arrivalLocal)) · \(formatLocalTime(arrivalLocal))")
-                }
-                optionalRow(label: "Booking", value: transport.bookingRef)
-                priceRow(price: transport.price, currency: transport.currency)
-            }
-        }
-    }
-
-    private var primaryText: String {
-        switch item {
-        case .flight(_, let flight):
-            return "\(flight.originIATA) → \(flight.destIATA)"
-        case .hotel(_, let hotel):
-            return hotel.name
-        case .transport(_, let transport):
-            return transport.description
-        }
-    }
-
-    private var tripName: String {
-        switch item {
-        case .flight(let trip, _), .hotel(let trip, _), .transport(let trip, _):
-            return trip.name
-        }
-    }
-
-    @ViewBuilder
-    private func optionalRow(label: String, value: String?) -> some View {
-        if let value, !value.isEmpty {
-            DetailRow(label: label, value: value)
-        }
-    }
-
-    @ViewBuilder
-    private func priceRow(price: Double?, currency: String?) -> some View {
-        if let price, let currency {
-            DetailRow(label: "Precio", value: "\(MoneyFormatter.amount(price, currency: currency)) \(currency)")
-        }
-    }
-
-    private func durationText(minutes: Int) -> String {
-        let hours = minutes / 60
-        let mins = minutes % 60
-        if hours == 0 { return "\(mins)m" }
-        if mins == 0 { return "\(hours)h" }
-        return "\(hours)h \(mins)m"
-    }
-}
-
-private struct DetailRow: View {
-    let label: String
-    let value: String
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(label)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Tokens.Color.textTertiary)
-                .frame(width: 86, alignment: .leading)
-            Text(value.isEmpty ? "Sin datos" : value)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(value.isEmpty ? Tokens.Color.textTertiary : Tokens.Color.textPrimary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(Tokens.Spacing.md)
-        .background(RoundedRectangle(cornerRadius: Tokens.Radius.md).fill(Tokens.Color.surface))
     }
 }
 
@@ -1007,6 +779,15 @@ private func formatISODate(_ iso: String) -> String {
     formatLocalDate(iso)
 }
 
-private func nightsBetween(_ a: Date, _ b: Date) -> Int {
-    max(0, Int(b.timeIntervalSince(a) / 86400))
+private func nightsBetween(_ checkIn: String, _ checkOut: String) -> Int {
+    guard let a = Trip.isoDateFormatter.date(from: checkIn),
+          let b = Trip.isoDateFormatter.date(from: checkOut) else { return 0 }
+    return max(0, Calendar.current.dateComponents([.day], from: a, to: b).day ?? 0)
+}
+
+private func formatPrice(_ price: Double) -> String {
+    if price == price.rounded() {
+        return String(format: "%.0f", price)
+    }
+    return String(format: "%.2f", price)
 }

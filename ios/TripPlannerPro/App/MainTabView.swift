@@ -8,43 +8,68 @@ struct MainTabView: View {
 
     @Environment(\.modelContext) private var modelContext
     @State private var firestoreClient = FirestoreClient()
+    @State private var selection: Int = 0
     @State private var showTripPickerForParse = false
     @State private var availableTrips: [Trip] = []
+    @State private var tabBarVisible: Bool = true
+    @State private var showCreateTrip = false
 
     private var cacheManager: CacheManager { CacheManager(modelContext: modelContext) }
 
     var body: some View {
-        TabView {
-            DashboardView(cache: cacheManager, onTripsLoaded: { trips in
-                availableTrips = trips
-                // Write summaries to App Group so Share Extension can show trip picker
-                let summaries = trips.compactMap { trip -> AppGroupBridge.TripSummary? in
-                    guard let id = trip.id else { return nil }
-                    return AppGroupBridge.TripSummary(
-                        id: id,
-                        name: trip.name,
-                        startDate: trip.startDate,
-                        endDate: trip.endDate
-                    )
-                }
-                AppGroupBridge.writeTripSummaries(summaries)
-            })
-            .tabItem { Label("Inicio", systemImage: "house.fill") }
-
-            CatalogView()
-                .tabItem { Label("Catálogo", systemImage: "rectangle.stack.fill") }
-
-            SettingsView()
-                .tabItem { Label("Perfil", systemImage: "person") }
+        // Using .safeAreaInset for the tab bar so the ScrollViews inside each
+        // tab know where their bottom edge is — avoids the ZStack-overlay
+        // issue where the tab bar eats scroll gestures in its hit area.
+        Group {
+            switch selection {
+            case 0, 1:
+                DashboardView(cache: cacheManager, onTripsLoaded: { trips in
+                    availableTrips = trips
+                    let summaries = trips.compactMap { trip -> AppGroupBridge.TripSummary? in
+                        guard let id = trip.id else { return nil }
+                        return AppGroupBridge.TripSummary(
+                            id: id,
+                            name: trip.name,
+                            startDate: trip.startDate,
+                            endDate: trip.endDate
+                        )
+                    }
+                    AppGroupBridge.writeTripSummaries(summaries)
+                })
+            case 2:
+                CatalogView()
+            default:
+                SettingsView()
+            }
         }
-        .tint(Tokens.Color.sunGold)
+        .id(selection)
+        .background(Tokens.Color.bgPrimary.ignoresSafeArea())
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if tabBarVisible {
+                AtlasTabBar(
+                    selection: $selection,
+                    tabs: AtlasTab.mainTabs,
+                    onFABTap: { showCreateTrip = true }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
         .environment(firestoreClient)
+        .onPreferenceChange(TabBarVisibilityKey.self) { visible in
+            withAnimation(Tokens.Motion.spring) {
+                tabBarVisible = visible
+            }
+        }
         .onAppear {
             HouseholdConfig.ownerUID = user.uid
         }
         .onChange(of: pendingParseText) { _, newText in
             guard newText != nil else { return }
             showTripPickerForParse = true
+        }
+        .sheet(isPresented: $showCreateTrip) {
+            CreateTripSheet()
+                .environment(firestoreClient)
         }
         .sheet(isPresented: $showTripPickerForParse) {
             TripPickerForParseSheet(

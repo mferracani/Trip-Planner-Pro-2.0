@@ -3,7 +3,8 @@ import Foundation
 
 extension FirestoreClient {
 
-    // Saves confirmed parsed items from AI parse to Firestore under the trip.
+    /// Saves confirmed parsed items from AI parse to Firestore under the trip.
+    /// Writes snake_case fields matching the web schema.
     func saveParsedItems(_ items: [ParsedItem], tripID: String) async throws {
         for item in items {
             switch item {
@@ -22,13 +23,16 @@ extension FirestoreClient {
         let arrUTC = utcDate(from: parsed.arrivalLocalTime, tz: parsed.arrivalTimezone) ?? depUTC
 
         let flight = Flight(
+            tripId: tripID,
             airline: parsed.airline ?? "",
             flightNumber: parsed.flightNumber ?? "",
             originIATA: parsed.originIATA ?? "",
-            destIATA: parsed.destIATA ?? "",
-            departureLocal: parsed.departureLocalTime ?? "",
-            arrivalLocal: parsed.arrivalLocalTime ?? "",
+            destinationIATA: parsed.destIATA ?? "",
+            departureLocalTime: parsed.departureLocalTime ?? "",
+            departureTimezone: parsed.departureTimezone,
             departureUTC: depUTC,
+            arrivalLocalTime: parsed.arrivalLocalTime ?? "",
+            arrivalTimezone: parsed.arrivalTimezone,
             arrivalUTC: arrUTC,
             durationMinutes: Int(arrUTC.timeIntervalSince(depUTC) / 60),
             bookingRef: parsed.bookingRef
@@ -37,15 +41,11 @@ extension FirestoreClient {
     }
 
     private func saveHotelFromParsed(_ parsed: ParsedHotel, tripID: String) async throws {
-        let checkInUTC = dateFromISO(parsed.checkIn) ?? Date()
-        let checkOutUTC = dateFromISO(parsed.checkOut) ?? checkInUTC
-
         let hotel = Hotel(
+            tripId: tripID,
             name: parsed.name ?? "",
-            checkInLocal: parsed.checkIn ?? "",
-            checkOutLocal: parsed.checkOut ?? "",
-            checkInUTC: checkInUTC,
-            checkOutUTC: checkOutUTC,
+            checkIn: parsed.checkIn ?? "",
+            checkOut: parsed.checkOut ?? "",
             bookingRef: parsed.bookingRef
         )
         try userCollection("trips").document(tripID).collection("hotels").addDocument(from: hotel)
@@ -55,9 +55,12 @@ extension FirestoreClient {
         let depUTC = utcDate(from: parsed.departureLocalTime, tz: parsed.departureTimezone) ?? Date()
 
         let transport = Transport(
+            tripId: tripID,
             type: parsed.mode ?? "other",
-            description: [parsed.origin, parsed.destination].compactMap { $0 }.joined(separator: " → "),
-            departureLocal: parsed.departureLocalTime ?? "",
+            origin: parsed.origin ?? "",
+            destination: parsed.destination ?? "",
+            departureLocalTime: parsed.departureLocalTime ?? "",
+            departureTimezone: parsed.departureTimezone,
             departureUTC: depUTC,
             bookingRef: parsed.bookingRef
         )
@@ -73,13 +76,5 @@ extension FirestoreClient {
         guard let timeZone = TimeZone(identifier: tz) else { return nil }
         formatter.timeZone = timeZone
         return formatter.date(from: local)
-    }
-
-    private func dateFromISO(_ string: String?) -> Date? {
-        guard let s = string else { return nil }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        return formatter.date(from: s)
     }
 }

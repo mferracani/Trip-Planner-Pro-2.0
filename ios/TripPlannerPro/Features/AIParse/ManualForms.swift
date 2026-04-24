@@ -197,13 +197,14 @@ struct ManualFlightForm: View {
                 let durationMin = max(0, Int(arrUTC.timeIntervalSince(depUTC) / 60))
 
                 let flight = Flight(
+                    tripId: tripID,
                     airline: airline.trimmingCharacters(in: .whitespaces),
                     flightNumber: flightNumber.trimmingCharacters(in: .whitespaces).uppercased(),
                     originIATA: originIATA.trimmingCharacters(in: .whitespaces).uppercased(),
-                    destIATA: destIATA.trimmingCharacters(in: .whitespaces).uppercased(),
-                    departureLocal: depISO,
-                    arrivalLocal: arrISO,
+                    destinationIATA: destIATA.trimmingCharacters(in: .whitespaces).uppercased(),
+                    departureLocalTime: depISO,
                     departureUTC: depUTC,
+                    arrivalLocalTime: arrISO,
                     arrivalUTC: arrUTC,
                     durationMinutes: durationMin,
                     bookingRef: bookingRef.isEmpty ? nil : bookingRef.uppercased(),
@@ -300,13 +301,12 @@ struct ManualHotelForm: View {
                 let checkOutISO = dateOnlyISO(checkOut)
 
                 let hotel = Hotel(
+                    tripId: tripID,
                     name: name.trimmingCharacters(in: .whitespaces),
-                    checkInLocal: checkInISO,
-                    checkOutLocal: checkOutISO,
-                    checkInUTC: startOfDay(checkIn),
-                    checkOutUTC: startOfDay(checkOut),
+                    checkIn: checkInISO,
+                    checkOut: checkOutISO,
                     bookingRef: bookingRef.isEmpty ? nil : bookingRef.uppercased(),
-                    price: Double(price.replacingOccurrences(of: ",", with: ".")),
+                    totalPrice: Double(price.replacingOccurrences(of: ",", with: ".")),
                     currency: price.isEmpty ? nil : currency
                 )
 
@@ -452,9 +452,11 @@ struct ManualTransportForm: View {
                 let desc = "\(origin.trimmingCharacters(in: .whitespaces)) → \(destination.trimmingCharacters(in: .whitespaces))"
 
                 let transport = Transport(
+                    tripId: tripID,
                     type: type,
-                    description: desc,
-                    departureLocal: depISO,
+                    origin: origin.trimmingCharacters(in: .whitespaces),
+                    destination: destination.trimmingCharacters(in: .whitespaces),
+                    departureLocalTime: depISO,
                     departureUTC: depUTC,
                     bookingRef: bookingRef.isEmpty ? nil : bookingRef.uppercased(),
                     price: Double(price.replacingOccurrences(of: ",", with: ".")),
@@ -575,13 +577,10 @@ private struct PriceRow: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 6) {
-                        Text(MoneyFormatter.symbol(for: currency))
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(Tokens.Color.textPrimary)
+                    HStack(spacing: 4) {
                         Text(currency)
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(Tokens.Color.textSecondary)
+                            .foregroundStyle(Tokens.Color.textPrimary)
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.system(size: 10))
                             .foregroundStyle(Tokens.Color.textTertiary)
@@ -704,12 +703,13 @@ private struct ErrorBanner: View {
 // MARK: - Date helpers
 
 private func isoString(date: Date, time: String) -> String {
+    let calendar = Calendar.current
     let dateStr = dateOnlyISO(date)
     let timeStr = time.trimmingCharacters(in: .whitespaces)
     return "\(dateStr)T\(timeStr)"
 }
 
-private func dateOnlyISO(_ date: Date) -> String {
+func dateOnlyISO(_ date: Date) -> String {
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy-MM-dd"
     formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -730,6 +730,6 @@ private func parseLocalApproxUTC(date: Date, time: String) -> Date {
     return Calendar.current.date(from: components) ?? date
 }
 
-private func startOfDay(_ date: Date) -> Date {
+func startOfDay(_ date: Date) -> Date {
     Calendar.current.startOfDay(for: date)
 }

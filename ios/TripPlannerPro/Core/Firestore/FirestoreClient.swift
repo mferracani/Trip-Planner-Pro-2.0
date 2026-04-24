@@ -1,5 +1,5 @@
 import FirebaseAuth
-import FirebaseFirestore
+@preconcurrency import FirebaseFirestore
 import Foundation
 
 @MainActor
@@ -24,7 +24,7 @@ final class FirestoreClient {
         let ref = try userCollection("trips")
         return AsyncThrowingStream { continuation in
             let listener = ref
-                .order(by: "startDate")
+                .order(by: "start_date")
                 .addSnapshotListener { snapshot, error in
                     if let error {
                         continuation.finish(throwing: error)
@@ -35,21 +35,13 @@ final class FirestoreClient {
                     }
                     continuation.yield(trips)
                 }
-            let listenerBox = ListenerRegistrationBox(listener)
-            continuation.onTermination = { _ in listenerBox.remove() }
+            continuation.onTermination = { _ in listener.remove() }
         }
     }
 
     func createTrip(_ trip: Trip) async throws {
         let ref = try userCollection("trips")
         try ref.addDocument(from: trip)
-    }
-
-    func updateTripDates(id: String, startDate: Date, endDate: Date) async throws {
-        try await userCollection("trips").document(id).updateData([
-            "startDate": startDate,
-            "endDate": endDate,
-        ])
     }
 
     func deleteTrip(id: String) async throws {
@@ -80,17 +72,81 @@ final class FirestoreClient {
         return streamCollection(ref)
     }
 
+    func expensesStream(tripID: String) throws -> AsyncThrowingStream<[Expense], Error> {
+        let ref = try userCollection("trips").document(tripID).collection("expenses")
+        return streamCollection(ref)
+    }
+
     // MARK: - Catalog (all items across trips)
 
     func allItemsStream() throws -> AsyncThrowingStream<CatalogItems, Error> {
         let tripsStream = try tripsStream()
         return AsyncThrowingStream { continuation in
-            let task = Task { @MainActor [weak self] in
-                guard let self else { return }
+            let task = Task { @MainActor in
                 do {
                     for try await trips in tripsStream {
-                        let items = await self.fetchCatalogItems(for: trips)
-                        continuation.yield(items)
+                        // Build Firestore refs on MainActor before spawning tasks
+                        typealias TripRefs = (trip: Trip, flights: CollectionReference, hotels: CollectionReference, transports: CollectionReference)
+                        var tripRefs: [TripRefs] = []
+                        for trip in trips {
+                            guard let tripID = trip.id else { continue }
+                            guard let uid = userUID else { continue }
+                            let base = db.collection("users").document(uid).collection("trips").document(tripID)
+                            tripRefs.append((
+                                trip: trip,
+                                flights: base.collection("flights"),
+                                hotels: base.collection("hotels"),
+                                transports: base.collection("transports")
+                            ))
+                        }
+
+                        // Fetch all subcollections (parallel, off main actor)
+                        typealias TripBatch = (
+                            flights: [(trip: Trip, flight: Flight)],
+                            hotels: [(trip: Trip, hotel: Hotel)],
+                            transports: [(trip: Trip, transport: Transport)]
+                        )
+
+                        let batches: [TripBatch] = await withTaskGroup(of: TripBatch.self) { group in
+                            for refs in tripRefs {
+                                let trip = refs.trip
+                                let fRef = refs.flights
+                                let hRef = refs.hotels
+                                let tRef = refs.transports
+
+                                group.addTask {
+                                    async let fDocs = (try? fRef.getDocuments())?.documents ?? []
+                                    async let hDocs = (try? hRef.getDocuments())?.documents ?? []
+                                    async let tDocs = (try? tRef.getDocuments())?.documents ?? []
+
+                                    let flights = await fDocs.compactMap { try? $0.data(as: Flight.self) }
+                                        .map { (trip: trip, flight: $0) }
+                                    let hotels = await hDocs.compactMap { try? $0.data(as: Hotel.self) }
+                                        .map { (trip: trip, hotel: $0) }
+                                    let transports = await tDocs.compactMap { try? $0.data(as: Transport.self) }
+                                        .map { (trip: trip, transport: $0) }
+
+                                    return (flights: flights, hotels: hotels, transports: transports)
+                                }
+                            }
+
+                            var result: [TripBatch] = []
+                            for await batch in group { result.append(batch) }
+                            return result
+                        }
+
+                        let allFlights = batches.flatMap(\.flights)
+                            .sorted { $0.flight.departureLocalTime < $1.flight.departureLocalTime }
+                        let allHotels = batches.flatMap(\.hotels)
+                            .sorted { $0.hotel.checkIn < $1.hotel.checkIn }
+                        let allTransports = batches.flatMap(\.transports)
+                            .sorted { $0.transport.departureLocalTime < $1.transport.departureLocalTime }
+
+                        continuation.yield(CatalogItems(
+                            flights: allFlights,
+                            hotels: allHotels,
+                            transports: allTransports
+                        ))
                     }
                     continuation.finish()
                 } catch {
@@ -99,41 +155,6 @@ final class FirestoreClient {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
-    }
-
-    // Fetches subcollection items for a list of trips sequentially on MainActor.
-    private func fetchCatalogItems(for trips: [Trip]) async -> CatalogItems {
-        var flights: [(trip: Trip, flight: Flight)] = []
-        var hotels: [(trip: Trip, hotel: Hotel)] = []
-        var transports: [(trip: Trip, transport: Transport)] = []
-
-        for trip in trips {
-            guard let tripID = trip.id else { continue }
-
-            if let fDocs = try? await userCollection("trips")
-                .document(tripID).collection("flights").getDocuments() {
-                let fetched = fDocs.documents.compactMap { try? $0.data(as: Flight.self) }
-                flights.append(contentsOf: fetched.map { (trip: trip, flight: $0) })
-            }
-
-            if let hDocs = try? await userCollection("trips")
-                .document(tripID).collection("hotels").getDocuments() {
-                let fetched = hDocs.documents.compactMap { try? $0.data(as: Hotel.self) }
-                hotels.append(contentsOf: fetched.map { (trip: trip, hotel: $0) })
-            }
-
-            if let tDocs = try? await userCollection("trips")
-                .document(tripID).collection("transports").getDocuments() {
-                let fetched = tDocs.documents.compactMap { try? $0.data(as: Transport.self) }
-                transports.append(contentsOf: fetched.map { (trip: trip, transport: $0) })
-            }
-        }
-
-        return CatalogItems(
-            flights: flights.sorted { $0.flight.departureUTC < $1.flight.departureUTC },
-            hotels: hotels.sorted { $0.hotel.checkInUTC < $1.hotel.checkInUTC },
-            transports: transports.sorted { $0.transport.departureUTC < $1.transport.departureUTC }
-        )
     }
 
     // MARK: - Helpers
@@ -148,21 +169,8 @@ final class FirestoreClient {
                 let items = (snapshot?.documents ?? []).compactMap { try? $0.data(as: T.self) }
                 continuation.yield(items)
             }
-            let listenerBox = ListenerRegistrationBox(listener)
-            continuation.onTermination = { _ in listenerBox.remove() }
+            continuation.onTermination = { _ in listener.remove() }
         }
-    }
-}
-
-private final class ListenerRegistrationBox: @unchecked Sendable {
-    private let listener: ListenerRegistration
-
-    init(_ listener: ListenerRegistration) {
-        self.listener = listener
-    }
-
-    func remove() {
-        listener.remove()
     }
 }
 

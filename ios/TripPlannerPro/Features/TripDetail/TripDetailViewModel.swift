@@ -1,14 +1,17 @@
 import Foundation
 import Observation
+import SwiftUI
 
 @MainActor
 @Observable
 final class TripDetailViewModel {
-    private(set) var trip: Trip
+    let trip: Trip
     private(set) var cities: [TripCity] = []
     private(set) var flights: [Flight] = []
     private(set) var hotels: [Hotel] = []
     private(set) var transports: [Transport] = []
+    private(set) var expenses: [Expense] = []
+
     private(set) var isLoading = true
     private(set) var isOffline = false
 
@@ -27,78 +30,52 @@ final class TripDetailViewModel {
         tasks.forEach { $0.cancel() }
         tasks = []
 
-        // Load cached data immediately as offline fallback while Firestore connects
-        if let cache {
-            let cachedFlights = cache.cachedFlights(tripID: tripID)
-            let cachedHotels = cache.cachedHotels(tripID: tripID)
-            let cachedTransports = cache.cachedTransports(tripID: tripID)
+        tasks.append(subscribe { try self.client.citiesStream(tripID: tripID) } onValue: { [weak self] in
+            self?.cities = $0
+            self?.markLoaded()
+        })
 
-            let hasCachedData = !cachedFlights.isEmpty || !cachedHotels.isEmpty || !cachedTransports.isEmpty
-            if hasCachedData {
-                flights = cachedFlights
-                hotels = cachedHotels
-                transports = cachedTransports
-                isLoading = false
+        tasks.append(subscribe { try self.client.flightsStream(tripID: tripID) } onValue: { [weak self] in
+            self?.flights = $0
+            self?.markLoaded()
+        })
+
+        tasks.append(subscribe { try self.client.hotelsStream(tripID: tripID) } onValue: { [weak self] in
+            self?.hotels = $0
+            self?.markLoaded()
+        })
+
+        tasks.append(subscribe { try self.client.transportsStream(tripID: tripID) } onValue: { [weak self] in
+            self?.transports = $0
+            self?.markLoaded()
+        })
+
+        tasks.append(subscribe { try self.client.expensesStream(tripID: tripID) } onValue: { [weak self] in
+            self?.expenses = $0
+            self?.markLoaded()
+        })
+    }
+
+    private func markLoaded() {
+        isLoading = false
+        isOffline = false
+    }
+
+    private func subscribe<T: Sendable>(
+        stream: @escaping () throws -> AsyncThrowingStream<[T], Error>,
+        onValue: @escaping ([T]) -> Void
+    ) -> Task<Void, Never> {
+        Task {
+            do {
+                for try await value in try stream() {
+                    guard !Task.isCancelled else { break }
+                    onValue(value)
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
                 isOffline = true
             }
         }
-
-        tasks.append(Task {
-            do {
-                for try await c in try client.citiesStream(tripID: tripID) {
-                    guard !Task.isCancelled else { break }
-                    cities = c
-                    isLoading = false
-                    isOffline = false
-                }
-            } catch {
-                guard !Task.isCancelled else { return }
-                isLoading = false
-                isOffline = true
-            }
-        })
-
-        tasks.append(Task {
-            do {
-                for try await f in try client.flightsStream(tripID: tripID) {
-                    guard !Task.isCancelled else { break }
-                    flights = f
-                    isOffline = false
-                    cache?.upsertFlights(f, tripID: tripID)
-                }
-            } catch {
-                guard !Task.isCancelled else { return }
-                isOffline = true
-            }
-        })
-
-        tasks.append(Task {
-            do {
-                for try await h in try client.hotelsStream(tripID: tripID) {
-                    guard !Task.isCancelled else { break }
-                    hotels = h
-                    isOffline = false
-                    cache?.upsertHotels(h, tripID: tripID)
-                }
-            } catch {
-                guard !Task.isCancelled else { return }
-                isOffline = true
-            }
-        })
-
-        tasks.append(Task {
-            do {
-                for try await t in try client.transportsStream(tripID: tripID) {
-                    guard !Task.isCancelled else { break }
-                    transports = t
-                    isOffline = false
-                    cache?.upsertTransports(t, tripID: tripID)
-                }
-            } catch {
-                guard !Task.isCancelled else { return }
-                isOffline = true
-            }
-        })
     }
 
     func stop() {
@@ -106,45 +83,11 @@ final class TripDetailViewModel {
         tasks = []
     }
 
-    func updateTripDates(startDate: Date, endDate: Date) async throws {
-        guard let tripID = trip.id else { throw FirestoreError.notAuthenticated }
-        try await client.updateTripDates(id: tripID, startDate: startDate, endDate: endDate)
-        trip.startDate = startDate
-        trip.endDate = endDate
-    }
-
-    func outOfRangeItemCount(startDate: Date, endDate: Date) -> Int {
-        let start = calendar.startOfDay(for: startDate)
-        let end = calendar.startOfDay(for: endDate)
-        let endExclusive = calendar.date(byAdding: .day, value: 1, to: end) ?? end
-
-        let flightCount = flights.filter {
-            let day = calendar.startOfDay(for: $0.departureUTC)
-            return day < start || day > end
-        }.count
-
-        let hotelCount = hotels.filter {
-            let checkIn = calendar.startOfDay(for: $0.checkInUTC)
-            let checkOut = calendar.startOfDay(for: $0.checkOutUTC)
-            return checkIn < start || checkOut > endExclusive
-        }.count
-
-        let transportCount = transports.filter {
-            let day = calendar.startOfDay(for: $0.departureUTC)
-            return day < start || day > end
-        }.count
-
-        return flightCount + hotelCount + transportCount
-    }
-
     // MARK: - Calendar helpers
 
     var weeks: [[Date?]] {
-        let tripStart = calendar.startOfDay(for: trip.startDate)
-        let tripEnd = calendar.startOfDay(for: trip.endDate)
-
-        guard let start = calendar.dateInterval(of: .weekOfYear, for: tripStart),
-              let end = calendar.dateInterval(of: .weekOfYear, for: tripEnd) else {
+        guard let start = calendar.dateInterval(of: .weekOfYear, for: trip.startDate),
+              let end = calendar.dateInterval(of: .weekOfYear, for: trip.endDate) else {
             return []
         }
         var weeks: [[Date?]] = []
@@ -153,7 +96,7 @@ final class TripDetailViewModel {
             var week: [Date?] = []
             for offset in 0..<7 {
                 let day = calendar.date(byAdding: .day, value: offset, to: weekStart)!
-                week.append(day >= tripStart && day <= tripEnd ? day : nil)
+                week.append(day >= trip.startDate && day <= trip.endDate ? day : nil)
             }
             weeks.append(week)
             weekStart = calendar.date(byAdding: .weekOfYear, value: 1, to: weekStart)!
@@ -161,56 +104,77 @@ final class TripDetailViewModel {
         return weeks
     }
 
+    /// City lookup based on web schema: each city has a `days` array.
     func city(for date: Date) -> TripCity? {
-        cities.first { c in
-            let d = calendar.startOfDay(for: date)
-            return d >= calendar.startOfDay(for: c.startDate) && d <= calendar.startOfDay(for: c.endDate)
-        }
-    }
-
-    func cityDayProgress(for date: Date) -> (current: Int, total: Int)? {
-        guard let city = city(for: date) else { return nil }
-        let day = calendar.startOfDay(for: date)
-        let start = calendar.startOfDay(for: city.startDate)
-        let end = calendar.startOfDay(for: city.endDate)
-        let current = (calendar.dateComponents([.day], from: start, to: day).day ?? 0) + 1
-        let total = (calendar.dateComponents([.day], from: start, to: end).day ?? 0) + 1
-        return (max(current, 1), max(total, 1))
-    }
-
-    func flights(on date: Date) -> [Flight] {
-        let d = calendar.startOfDay(for: date)
-        return flights.filter { calendar.startOfDay(for: $0.departureUTC) == d }
-    }
-
-    func hotels(on date: Date) -> [Hotel] {
-        let d = calendar.startOfDay(for: date)
-        return hotels.filter {
-            let ci = calendar.startOfDay(for: $0.checkInUTC)
-            let co = calendar.startOfDay(for: $0.checkOutUTC)
-            return d >= ci && d < co
-        }
-    }
-
-    func transports(on date: Date) -> [Transport] {
-        let d = calendar.startOfDay(for: date)
-        return transports.filter { calendar.startOfDay(for: $0.departureUTC) == d }
+        let key = Trip.isoDateFormatter.string(from: date)
+        return cities.first { $0.days.contains(key) }
     }
 
     func cityColor(for date: Date) -> Color? {
-        guard let c = city(for: date) else { return nil }
-        return Tokens.Color.cityPalette[c.colorIndex % Tokens.Color.cityPalette.count]
+        city(for: date)?.swiftColor
+    }
+
+    /// Flights happening on this date — departure OR arrival matches.
+    func flights(on date: Date) -> [Flight] {
+        let key = Trip.isoDateFormatter.string(from: date)
+        return flights.filter { $0.departureDate == key || $0.arrivalDate == key }
+    }
+
+    /// Hotels occupying this date (between check_in inclusive and check_out exclusive).
+    func hotels(on date: Date) -> [Hotel] {
+        let key = Trip.isoDateFormatter.string(from: date)
+        return hotels.filter { $0.occupiedDays.contains(key) }
+    }
+
+    func transports(on date: Date) -> [Transport] {
+        let key = Trip.isoDateFormatter.string(from: date)
+        return transports.filter { $0.departureDate == key }
+    }
+
+    func expenses(on date: Date) -> [Expense] {
+        let key = Trip.isoDateFormatter.string(from: date)
+        return expenses.filter { $0.date == key }
+    }
+
+    /// Returns true if any item (flight/hotel/transport/expense) exists for the date.
+    func hasAnyItem(on date: Date) -> Bool {
+        !flights(on: date).isEmpty
+            || !hotels(on: date).isEmpty
+            || !transports(on: date).isEmpty
+            || !expenses(on: date).isEmpty
+    }
+
+    // MARK: - Totals (used by CostsView)
+
+    /// Unified total USD across all item types.
+    var grandTotalUSD: Double {
+        let f = flights.reduce(0) { $0 + ($1.priceUSD ?? 0) }
+        let h = hotels.reduce(0) { $0 + ($1.totalPriceUSD ?? 0) }
+        let t = transports.reduce(0) { $0 + ($1.priceUSD ?? 0) }
+        let e = expenses.reduce(0) { $0 + ($1.amountUSD ?? 0) }
+        return f + h + t + e
+    }
+
+    /// Unified total paid (so far) across all item types, in USD.
+    /// Approximates paid USD via paid_amount × (price_usd / price) when
+    /// original-currency amounts are available, otherwise falls back to 0.
+    var paidTotalUSD: Double {
+        func paidUSD(paid: Double?, price: Double?, priceUSD: Double?) -> Double {
+            guard let paid = paid, paid > 0 else { return 0 }
+            guard let price, let priceUSD, price > 0 else { return 0 }
+            return paid * (priceUSD / price)
+        }
+        let f = flights.reduce(0) { $0 + paidUSD(paid: $1.paidAmount, price: $1.price, priceUSD: $1.priceUSD) }
+        let h = hotels.reduce(0) { $0 + paidUSD(paid: $1.paidAmount, price: $1.totalPrice, priceUSD: $1.totalPriceUSD) }
+        let t = transports.reduce(0) { $0 + paidUSD(paid: $1.paidAmount, price: $1.price, priceUSD: $1.priceUSD) }
+        let e = expenses.reduce(0) { $0 + paidUSD(paid: $1.paidAmount, price: $1.amount, priceUSD: $1.amountUSD) }
+        return f + h + t + e
     }
 
     private let calendar: Calendar = {
         var c = Calendar(identifier: .gregorian)
-        c.firstWeekday = 2  // Monday
+        c.firstWeekday = 2
         c.locale = Locale(identifier: "es-AR")
         return c
     }()
-}
-
-import SwiftUI
-extension TripDetailViewModel {
-    typealias Color = SwiftUI.Color
 }
