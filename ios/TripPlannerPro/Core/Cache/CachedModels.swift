@@ -126,7 +126,7 @@ final class CachedTransport {
     @Attribute(.unique) var firestoreID: String
     var tripID: String
     var type: String
-    var description: String
+    var transportDescription: String
     var departureLocal: String
     var departureUTC: Date
 
@@ -134,7 +134,7 @@ final class CachedTransport {
         self.firestoreID = transport.id ?? UUID().uuidString
         self.tripID = tripID
         self.type = transport.type
-        self.description = transport.description
+        self.transportDescription = transport.description
         self.departureLocal = transport.departureLocal
         self.departureUTC = transport.departureUTC
     }
@@ -143,7 +143,7 @@ final class CachedTransport {
         Transport(
             id: firestoreID,
             type: type,
-            description: description,
+            description: transportDescription,
             departureLocal: departureLocal,
             departureUTC: departureUTC
         )

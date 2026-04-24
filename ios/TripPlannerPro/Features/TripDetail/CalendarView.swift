@@ -2,7 +2,7 @@ import SwiftUI
 
 struct CalendarView: View {
     let vm: TripDetailViewModel
-    @State private var selectedDate: Date?
+    @State private var selectedDate: SelectedCalendarDate?
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 7)
     private let weekDays = ["L", "M", "X", "J", "V", "S", "D"]
@@ -18,9 +18,9 @@ struct CalendarView: View {
                                     DayCell(
                                         date: date,
                                         vm: vm,
-                                        isSelected: selectedDate.map { Calendar.current.isDate($0, inSameDayAs: date) } ?? false
+                                        isSelected: selectedDate.map { Calendar.current.isDate($0.date, inSameDayAs: date) } ?? false
                                     )
-                                    .onTapGesture { selectedDate = date }
+                                    .onTapGesture { selectedDate = SelectedCalendarDate(date: date) }
                                 } else {
                                     Color.clear
                                         .frame(minHeight: 80)
@@ -34,8 +34,8 @@ struct CalendarView: View {
             }
         }
         .background(Tokens.Color.bgPrimary)
-        .sheet(item: $selectedDate) { date in
-            DayDetailSheet(date: date, vm: vm)
+        .sheet(item: $selectedDate) { selected in
+            DayDetailSheet(date: selected.date, vm: vm)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
@@ -53,6 +53,11 @@ struct CalendarView: View {
         }
         .background(Tokens.Color.bgPrimary)
     }
+}
+
+private struct SelectedCalendarDate: Identifiable {
+    let date: Date
+    var id: Date { date }
 }
 
 // MARK: - DayCell
@@ -152,8 +157,7 @@ private struct ItemBadge: View {
 
 // MARK: - DayDetailSheet
 
-struct DayDetailSheet: View, Identifiable {
-    var id: Date { date }
+struct DayDetailSheet: View {
     let date: Date
     let vm: TripDetailViewModel
 

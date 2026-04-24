@@ -31,11 +31,14 @@ struct CostsView: View {
                 } else {
                     ForEach(byCurrency.keys.sorted(), id: \.self) { currency in
                         HStack {
-                            Text(currency)
-                                .font(.system(size: 16, weight: .bold))
+                            Text(MoneyFormatter.symbol(for: currency))
+                                .font(.system(size: 18, weight: .bold))
                                 .foregroundStyle(Tokens.Color.textSecondary)
+                            Text(currency)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Tokens.Color.textTertiary)
                             Spacer()
-                            Text(byCurrency[currency]!.formatted(.currency(code: currency)))
+                            Text(MoneyFormatter.amount(byCurrency[currency]!, currency: currency))
                                 .font(.system(size: 22, weight: .semibold))
                                 .foregroundStyle(Tokens.Color.textPrimary)
                         }

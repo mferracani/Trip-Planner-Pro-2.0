@@ -7,7 +7,7 @@
 - Backlog activo de mejoras iOS: `.project/ios-improvements-backlog.md`
 - Handoff para retomar en otra sesion/maquina: `.project/ios-improvements-handoff.md`
 - QA Fase 4 iOS: `.project/qa-checklist-fase4.md`
-- Proximo ticket recomendado: `Permitir eliminar viaje` con `frontend-engineer`
+- Proximo ticket recomendado: `Ciudades reutilizables sin duplicados` con `backend-designer` antes de tocar UI
 
 ## Gate status
 - [x] Gate 1: PRD aprobado ✅ — docs/PRD.md v1.0 (2026-04-19)
@@ -24,6 +24,10 @@
 - 2026-04-19 [Arquitecto] `duration_minutes` calculado al escribir en Cloud Function (Firestore no tiene generated columns)
 - 2026-04-24 [QA] Checklist Fase 4 iOS creado en `.project/qa-checklist-fase4.md`; cierre bloqueado hasta compilar/probar en Mac con Xcode
 - 2026-04-24 [PM] Backlog de mejoras iOS priorizado en `.project/ios-improvements-backlog.md`; light mode queda fuera de MVP por regla dark mode only
+- 2026-04-24 [Frontend] Ticket iOS 1 implementado: eliminar viaje desde Dashboard con confirmacion y error state; pendiente build Xcode
+- 2026-04-24 [Frontend] Ticket iOS 2 implementado: editar fechas de viaje, persistir en Firestore y recalcular calendario; pendiente build Xcode
+- 2026-04-24 [Frontend] Tickets iOS 8/9 implementados: detalle desde Catalogo y formateo monetario con simbolos; pendiente build Xcode
+- 2026-04-24 [Frontend] Xcode 26.4.1 + XcodeGen 2.45.4 configurados; `xcodebuild` Debug iOS Simulator para `TripPlannerPro` pasa en esta Mac
 
 ## Progreso por fase
 
@@ -64,6 +68,11 @@
 - [x] ManualForms en AIParseModal (Vuelo / Hotel / Traslado con DatePicker y validación)
 - [x] FirestoreClient.allItemsStream() + CatalogItems struct
 - [x] FirestoreClient+ManualSave.swift
+- [x] Eliminar viaje desde Dashboard (pendiente build Xcode)
+- [x] Editar fechas de viaje y recalcular calendario (pendiente build Xcode)
+- [x] Detalle desde Catálogo (pendiente build Xcode)
+- [x] Monedas con símbolos en Catálogo/Costos/Formularios (pendiente build Xcode)
+- [x] Build Debug iOS Simulator compila en Xcode 26.4.1
 - [ ] Settings
 - [ ] Tests (checklist QA creado; ejecucion Xcode pendiente)
 ### ⬜ Fase 5 — TestFlight (bloqueado por Fase 4)
@@ -72,8 +81,11 @@
 - [ ] [setup] → [backend-designer]: iniciar Firebase setup (Fase 1)
 - [ ] [backend-designer] → [security-reviewer]: auditar Security Rules antes de deploy
 - [ ] [backend-designer] → [frontend-engineer]: API contracts listos para Fase 2
-- [ ] [product-manager] → [frontend-engineer]: implementar Ticket 1 iOS — eliminar viaje
-- [ ] [product-manager] → [backend-designer]: definir estrategia para ciudades reutilizables sin duplicados
+- [x] [product-manager] → [frontend-engineer]: implementar Ticket 1 iOS — eliminar viaje
+- [x] [frontend-engineer] → [frontend-engineer]: implementar Ticket 2 iOS — editar fechas y recalcular dias
+- [x] [frontend-engineer] → [frontend-engineer]: implementar Ticket 9 iOS — detalle desde Catalogo
+- [x] [frontend-engineer] → [frontend-engineer]: implementar Ticket 8 iOS — monedas con simbolos
+- [ ] [frontend-engineer] → [backend-designer]: definir estrategia para ciudades reutilizables sin duplicados
 
 ## Open questions para el usuario
 - ¿Ya tenés proyecto en Firebase Console creado? (si sí, agregar URL al CLAUDE.md)

@@ -4,7 +4,7 @@ import Observation
 @MainActor
 @Observable
 final class TripDetailViewModel {
-    let trip: Trip
+    private(set) var trip: Trip
     private(set) var cities: [TripCity] = []
     private(set) var flights: [Flight] = []
     private(set) var hotels: [Hotel] = []
@@ -106,11 +106,45 @@ final class TripDetailViewModel {
         tasks = []
     }
 
+    func updateTripDates(startDate: Date, endDate: Date) async throws {
+        guard let tripID = trip.id else { throw FirestoreError.notAuthenticated }
+        try await client.updateTripDates(id: tripID, startDate: startDate, endDate: endDate)
+        trip.startDate = startDate
+        trip.endDate = endDate
+    }
+
+    func outOfRangeItemCount(startDate: Date, endDate: Date) -> Int {
+        let start = calendar.startOfDay(for: startDate)
+        let end = calendar.startOfDay(for: endDate)
+        let endExclusive = calendar.date(byAdding: .day, value: 1, to: end) ?? end
+
+        let flightCount = flights.filter {
+            let day = calendar.startOfDay(for: $0.departureUTC)
+            return day < start || day > end
+        }.count
+
+        let hotelCount = hotels.filter {
+            let checkIn = calendar.startOfDay(for: $0.checkInUTC)
+            let checkOut = calendar.startOfDay(for: $0.checkOutUTC)
+            return checkIn < start || checkOut > endExclusive
+        }.count
+
+        let transportCount = transports.filter {
+            let day = calendar.startOfDay(for: $0.departureUTC)
+            return day < start || day > end
+        }.count
+
+        return flightCount + hotelCount + transportCount
+    }
+
     // MARK: - Calendar helpers
 
     var weeks: [[Date?]] {
-        guard let start = calendar.dateInterval(of: .weekOfYear, for: trip.startDate),
-              let end = calendar.dateInterval(of: .weekOfYear, for: trip.endDate) else {
+        let tripStart = calendar.startOfDay(for: trip.startDate)
+        let tripEnd = calendar.startOfDay(for: trip.endDate)
+
+        guard let start = calendar.dateInterval(of: .weekOfYear, for: tripStart),
+              let end = calendar.dateInterval(of: .weekOfYear, for: tripEnd) else {
             return []
         }
         var weeks: [[Date?]] = []
@@ -119,7 +153,7 @@ final class TripDetailViewModel {
             var week: [Date?] = []
             for offset in 0..<7 {
                 let day = calendar.date(byAdding: .day, value: offset, to: weekStart)!
-                week.append(day >= trip.startDate && day <= trip.endDate ? day : nil)
+                week.append(day >= tripStart && day <= tripEnd ? day : nil)
             }
             weeks.append(week)
             weekStart = calendar.date(byAdding: .weekOfYear, value: 1, to: weekStart)!

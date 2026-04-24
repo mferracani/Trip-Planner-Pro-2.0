@@ -26,11 +26,11 @@ Objetivo: ordenar mejoras iOS antes de seguir build, separando MVP, v1.1 y cambi
 Hoy no se puede eliminar un viaje desde iOS. El PRD incluye archivar/eliminar/duplicar viaje.
 
 **Acceptance Criteria**
-- [ ] Desde Dashboard o detalle de viaje existe accion visible para eliminar.
-- [ ] La accion pide confirmacion antes de borrar.
-- [ ] Al confirmar, el viaje desaparece de la lista local.
-- [ ] Si Firestore falla, se muestra error y no queda UI inconsistente.
-- [ ] No se borran otros viajes.
+- [x] Desde Dashboard o detalle de viaje existe accion visible para eliminar.
+- [x] La accion pide confirmacion antes de borrar.
+- [x] Al confirmar, el viaje desaparece de la lista local.
+- [x] Si Firestore falla, se muestra error y no queda UI inconsistente.
+- [x] No se borran otros viajes.
 
 **Scope explicito**  
 Incluye: eliminar viaje.  
@@ -46,11 +46,11 @@ No incluye: duplicar viaje, archivar viaje, soft delete.
 Al editar un viaje y agregar un dia no pasa nada. Tambien se necesita poder sacar dias.
 
 **Acceptance Criteria**
-- [ ] Se puede editar fecha inicio y fecha fin.
-- [ ] Si se extiende el viaje, aparecen los nuevos dias en el calendario.
-- [ ] Si se acorta el viaje, los dias fuera de rango dejan de mostrarse como dias activos.
-- [ ] La app advierte si al acortar quedan items fuera de rango.
-- [ ] El calendario sigue mostrando 7 columnas Mon->Sun.
+- [x] Se puede editar fecha inicio y fecha fin.
+- [x] Si se extiende el viaje, aparecen los nuevos dias en el calendario.
+- [x] Si se acorta el viaje, los dias fuera de rango dejan de mostrarse como dias activos.
+- [x] La app advierte si al acortar quedan items fuera de rango.
+- [x] El calendario sigue mostrando 7 columnas Mon->Sun.
 
 **Scope explicito**  
 Incluye: editar metadata del viaje y recalcular calendario.  
@@ -159,10 +159,10 @@ No incluye: editor manual avanzado de color.
 **Agente responsable:** frontend-engineer
 
 **Acceptance Criteria**
-- [ ] USD se muestra con `$`.
-- [ ] EUR se muestra con `€`.
-- [ ] El codigo de moneda se mantiene cuando haya ambiguedad.
-- [ ] El formato es consistente en Dashboard, Catalogo, Detail y formularios.
+- [x] USD se muestra con `$`.
+- [x] EUR se muestra con `€`.
+- [x] El codigo de moneda se mantiene cuando haya ambiguedad.
+- [x] El formato es consistente en Dashboard, Catalogo, Detail y formularios.
 
 #### Ticket 9: Ver detalle desde Catalogo
 
@@ -171,10 +171,10 @@ No incluye: editor manual avanzado de color.
 **Agente responsable:** frontend-engineer
 
 **Acceptance Criteria**
-- [ ] Tap en vuelo abre detalle del vuelo.
-- [ ] Tap en hotel abre detalle del hotel.
-- [ ] Tap en transporte abre detalle del transporte.
-- [ ] El detalle muestra precio, moneda, fechas, horarios, booking ref y notas si existen.
+- [x] Tap en vuelo abre detalle del vuelo.
+- [x] Tap en hotel abre detalle del hotel.
+- [x] Tap en transporte abre detalle del transporte.
+- [x] El detalle muestra precio, moneda, fechas, horarios, booking ref y notas si existen.
 
 #### Ticket 10: Separar alquiler de auto en Catalogo
 
@@ -233,10 +233,10 @@ No incluye: mapa interactivo avanzado ni proveedor externo de mapas.
 
 ## Orden recomendado de implementacion
 
-1. Eliminar viaje.
-2. Editar fechas y recalcular dias.
-3. Detalle desde Catalogo.
-4. Monedas con simbolo correcto.
+1. Eliminar viaje. `[implementado pendiente de build Xcode]`
+2. Editar fechas y recalcular dias. `[implementado pendiente de build Xcode]`
+3. Detalle desde Catalogo. `[implementado pendiente de build Xcode]`
+4. Monedas con simbolo correcto. `[implementado pendiente de build Xcode]`
 5. Reutilizar ciudades sin duplicar (requiere backend-designer antes).
 6. Asignar ciudad a rango con long-press/drag.
 7. Mas colores de ciudades.

@@ -5,7 +5,7 @@ enum TripStatus: String, Codable, Sendable {
     case planned, active, past
 }
 
-struct Trip: Identifiable, Codable, Sendable, Equatable {
+struct Trip: Identifiable, Codable, Equatable, Hashable, @unchecked Sendable {
     @DocumentID var id: String?
     var name: String
     var startDate: Date
@@ -32,7 +32,7 @@ struct Trip: Identifiable, Codable, Sendable, Equatable {
     }
 }
 
-struct TripCity: Identifiable, Codable, Sendable {
+struct TripCity: Identifiable, Codable, @unchecked Sendable {
     @DocumentID var id: String?
     var name: String
     var countryCode: String
@@ -43,7 +43,7 @@ struct TripCity: Identifiable, Codable, Sendable {
     var color: some Hashable { colorIndex }
 }
 
-struct Flight: Identifiable, Codable, Sendable {
+struct Flight: Identifiable, Codable, @unchecked Sendable {
     @DocumentID var id: String?
     var airline: String
     var flightNumber: String
@@ -60,7 +60,7 @@ struct Flight: Identifiable, Codable, Sendable {
     var cityId: String?
 }
 
-struct Hotel: Identifiable, Codable, Sendable {
+struct Hotel: Identifiable, Codable, @unchecked Sendable {
     @DocumentID var id: String?
     var name: String
     var address: String?
@@ -74,7 +74,7 @@ struct Hotel: Identifiable, Codable, Sendable {
     var cityId: String?
 }
 
-struct Transport: Identifiable, Codable, Sendable {
+struct Transport: Identifiable, Codable, @unchecked Sendable {
     @DocumentID var id: String?
     var type: String
     var description: String

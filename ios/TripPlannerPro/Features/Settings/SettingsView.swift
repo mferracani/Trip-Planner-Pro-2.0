@@ -114,7 +114,7 @@ struct SettingsView: View {
 
 // MARK: - AI Provider Picker
 
-private enum AIProvider: String, CaseIterable, Identifiable {
+private enum SettingsAIProvider: String, CaseIterable, Identifiable {
     case claude = "Claude"
     case gemini = "Gemini"
 
@@ -129,15 +129,15 @@ private enum AIProvider: String, CaseIterable, Identifiable {
 }
 
 private struct AIProviderPicker: View {
-    @AppStorage("defaultAIProvider") private var storedProvider: String = AIProvider.claude.rawValue
+    @AppStorage("defaultAIProvider") private var storedProvider: String = SettingsAIProvider.claude.rawValue
 
-    private var selectedProvider: AIProvider {
-        AIProvider(rawValue: storedProvider) ?? .claude
+    private var selectedProvider: SettingsAIProvider {
+        SettingsAIProvider(rawValue: storedProvider) ?? .claude
     }
 
     var body: some View {
         Picker("Provider por defecto", selection: $storedProvider) {
-            ForEach(AIProvider.allCases) { provider in
+            ForEach(SettingsAIProvider.allCases) { provider in
                 Label(provider.rawValue, systemImage: provider.systemImage)
                     .tag(provider.rawValue)
             }

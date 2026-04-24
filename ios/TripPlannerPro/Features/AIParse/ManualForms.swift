@@ -575,10 +575,13 @@ private struct PriceRow: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(MoneyFormatter.symbol(for: currency))
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Tokens.Color.textPrimary)
                         Text(currency)
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(Tokens.Color.textPrimary)
+                            .foregroundStyle(Tokens.Color.textSecondary)
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.system(size: 10))
                             .foregroundStyle(Tokens.Color.textTertiary)
@@ -701,13 +704,12 @@ private struct ErrorBanner: View {
 // MARK: - Date helpers
 
 private func isoString(date: Date, time: String) -> String {
-    let calendar = Calendar.current
     let dateStr = dateOnlyISO(date)
     let timeStr = time.trimmingCharacters(in: .whitespaces)
     return "\(dateStr)T\(timeStr)"
 }
 
-func dateOnlyISO(_ date: Date) -> String {
+private func dateOnlyISO(_ date: Date) -> String {
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy-MM-dd"
     formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -728,6 +730,6 @@ private func parseLocalApproxUTC(date: Date, time: String) -> Date {
     return Calendar.current.date(from: components) ?? date
 }
 
-func startOfDay(_ date: Date) -> Date {
+private func startOfDay(_ date: Date) -> Date {
     Calendar.current.startOfDay(for: date)
 }

@@ -22,6 +22,8 @@ struct TripDetailView: View {
     @State private var vm: TripDetailViewModel?
     @State private var selectedTab: TripTab = .calendar
     @State private var showAIParse = false
+    @State private var showEditDates = false
+    @State private var editDatesError: String?
 
     var body: some View {
         ZStack {
@@ -36,25 +38,49 @@ struct TripDetailView: View {
                 ProgressView().tint(Tokens.Color.textSecondary)
             }
         }
-        .navigationTitle(trip.name)
+        .navigationTitle(vm?.trip.name ?? trip.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showAIParse = true
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "sparkles")
-                        Text("IA")
-                            .font(.system(size: 13, weight: .semibold))
+                HStack(spacing: Tokens.Spacing.xs) {
+                    Button {
+                        showAIParse = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "sparkles")
+                            Text("IA")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .foregroundStyle(Tokens.Color.accentPurple)
                     }
-                    .foregroundStyle(Tokens.Color.accentPurple)
+
+                    Menu {
+                        Button {
+                            showEditDates = true
+                        } label: {
+                            Label("Editar fechas", systemImage: "calendar.badge.clock")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Tokens.Color.textSecondary)
+                    }
                 }
             }
         }
         .sheet(isPresented: $showAIParse) {
             AIParseModal(trip: trip)
                 .environment(client)
+        }
+        .sheet(isPresented: $showEditDates) {
+            if let vm {
+                EditTripDatesSheet(vm: vm)
+            }
+        }
+        .alert("No se pudieron guardar las fechas", isPresented: editDatesErrorBinding) {
+            Button("OK") { editDatesError = nil }
+        } message: {
+            Text(editDatesError ?? "Intentá de nuevo.")
         }
         .onAppear {
             let viewModel = TripDetailViewModel(trip: trip, client: client)
@@ -100,6 +126,15 @@ struct TripDetailView: View {
 
     @Namespace private var tabNamespace
 
+    private var editDatesErrorBinding: Binding<Bool> {
+        Binding(
+            get: { editDatesError != nil },
+            set: { isPresented in
+                if !isPresented { editDatesError = nil }
+            }
+        )
+    }
+
     @ViewBuilder
     private func tabContent(_ vm: TripDetailViewModel) -> some View {
         switch selectedTab {
@@ -111,6 +146,83 @@ struct TripDetailView: View {
             ItemsView(vm: vm)
         case .costs:
             CostsView(vm: vm)
+        }
+    }
+}
+
+private struct EditTripDatesSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let vm: TripDetailViewModel
+
+    @State private var startDate: Date
+    @State private var endDate: Date
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    init(vm: TripDetailViewModel) {
+        self.vm = vm
+        _startDate = State(initialValue: vm.trip.startDate)
+        _endDate = State(initialValue: vm.trip.endDate)
+    }
+
+    private var outOfRangeCount: Int {
+        vm.outOfRangeItemCount(startDate: startDate, endDate: endDate)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Fechas") {
+                    DatePicker("Inicio", selection: $startDate, displayedComponents: .date)
+                    DatePicker("Fin", selection: $endDate, in: startDate..., displayedComponents: .date)
+                }
+
+                if outOfRangeCount > 0 {
+                    Section {
+                        Label(
+                            "\(outOfRangeCount) item(s) quedarian fuera del nuevo rango.",
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .foregroundStyle(Tokens.Color.accentOrange)
+                    }
+                }
+
+                if let errorMessage {
+                    Section {
+                        Text(errorMessage)
+                            .foregroundStyle(Tokens.Color.accentRed)
+                    }
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Tokens.Color.bgPrimary.ignoresSafeArea())
+            .navigationTitle("Editar fechas")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Guardar") { save() }
+                        .disabled(isSaving)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private func save() {
+        isSaving = true
+        errorMessage = nil
+
+        Task {
+            do {
+                try await vm.updateTripDates(startDate: startDate, endDate: endDate)
+                dismiss()
+            } catch {
+                errorMessage = "No se pudieron guardar los cambios."
+            }
+            isSaving = false
         }
     }
 }

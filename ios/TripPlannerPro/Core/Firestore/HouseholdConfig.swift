@@ -4,6 +4,7 @@ import Foundation
 /// Set this to Mati's Firebase UID once you've done the first sign-in.
 /// Wife's UID gets added to Security Rules allowlist separately — she reads from this same path.
 /// Replace the placeholder before first TestFlight build.
+@MainActor
 enum HouseholdConfig {
     static var ownerUID: String? = nil  // Set at runtime after first auth
 }

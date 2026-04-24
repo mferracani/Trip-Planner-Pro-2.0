@@ -7,6 +7,9 @@ struct DashboardView: View {
     @Environment(FirestoreClient.self) private var client
     @State private var vm: DashboardViewModel?
     @State private var showCreateTrip = false
+    @State private var tripPendingDeletion: Trip?
+    @State private var isDeletingTrip = false
+    @State private var deletionError: String?
     @State private var now = Date()
 
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
@@ -38,6 +41,24 @@ struct DashboardView: View {
             .sheet(isPresented: $showCreateTrip) {
                 CreateTripSheet()
                     .environment(client)
+            }
+            .alert("Eliminar viaje", isPresented: deleteConfirmationBinding) {
+                Button("Cancelar", role: .cancel) {
+                    tripPendingDeletion = nil
+                }
+                Button("Eliminar", role: .destructive) {
+                    deletePendingTrip()
+                }
+                .disabled(isDeletingTrip)
+            } message: {
+                Text("Esta accion elimina el viaje y sus datos asociados. No se puede deshacer.")
+            }
+            .alert("No se pudo eliminar", isPresented: deletionErrorBinding) {
+                Button("OK") {
+                    deletionError = nil
+                }
+            } message: {
+                Text(deletionError ?? "Intentá de nuevo.")
             }
         }
         .onAppear {
@@ -78,6 +99,24 @@ struct DashboardView: View {
         }
     }
 
+    private var deleteConfirmationBinding: Binding<Bool> {
+        Binding(
+            get: { tripPendingDeletion != nil },
+            set: { isPresented in
+                if !isPresented { tripPendingDeletion = nil }
+            }
+        )
+    }
+
+    private var deletionErrorBinding: Binding<Bool> {
+        Binding(
+            get: { deletionError != nil },
+            set: { isPresented in
+                if !isPresented { deletionError = nil }
+            }
+        )
+    }
+
     private func headerSection(_ vm: DashboardViewModel) -> some View {
         VStack(alignment: .leading, spacing: Tokens.Spacing.sm) {
             Text(vm.greeting)
@@ -109,13 +148,36 @@ struct DashboardView: View {
     @ViewBuilder
     private func tripSections(_ vm: DashboardViewModel) -> some View {
         if !vm.activeTrips.isEmpty {
-            TripSection(title: "En curso", trips: vm.activeTrips)
+            TripSection(title: "En curso", trips: vm.activeTrips, onDelete: requestDelete)
         }
         if !vm.plannedTrips.isEmpty {
-            TripSection(title: "Próximos", trips: vm.plannedTrips)
+            TripSection(title: "Próximos", trips: vm.plannedTrips, onDelete: requestDelete)
         }
         if !vm.pastTrips.isEmpty {
-            TripSection(title: "Pasados", trips: vm.pastTrips)
+            TripSection(title: "Pasados", trips: vm.pastTrips, onDelete: requestDelete)
+        }
+    }
+
+    private func requestDelete(_ trip: Trip) {
+        tripPendingDeletion = trip
+    }
+
+    private func deletePendingTrip() {
+        guard let trip = tripPendingDeletion, let id = trip.id else {
+            deletionError = "El viaje todavia no tiene un ID valido."
+            tripPendingDeletion = nil
+            return
+        }
+
+        isDeletingTrip = true
+        Task {
+            do {
+                try await client.deleteTrip(id: id)
+                tripPendingDeletion = nil
+            } catch {
+                deletionError = "No se pudo eliminar \(trip.name)."
+            }
+            isDeletingTrip = false
         }
     }
 
@@ -154,6 +216,7 @@ struct DashboardView: View {
 private struct TripSection: View {
     let title: String
     let trips: [Trip]
+    let onDelete: (Trip) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Spacing.sm) {
@@ -163,10 +226,48 @@ private struct TripSection: View {
                 .kerning(0.8)
 
             ForEach(trips) { trip in
-                NavigationLink(value: trip) {
-                    TripCard(trip: trip)
+                TripRow(trip: trip, onDelete: onDelete)
+            }
+        }
+    }
+}
+
+// MARK: - TripRow
+
+private struct TripRow: View {
+    let trip: Trip
+    let onDelete: (Trip) -> Void
+
+    var body: some View {
+        HStack(spacing: Tokens.Spacing.sm) {
+            NavigationLink(value: trip) {
+                TripCard(trip: trip)
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity)
+
+            Menu {
+                Button(role: .destructive) {
+                    onDelete(trip)
+                } label: {
+                    Label("Eliminar viaje", systemImage: "trash")
                 }
-                .buttonStyle(.plain)
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Tokens.Color.textSecondary)
+                    .frame(width: 36, height: 48)
+                    .background(
+                        RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                            .fill(Tokens.Color.surface)
+                    )
+            }
+        }
+        .contextMenu {
+            Button(role: .destructive) {
+                onDelete(trip)
+            } label: {
+                Label("Eliminar viaje", systemImage: "trash")
             }
         }
     }
