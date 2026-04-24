@@ -361,9 +361,7 @@ function TripHeroCard({
   coverUrl?: string;
 }) {
   const progress = status === "active" ? 11 : 0;
-  const heroImage =
-    coverUrl ||
-    "https://images.unsplash.com/photo-1581776045061-4a5b1c983bb0?auto=format&fit=crop&w=1100&q=80";
+  const heroImage = coverUrl || "/travel-hero.svg";
 
   return (
     <section className="overflow-hidden rounded-[16px] border border-[#2E4638] bg-[#15130F] shadow-[0_18px_70px_rgba(0,0,0,0.34)]">

@@ -67,8 +67,7 @@ type CalendarCellData = {
   outside?: boolean;
 };
 
-const heroImage =
-  "https://images.unsplash.com/photo-1581776045061-4a5b1c983bb0?auto=format&fit=crop&w=1200&q=80";
+const heroImage = "/travel-hero.svg";
 
 const trips: TripSummary[] = [
   {
