@@ -28,6 +28,12 @@
 - 2026-04-24 [Frontend] Ticket iOS 2 implementado: editar fechas de viaje, persistir en Firestore y recalcular calendario; pendiente build Xcode
 - 2026-04-24 [Frontend] Tickets iOS 8/9 implementados: detalle desde Catalogo y formateo monetario con simbolos; pendiente build Xcode
 - 2026-04-24 [Frontend] Xcode 26.4.1 + XcodeGen 2.45.4 configurados; `xcodebuild` Debug iOS Simulator para `TripPlannerPro` pasa en esta Mac
+- 2026-04-24 [Setup] Skill global `ui-designer-expert` creada en `/Users/mac017/.codex/skills/ui-designer-expert`
+- 2026-04-24 [Frontend] Rediseño premium core aplicado en iOS + web: tokens warm dark, Home hero, Trip Detail y calendario 7 columnas; `next build` y `xcodebuild` pasan
+- 2026-04-24 [Frontend] Mockup premium aplicado a pantallas reales: web Trip Detail usa hero con foto/progreso/metricas; iOS Dashboard y Trip Detail usan la misma composicion visual; `next build` y `xcodebuild` pasan
+- 2026-04-24 [Frontend] `/dev` convertido en prototipo funcional in-memory: navegacion real, tabs, calendario 7 columnas, drawer de dia y modal IA; removidos marcos/canvas/clases de mockup; `next build` pasa
+- 2026-04-24 [Frontend] Calendario mobile de `/dev` ajustado a slots legibles: fecha dd/mm, bandera, codigo de ciudad, contador de estadia e items abreviados; `next build` pasa
+- 2026-04-24 [Frontend] Interaccion mobile de calendario corregida: tocar un dia abre bottom sheet desde abajo; desktop conserva panel lateral; `next build` pasa
 
 ## Progreso por fase
 

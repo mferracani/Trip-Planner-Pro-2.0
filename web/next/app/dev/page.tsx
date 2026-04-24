@@ -1,944 +1,849 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { CalendarView } from "@/components/TripDetail/CalendarView";
-import { ListView } from "@/components/TripDetail/ListView";
-import { ItemsView } from "@/components/TripDetail/ItemsView";
-import { TopNav } from "@/components/TopNav";
-import { AiParseModal } from "@/components/AiParseModal";
-import { Pressable } from "@/components/ui/Pressable";
-import { BottomNav, BottomNavTab } from "@/components/BottomNav";
-import { Plane, MapPin, DollarSign, CalendarDays } from "lucide-react";
-import { Trip, City, Flight, Hotel, Transport, ParsedItem } from "@/lib/types";
-import { useCountUp } from "@/lib/hooks";
-import type { Timestamp } from "firebase/firestore";
-import Link from "next/link";
+import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import {
+  ArrowLeft,
+  Briefcase,
+  CalendarDays,
+  Home,
+  MapPin,
+  MoreHorizontal,
+  Palmtree,
+  Plane,
+  Plus,
+  Search,
+  Send,
+  Settings,
+  Sparkles,
+  Upload,
+  User,
+  X,
+} from "lucide-react";
 
-// ---------------------------------------------------------------------------
-// Mock data — Europa 2026 (BUE → MAD → BCN → ROM → BUE)
-// ---------------------------------------------------------------------------
+type View = "dashboard" | "trip" | "catalog" | "settings";
+type TripTab = "calendar" | "list" | "items" | "costs";
+type TripStatus = "active" | "future" | "past";
+type ItemType = "flight" | "hotel" | "transport";
 
-const fakeTs = {} as Timestamp;
-
-const MOCK_TRIP: Trip = {
-  id: "mock-1",
-  name: "Europa 2026",
-  start_date: "2026-05-15",
-  end_date: "2026-05-28",
-  cover_url: undefined,
-  total_usd: 3240,
-  created_at: fakeTs,
-  updated_at: fakeTs,
+type TripSummary = {
+  id: string;
+  name: string;
+  flag: string;
+  year: string;
+  range: string;
+  status: TripStatus;
+  totalUsd: number;
+  cities: number;
+  days: number;
 };
 
-const MOCK_CITIES: City[] = [
-  {
-    id: "city-mad",
-    trip_id: "mock-1",
-    name: "Madrid",
-    color: "#FF6B6B",
-    lat: 40.4, lng: -3.7,
-    timezone: "Europe/Madrid",
-    days: ["2026-05-15","2026-05-16","2026-05-17","2026-05-18"],
-  },
-  {
-    id: "city-bcn",
-    trip_id: "mock-1",
-    name: "Barcelona",
-    color: "#4ECDC4",
-    lat: 41.4, lng: 2.2,
-    timezone: "Europe/Madrid",
-    days: ["2026-05-19","2026-05-20","2026-05-21"],
-  },
-  {
-    id: "city-rom",
-    trip_id: "mock-1",
-    name: "Roma",
-    color: "#C77DFF",
-    lat: 41.9, lng: 12.5,
-    timezone: "Europe/Rome",
-    days: ["2026-05-22","2026-05-23","2026-05-24","2026-05-25","2026-05-26","2026-05-27","2026-05-28"],
-  },
-];
+type CitySegment = {
+  id: string;
+  name: string;
+  code: string;
+  flag: string;
+  color: string;
+  start: string;
+  days: string[];
+};
 
-const MOCK_FLIGHTS: Flight[] = [
-  {
-    id: "fl-1",
-    trip_id: "mock-1",
-    airline: "Iberia",
-    flight_number: "IB6844",
-    origin_iata: "EZE",
-    destination_iata: "MAD",
-    departure_local_time: "2026-05-14T21:35",
-    departure_timezone: "America/Argentina/Buenos_Aires",
-    departure_utc: fakeTs,
-    arrival_local_time: "2026-05-15T13:20",
-    arrival_timezone: "Europe/Madrid",
-    arrival_utc: fakeTs,
-    duration_minutes: 765,
-    cabin_class: "Business",
-    seat: "24A",
-    booking_ref: "XKQP7M",
-    price_usd: 1200,
-  },
-  {
-    id: "fl-2",
-    trip_id: "mock-1",
-    airline: "Vueling",
-    flight_number: "VY1234",
-    origin_iata: "MAD",
-    destination_iata: "BCN",
-    departure_local_time: "2026-05-19T08:10",
-    departure_timezone: "Europe/Madrid",
-    departure_utc: fakeTs,
-    arrival_local_time: "2026-05-19T09:25",
-    arrival_timezone: "Europe/Madrid",
-    arrival_utc: fakeTs,
-    duration_minutes: 75,
-    cabin_class: "Economy",
-    price_usd: 65,
-  },
-  {
-    id: "fl-3",
-    trip_id: "mock-1",
-    airline: "Ryanair",
-    flight_number: "FR9021",
-    origin_iata: "BCN",
-    destination_iata: "FCO",
-    departure_local_time: "2026-05-22T06:45",
-    departure_timezone: "Europe/Madrid",
-    departure_utc: fakeTs,
-    arrival_local_time: "2026-05-22T08:55",
-    arrival_timezone: "Europe/Rome",
-    arrival_utc: fakeTs,
-    duration_minutes: 130,
-    cabin_class: "Economy",
-    price_usd: 80,
-  },
-  {
-    id: "fl-4",
-    trip_id: "mock-1",
-    airline: "Iberia",
-    flight_number: "IB6845",
-    origin_iata: "FCO",
-    destination_iata: "EZE",
-    departure_local_time: "2026-05-28T16:30",
-    departure_timezone: "Europe/Rome",
-    departure_utc: fakeTs,
-    arrival_local_time: "2026-05-29T07:15",
-    arrival_timezone: "America/Argentina/Buenos_Aires",
-    arrival_utc: fakeTs,
-    duration_minutes: 795,
-    cabin_class: "Business",
-    seat: "24A",
-    booking_ref: "XKQP7N",
-    price_usd: 1200,
-  },
-];
+type TripItem = {
+  id: string;
+  type: ItemType;
+  date: string;
+  time?: string;
+  title: string;
+  detail: string;
+  priceUsd?: number;
+};
 
-const MOCK_HOTELS: Hotel[] = [
-  {
-    id: "ht-1",
-    trip_id: "mock-1",
-    city_id: "city-mad",
-    name: "Hotel Puerta América",
-    brand: "Silken",
-    check_in: "2026-05-15",
-    check_out: "2026-05-19",
-    room_type: "Superior Doble",
-    booking_ref: "BK88231",
-    price_per_night: 180,
-    total_price_usd: 720,
-  },
-  {
-    id: "ht-2",
-    trip_id: "mock-1",
-    city_id: "city-bcn",
-    name: "H10 Casa Mimosa",
-    brand: "H10",
-    check_in: "2026-05-19",
-    check_out: "2026-05-22",
-    room_type: "Deluxe",
-    booking_ref: "H10-44512",
-    price_per_night: 210,
-    total_price_usd: 630,
-  },
-  {
-    id: "ht-3",
-    trip_id: "mock-1",
-    city_id: "city-rom",
-    name: "Hotel Nazionale",
-    brand: "Nazionale",
-    check_in: "2026-05-22",
-    check_out: "2026-05-28",
-    room_type: "Classic",
-    booking_ref: "NAZ-9912",
-    price_per_night: 160,
-    total_price_usd: 960,
-  },
-];
+type CalendarCellData = {
+  date: string;
+  day: string;
+  city?: CitySegment;
+  cityIndex?: number;
+  items: TripItem[];
+  outside?: boolean;
+};
 
-const MOCK_TRANSPORTS: Transport[] = [
-  {
-    id: "tr-1",
-    trip_id: "mock-1",
-    type: "train",
-    origin: "Madrid Atocha",
-    destination: "Barcelona Sants",
-    departure_local_time: "2026-05-19T09:00",
-    departure_timezone: "Europe/Madrid",
-    departure_utc: fakeTs,
-    arrival_local_time: "2026-05-19T12:30",
-    arrival_timezone: "Europe/Madrid",
-    arrival_utc: fakeTs,
-    operator: "Renfe AVE",
-    booking_ref: "AVE-7712",
-    price_usd: 65,
-  },
-];
+const heroImage =
+  "https://images.unsplash.com/photo-1581776045061-4a5b1c983bb0?auto=format&fit=crop&w=1200&q=80";
 
-const MOCK_TRIPS: (Trip & { status: "active" | "future" | "past" })[] = [
-  { ...MOCK_TRIP, status: "future" },
+const trips: TripSummary[] = [
   {
-    id: "mock-2",
-    name: "Patagonia Sur",
-    start_date: "2025-11-10",
-    end_date: "2025-11-20",
-    total_usd: 1850,
-    created_at: fakeTs,
-    updated_at: fakeTs,
-    status: "past",
+    id: "mallorca",
+    name: "Mallorca",
+    flag: "🇪🇸",
+    year: "2026",
+    range: "23 jun 26 – 8 jul 26",
+    status: "active",
+    totalUsd: 10407,
+    cities: 3,
+    days: 16,
   },
   {
-    id: "mock-3",
-    name: "NYC & Boston",
-    start_date: "2026-09-01",
-    end_date: "2026-09-12",
-    total_usd: 2100,
-    created_at: fakeTs,
-    updated_at: fakeTs,
+    id: "rio",
+    name: "Rio de Janeiro",
+    flag: "🇧🇷",
+    year: "2026",
+    range: "4 dic 26 – 12 dic 26",
     status: "future",
+    totalUsd: 2720,
+    cities: 1,
+    days: 9,
   },
 ];
 
-const MOCK_PARSED_ITEMS: ParsedItem[] = [
+const cities: CitySegment[] = [
   {
-    type: "flight",
-    confidence: 0.97,
-    airline: "Iberia",
-    flight_number: "IB6844",
-    origin_iata: "EZE",
-    destination_iata: "MAD",
-    departure_local_time: "2026-05-14T21:35",
-    departure_timezone: "America/Argentina/Buenos_Aires",
-    arrival_local_time: "2026-05-15T14:20",
-    arrival_timezone: "Europe/Madrid",
-    booking_ref: null,
+    id: "palma",
+    name: "Palma",
+    code: "PMI",
+    flag: "🇪🇸",
+    color: "#54C6A0",
+    start: "2026-06-23",
+    days: ["2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-27", "2026-06-28"],
   },
   {
-    type: "hotel",
-    confidence: 0.83,
-    name: "H10 Casa Mimosa",
-    city: "Barcelona",
-    check_in: "2026-05-19",
-    check_out: "2026-05-22",
-    booking_ref: null,
+    id: "soller",
+    name: "Sóller",
+    code: "SOL",
+    flag: "🇪🇸",
+    color: "#5D77B8",
+    start: "2026-06-30",
+    days: ["2026-06-30", "2026-07-01", "2026-07-02"],
   },
   {
-    type: "transport",
-    confidence: 0.61,
-    mode: "train",
-    origin: "Madrid Atocha",
-    destination: "Barcelona Sants",
-    departure_local_time: "2026-05-19T09:00",
-    departure_timezone: "Europe/Madrid",
-    booking_ref: null,
+    id: "alcudia",
+    name: "Alcúdia",
+    code: "ALC",
+    flag: "🇪🇸",
+    color: "#8E4BA6",
+    start: "2026-07-03",
+    days: ["2026-07-03", "2026-07-04", "2026-07-05", "2026-07-06"],
   },
 ];
 
-// ---------------------------------------------------------------------------
-// Screens
-// ---------------------------------------------------------------------------
+const items: TripItem[] = [
+  { id: "hm-23", type: "hotel", date: "2026-06-23", title: "HM Palma Blanc", detail: "Check-in · Suite vista mar", priceUsd: 1560 },
+  { id: "hm-24", type: "hotel", date: "2026-06-24", title: "HM Palma Blanc", detail: "Noche 2/6" },
+  { id: "car-25", type: "transport", date: "2026-06-25", time: "09:40", title: "Auto a Deià", detail: "Retiro en Palma" },
+  { id: "hm-26", type: "hotel", date: "2026-06-26", title: "HM Palma Blanc", detail: "Noche 4/6" },
+  { id: "hm-27", type: "hotel", date: "2026-06-27", title: "HM Palma Blanc", detail: "Noche 5/6" },
+  { id: "ux-28", type: "flight", date: "2026-06-28", time: "21:35", title: "IB3912 Madrid → Palma", detail: "Asiento 4A · Business", priceUsd: 420 },
+  { id: "js-30", type: "hotel", date: "2026-06-30", title: "Jumeirah Sóller", detail: "Check-in · Terrace Deluxe", priceUsd: 1290 },
+  { id: "train-1", type: "transport", date: "2026-07-01", time: "10:15", title: "Tren de Sóller", detail: "Palma Estació → Sóller", priceUsd: 45 },
+  { id: "train-2", type: "transport", date: "2026-07-02", time: "16:20", title: "Tren de Sóller", detail: "Sóller → Puerto" },
+  { id: "viva-3", type: "hotel", date: "2026-07-03", title: "Viva Blue Alcúdia", detail: "Check-in · Suite", priceUsd: 1700 },
+  { id: "viva-4", type: "hotel", date: "2026-07-04", title: "Viva Blue Alcúdia", detail: "Noche 2/4" },
+  { id: "car-4", type: "transport", date: "2026-07-04", time: "12:00", title: "Auto a Formentor", detail: "Reserva local" },
+  { id: "viva-5", type: "hotel", date: "2026-07-05", title: "Viva Blue Alcúdia", detail: "Noche 3/4" },
+  { id: "home-6", type: "flight", date: "2026-07-06", time: "11:10", title: "UX6030 Palma → Madrid", detail: "Terminal B", priceUsd: 380 },
+  { id: "home-7", type: "flight", date: "2026-07-07", time: "18:50", title: "IB6845 Madrid → Ezeiza", detail: "Regreso", priceUsd: 1200 },
+];
 
-type Screen = "dashboard" | "trip" | "parse-modal";
-type TripTab = "calendar" | "list" | "items";
+const weekDates = [
+  ["2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-27", "2026-06-28"],
+  ["2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04", "2026-07-05"],
+  ["2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-11", "2026-07-12"],
+];
 
-export default function DevPreview() {
-  const [screen, setScreen] = useState<Screen>("dashboard");
-  const [tripTab, setTripTab] = useState<TripTab>("calendar");
-  const [parseOpen, setParseOpen] = useState(false);
-  const [showParsed, setShowParsed] = useState(false);
-  const [navTab, setNavTab] = useState<BottomNavTab>("trips");
-
-  function handleTabChange(t: BottomNavTab) {
-    setNavTab(t);
-    if (t === "trips") setScreen("dashboard");
-  }
-
-  function handleAdd() {
-    if (screen === "trip") setParseOpen(true);
-    else setParseOpen(true);
-  }
+export default function DevPrototype() {
+  const [view, setView] = useState<View>("trip");
+  const [tab, setTab] = useState<TripTab>("calendar");
+  const [selectedDate, setSelectedDate] = useState<string | null>("2026-06-24");
+  const [activeDate, setActiveDate] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const activeTrip = trips[0];
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D]">
-      {/* Dev nav bar */}
-      <div className="sticky top-0 z-50 flex items-center gap-2 px-4 py-2 bg-[#BF5AF2]/90 backdrop-blur text-white text-[12px] font-semibold">
-        <span className="opacity-60">DEV PREVIEW</span>
-        <div className="flex gap-1 ml-2">
-          {(["dashboard", "trip"] as Screen[]).map((s) => (
+    <main className="min-h-screen bg-[#090806] text-white">
+      <TopNavigation view={view} onChange={setView} onAdd={() => setAiOpen(true)} />
+
+      {view === "dashboard" && (
+        <DashboardView onOpenTrip={() => setView("trip")} onAdd={() => setAiOpen(true)} />
+      )}
+      {view === "trip" && (
+        <TripDetailView
+          trip={activeTrip}
+          tab={tab}
+          onTabChange={setTab}
+          selectedDate={selectedDate}
+          onSelectDate={(date) => {
+            setSelectedDate(date);
+            setActiveDate(date);
+          }}
+          onBack={() => setView("dashboard")}
+        />
+      )}
+      {view === "catalog" && <CatalogView />}
+      {view === "settings" && <SettingsView />}
+
+      <BottomNavigation view={view} onChange={setView} onAdd={() => setAiOpen(true)} />
+
+      {activeDate && (
+        <DayDrawer date={activeDate} onClose={() => setActiveDate(null)} />
+      )}
+      {aiOpen && <AiModal onClose={() => setAiOpen(false)} />}
+    </main>
+  );
+}
+
+function TopNavigation({
+  view,
+  onChange,
+  onAdd,
+}: {
+  view: View;
+  onChange: (view: View) => void;
+  onAdd: () => void;
+}) {
+  return (
+    <header className="sticky top-0 z-40 flex h-[72px] items-center justify-between border-b border-[#1F1F1F] bg-[#090806]/94 px-5 backdrop-blur md:px-6">
+      <button onClick={() => onChange("dashboard")} className="flex items-center gap-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#71D3A6] text-[#07100B]">
+          <Palmtree className="h-6 w-6 fill-[#07100B]" />
+        </span>
+        <span className="hidden text-[20px] font-black tracking-tight sm:block">Trip Planner Pro</span>
+      </button>
+
+      <nav className="hidden items-center gap-9 text-[15px] font-semibold text-[#81786A] md:flex">
+        <NavButton active={view === "trip" || view === "dashboard"} onClick={() => onChange("trip")}>Viajes</NavButton>
+        <NavButton active={view === "catalog"} onClick={() => onChange("catalog")}>Catálogo</NavButton>
+        <span className="opacity-45">Mapa</span>
+        <NavButton active={view === "settings"} onClick={() => onChange("settings")}>Ajustes</NavButton>
+      </nav>
+
+      <button onClick={onAdd} className="flex items-center gap-2 rounded-full border border-[#A15CE6] bg-[#A891E8]/8 px-4 py-2 text-[13px] font-bold md:text-[14px]">
+        <Sparkles className="h-4 w-4 text-[#A891E8]" />
+        Agregar con IA
+      </button>
+    </header>
+  );
+}
+
+function NavButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button onClick={onClick} className={active ? "border-b-2 border-[#71D3A6] py-6 text-white" : "py-6 hover:text-white"}>
+      {children}
+    </button>
+  );
+}
+
+function DashboardView({ onOpenTrip, onAdd }: { onOpenTrip: () => void; onAdd: () => void }) {
+  return (
+    <section className="mx-auto max-w-[980px] px-5 py-8 pb-28 md:px-8 md:pb-10">
+      <div className="mb-7 flex items-start justify-between">
+        <div>
+          <p className="text-[16px] font-medium text-[#81786A]">Buen día</p>
+          <h1 className="mt-2 text-[38px] font-black leading-none tracking-tight md:text-[46px]">Día 2 de tu viaje</h1>
+        </div>
+        <button onClick={onAdd} className="flex h-14 w-14 items-center justify-center rounded-full bg-[#242018] text-[#F3ECE1]">
+          <User className="h-6 w-6" />
+        </button>
+      </div>
+
+      <button onClick={onOpenTrip} className="w-full text-left">
+        <MobileHero trip={trips[0]} />
+      </button>
+
+      <div className="mt-8 flex items-end justify-between">
+        <h2 className="text-[26px] font-black tracking-tight">Mis viajes</h2>
+        <span className="text-[18px] font-bold text-[#81786A]">24</span>
+      </div>
+
+      <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+        {["Todos", "Próximos", "En curso", "Pasados"].map((filter, index) => (
+          <button key={filter} className={`rounded-full px-4 py-2 text-[14px] font-bold ${index === 0 ? "bg-[#F5F1EA] text-black" : "border border-[#252119] bg-[#171512] text-[#C6BDAE]"}`}>
+            {filter}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {trips.map((trip) => (
+          <TripRow key={trip.id} trip={trip} onClick={onOpenTrip} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MobileHero({ trip }: { trip: TripSummary }) {
+  return (
+    <section className="overflow-hidden rounded-[28px] border border-[#4C8D76] bg-[#151513] shadow-[0_28px_70px_rgba(0,0,0,0.38)]">
+      <div className="relative h-[230px] overflow-hidden">
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroImage})` }} />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(113,211,166,0.92),rgba(36,68,55,0.78)_50%,rgba(9,8,6,0.66))]" />
+        <Plane className="absolute left-[48%] top-10 h-24 w-24 -rotate-[24deg] fill-white/10 text-white/10" strokeWidth={0} />
+        <div className="relative flex h-full flex-col justify-between p-6">
+          <div className="flex items-start justify-between">
+            <span className="text-[13px] font-black uppercase tracking-[0.16em] text-[#FFD16A]">En curso</span>
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/35 text-[28px] font-black">↗</span>
+          </div>
+          <div>
+            <h2 className="text-[42px] font-black leading-none tracking-tight">{trip.name}</h2>
+            <p className="mt-3 text-[20px] font-black text-white/86">Día 2</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-[132px_1fr] gap-4 border-t border-white/8 p-6">
+        <ProgressRing size={120} />
+        <div className="space-y-4 self-center">
+          <MetricLine icon={<Plane className="h-4 w-4 fill-[#FFD16A]" />} value="4" label="Viajes este año" />
+          <MetricLine icon={<MapPin className="h-4 w-4" />} value="3" label="Ciudades" />
+          <MetricLine icon={<CalendarDays className="h-4 w-4" />} value="16" label="Días viajando" />
+        </div>
+      </div>
+
+      <div className="border-t border-white/8 px-6 py-5">
+        <p className="text-[40px] font-black leading-none tracking-tight text-[#FFD16A]">
+          <span className="mr-3 text-[16px] text-[#81786A]">USD</span>{trip.totalUsd.toLocaleString("en-US")}
+        </p>
+        <p className="mt-2 text-[17px] font-medium text-[#81786A]">Total gastado</p>
+      </div>
+    </section>
+  );
+}
+
+function TripDetailView({
+  trip,
+  tab,
+  onTabChange,
+  selectedDate,
+  onSelectDate,
+  onBack,
+}: {
+  trip: TripSummary;
+  tab: TripTab;
+  onTabChange: (tab: TripTab) => void;
+  selectedDate: string | null;
+  onSelectDate: (date: string) => void;
+  onBack: () => void;
+}) {
+  return (
+    <section className="mx-auto max-w-[1380px] px-5 py-7 pb-28 md:px-6 md:pb-10">
+      <div className="mb-6 flex items-start justify-between">
+        <div className="flex items-start gap-4 md:gap-6">
+          <button onClick={onBack} className="flex items-center gap-2 rounded-full border border-[#303030] bg-[#171717] px-4 py-2 text-[14px] font-semibold text-[#D6D0C8]">
+            <ArrowLeft className="h-4 w-4" />
+            Volver
+          </button>
+          <div>
+            <h1 className="text-[34px] font-black leading-none tracking-tight md:text-[38px]">{trip.name} {trip.year}</h1>
+            <p className="mt-3 text-[16px] font-medium text-[#98938D]">{trip.range.replace("26", "2026")} · {trip.days} días</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <IconCircle><Upload className="h-5 w-5" /></IconCircle>
+          <IconCircle><MoreHorizontal className="h-5 w-5" /></IconCircle>
+        </div>
+      </div>
+
+      <DesktopHero trip={trip} />
+
+      <section className="overflow-hidden rounded-[18px] border border-[#242424] bg-[#111210]">
+        <div className="grid h-14 w-full max-w-[840px] grid-cols-4 bg-[#171817] text-[15px] font-semibold text-[#C6BDAE]">
+          {(["calendar", "list", "items", "costs"] as TripTab[]).map((value) => (
             <button
-              key={s}
-              onClick={() => { setScreen(s); setNavTab("trips"); }}
-              className={`px-3 py-1 rounded-full transition-colors ${
-                screen === s ? "bg-white text-[#BF5AF2]" : "bg-white/20 text-white"
-              }`}
+              key={value}
+              onClick={() => onTabChange(value)}
+              className={tab === value ? "border-b-2 border-[#71D3A6] pt-1 text-white" : "pt-1 hover:text-white"}
             >
-              {s === "dashboard" ? "Dashboard" : "Trip Detail"}
+              {tabLabel(value)}
             </button>
           ))}
-          <button
-            onClick={() => setParseOpen(true)}
-            className="px-3 py-1 rounded-full bg-white/20 text-white"
-          >
-            ✨ Parse Modal
-          </button>
         </div>
-        <Link href="/auth" className="ml-auto opacity-60 hover:opacity-100">
-          → Auth real
-        </Link>
-      </div>
 
-      {/* Desktop TopNav */}
-      <TopNav
-        active="trips"
-        onAdd={handleAdd}
-        addIcon={screen === "trip" ? "sparkles" : "plus"}
-        addLabel={screen === "trip" ? "Agregar con IA" : "Nuevo viaje"}
-      />
-
-      {/* Screens */}
-      {navTab === "trips" && screen === "dashboard" && (
-        <MockDashboard onOpenTrip={() => setScreen("trip")} />
-      )}
-      {navTab === "trips" && screen === "trip" && (
-        <MockTripDetail
-          tab={tripTab}
-          onTabChange={setTripTab}
-          onBack={() => setScreen("dashboard")}
-          onOpenParse={() => setParseOpen(true)}
-        />
-      )}
-      {navTab === "home" && <PlaceholderScreen title="Home" emoji="🏠" subtitle="Feed de próximos eventos · v1.1" />}
-      {navTab === "catalog" && <PlaceholderScreen title="Catálogo" emoji="📚" subtitle="Todos los items" />}
-      {navTab === "settings" && <PlaceholderScreen title="Ajustes" emoji="⚙️" subtitle="Perfil y preferencias · v1.1" />}
-
-      {/* Bottom nav */}
-      <BottomNav
-        active={navTab}
-        onAdd={handleAdd}
-        addIcon={screen === "trip" ? "sparkles" : "plus"}
-        onTabChange={handleTabChange}
-      />
-
-      {/* Parse Modal */}
-      {parseOpen && (
-        <MockParseModal
-          showParsed={showParsed}
-          onClose={() => { setParseOpen(false); setShowParsed(false); }}
-          onParse={() => setShowParsed(true)}
-        />
-      )}
-    </div>
+        {tab === "calendar" && <CalendarPanel selectedDate={selectedDate} onSelectDate={onSelectDate} />}
+        {tab === "list" && <ListPanel />}
+        {tab === "items" && <ItemsPanel />}
+        {tab === "costs" && <CostsPanel />}
+      </section>
+    </section>
   );
 }
 
-function PlaceholderScreen({ title, emoji, subtitle }: { title: string; emoji: string; subtitle: string }) {
+function DesktopHero({ trip }: { trip: TripSummary }) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 px-6 text-center animate-fade-slide-up">
-      <div className="text-7xl">{emoji}</div>
-      <h1 className="text-[28px] font-bold text-white">{title}</h1>
-      <p className="text-[#707070] text-[15px]">{subtitle}</p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Dashboard screen
-// ---------------------------------------------------------------------------
-
-function MockDashboard({ onOpenTrip }: { onOpenTrip: () => void }) {
-  const [filter, setFilter] = useState<"all" | "future" | "past">("all");
-
-  const filtered = MOCK_TRIPS.filter((t) =>
-    filter === "all" ? true : t.status === filter
-  );
-
-  const daysUntil = Math.ceil(
-    (new Date("2026-05-15").getTime() - new Date().getTime()) / 86400000
-  );
-
-  return (
-    <div className="min-h-screen">
-      {/* Mobile header */}
-      <div className="md:hidden flex items-center justify-between px-6 pt-14 pb-6 animate-fade-slide-up stagger-0">
-        <div>
-          <p className="text-[#A0A0A0] text-[13px] mb-0.5">
-            {new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
-          </p>
-          <h1 className="text-[28px] font-bold text-white leading-tight">
-            Buenas noches, <span className="text-[#BF5AF2]">Mati</span>
-          </h1>
-        </div>
-        <div className="w-10 h-10 rounded-full bg-[#1A1A1A] border border-[#333] flex items-center justify-center text-[15px] font-semibold text-white press-feedback">
-          M
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-6xl px-6 md:px-8 space-y-6 pb-32 md:pb-16 md:pt-8">
-        {/* Desktop greeting */}
-        <div className="hidden md:flex items-baseline justify-between animate-fade-slide-up stagger-0">
-          <div>
-            <p className="text-[#707070] text-[12px] uppercase tracking-[0.2em] font-semibold mb-2">
-              {new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
-            </p>
-            <h1 className="text-[34px] font-bold text-white leading-[1.1] tracking-tight">
-              Buenas noches, <span className="text-[#BF5AF2]">Mati</span>
-            </h1>
-          </div>
-          <p className="text-[#4D4D4D] text-[13px] font-mono tabular-nums">
-            {MOCK_TRIPS.length} viajes · 8 ciudades
-          </p>
-        </div>
-
-        {/* Hero + Stats side by side on desktop */}
-        <div className="grid md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-3 md:gap-5 animate-spring-up stagger-2">
-          <div className="md:h-full">
-            <MockHeroCard tintColor="#FF6B6B" daysUntil={daysUntil} onClick={onOpenTrip} />
-          </div>
-          <div className="grid grid-cols-2 gap-3 md:content-stretch">
-            <StatCard label="Viajes" sublabel="este año" value="3" numericValue={3} color="#0A84FF" icon={<Plane size={16} strokeWidth={2.2} />} staggerDelay={200} />
-            <StatCard label="Ciudades" sublabel="visitadas" value="8" numericValue={8} color="#BF5AF2" icon={<MapPin size={16} strokeWidth={2.2} />} staggerDelay={260} />
-            <StatCard label="Total" sublabel="gastado" value="USD 7,190" numericValue={7190} currencyPrefix="USD " color="#FF9F0A" icon={<DollarSign size={16} strokeWidth={2.2} />} staggerDelay={320} />
-            <StatCard label="Días" sublabel="viajando" value="34" numericValue={34} color="#30D158" icon={<CalendarDays size={16} strokeWidth={2.2} />} staggerDelay={380} />
-          </div>
-        </div>
-
-        {/* Mis viajes */}
-        <div className="animate-fade-slide-up stagger-7">
-          <div className="flex items-end justify-between mb-4 md:mb-5">
+    <section className="mb-7 overflow-hidden rounded-[18px] border border-[#2D483A] bg-[#15130F] shadow-[0_18px_70px_rgba(0,0,0,0.34)]">
+      <div className="grid min-h-[190px] md:grid-cols-[260px_1fr]">
+        <div className="hidden bg-cover bg-center md:block" style={{ backgroundImage: `url(${heroImage})` }} />
+        <div className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(113,211,166,0.56),rgba(36,68,55,0.58)_36%,rgba(13,13,13,0.98)_100%)]" />
+          <div className="relative grid min-h-[190px] items-center gap-5 p-6 md:grid-cols-[1.1fr_128px_repeat(3,112px)_160px]">
             <div>
-              <h2 className="text-[20px] md:text-[22px] font-semibold text-white tracking-tight">Mis viajes</h2>
-              <p className="hidden md:block text-[#707070] text-[12px] mt-1">
-                {filtered.length} {filter === "all" ? "total" : filter === "future" ? "próximos" : "pasados"}
-              </p>
+              <span className="rounded-full bg-[#FFD16A]/18 px-3 py-1 text-[12px] font-black uppercase tracking-[0.1em] text-[#FFD16A]">En curso</span>
+              <h2 className="mt-6 text-[36px] font-black leading-none tracking-tight">{trip.name}</h2>
+              <p className="mt-3 text-[16px] font-medium text-white/70">Día 2 de tu viaje</p>
             </div>
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar ios-scroll pb-1">
-              {(["all", "future", "past"] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`px-3.5 py-1.5 rounded-full text-[12px] md:text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors press-feedback ${
-                    filter === f
-                      ? "bg-white text-black"
-                      : "bg-[#161616] text-[#A0A0A0] border border-[#262626] hover:border-[#333] hover:text-white"
-                  }`}
-                >
-                  {f === "all" ? "Todos" : f === "future" ? "Futuros" : "Pasados"}
-                </button>
+            <ProgressRing size={104} />
+            <DesktopMetric icon={<Plane className="h-6 w-6" />} value="4" label="Viajes este año" />
+            <DesktopMetric icon={<MapPin className="h-6 w-6" />} value={String(trip.cities)} label="Ciudades" />
+            <DesktopMetric icon={<CalendarDays className="h-6 w-6" />} value={String(trip.days)} label="Días viajando" />
+            <div className="border-t border-white/10 pt-4 md:border-l md:border-t-0 md:px-6 md:pt-0">
+              <p className="text-[14px] font-semibold text-[#C6BDAE]">USD</p>
+              <p className="mt-2 text-[34px] font-black leading-none text-[#FFD16A]">{trip.totalUsd.toLocaleString("en-US")}</p>
+              <p className="mt-3 text-[14px] font-medium text-[#81786A]">Total gastado</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CalendarPanel({ selectedDate, onSelectDate }: { selectedDate: string | null; onSelectDate: (date: string) => void }) {
+  const cells = useMemo(() => buildCalendarCells(), []);
+  const weekdays = [
+    { short: "L", long: "Lun" },
+    { short: "M", long: "Mar" },
+    { short: "X", long: "Mié" },
+    { short: "J", long: "Jue" },
+    { short: "V", long: "Vie" },
+    { short: "S", long: "Sáb" },
+    { short: "D", long: "Dom" },
+  ];
+
+  return (
+    <>
+      <div className="border-t border-[#242424] bg-[#181A19] px-2 pb-5 pt-3 md:px-4 md:pb-6 md:pt-4">
+        <div className="grid grid-cols-7 gap-[3px] px-1 pb-2 text-center text-[10px] font-semibold text-[#C6BDAE] md:gap-2 md:px-2 md:pb-3 md:text-[15px]">
+          {weekdays.map((day) => (
+            <span key={day.long}>
+              <span className="md:hidden">{day.short}</span>
+              <span className="hidden md:inline">{day.long}</span>
+            </span>
+          ))}
+        </div>
+
+        <div className="space-y-[3px] md:space-y-2">
+          {cells.map((row, index) => (
+            <div key={index} className="grid grid-cols-7 gap-[3px] md:gap-2">
+              {row.map((cell) => (
+                <CalendarCell
+                  key={cell.date}
+                  cell={cell}
+                  selected={selectedDate === cell.date}
+                  onClick={() => onSelectDate(cell.date)}
+                />
               ))}
             </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {filtered.map((t) => (
-              <button
-                key={t.id}
-                onClick={onOpenTrip}
-                className="group relative w-full rounded-[16px] px-4 py-4 md:px-5 md:py-5 flex items-center gap-4 text-left transition-all overflow-hidden"
-                style={{
-                  background: "linear-gradient(180deg, #171717 0%, #131313 100%)",
-                  border: "1px solid #232323",
-                }}
-              >
-                <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-                  style={{ background: "radial-gradient(ellipse 60% 80% at 0% 50%, rgba(191,90,242,0.08), transparent 70%)" }}
-                />
-                <div
-                  className="relative w-14 h-14 md:w-16 md:h-16 rounded-[12px] flex-shrink-0 flex items-center justify-center text-[22px]"
-                  style={{ background: `linear-gradient(135deg, ${t.status === "past" ? "#4ECDC420" : "#FF6B6B20"}, #161616)` }}
-                >
-                  ✈️
-                </div>
-                <div className="relative flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <p className="text-[17px] md:text-[18px] font-semibold text-white truncate tracking-tight">{t.name}</p>
-                    <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 uppercase tracking-wider ${
-                        t.status === "past"
-                          ? "bg-[#707070]/20 text-[#707070]"
-                          : "bg-[#0A84FF]/20 text-[#0A84FF]"
-                      }`}
-                    >
-                      {t.status === "past" ? "Pasado" : "Futuro"}
-                    </span>
-                  </div>
-                  <p className="text-[#A0A0A0] text-[13px]">{t.start_date} – {t.end_date}</p>
-                  <p className="text-[#707070] text-[12px] font-mono tabular-nums mt-0.5">USD {t.total_usd.toLocaleString()}</p>
-                </div>
-                <span className="relative text-[#3D3D3D] text-[20px] flex-shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:text-[#A0A0A0]">›</span>
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
-    </div>
+
+      <div className="flex flex-wrap items-center gap-6 border-t border-[#242424] px-5 py-4 text-[14px] text-[#C6BDAE] md:text-[15px]">
+        {cities.map((city) => (
+          <Legend key={city.id} color={city.color} label={city.name} flag={city.flag} />
+        ))}
+      </div>
+    </>
   );
 }
 
-function MockHeroCard({ tintColor, daysUntil, onClick }: { tintColor: string; daysUntil: number; onClick: () => void }) {
-  const [pressed, setPressed] = useState(false);
+function buildCalendarCells(): CalendarCellData[][] {
+  return weekDates.map((week) =>
+    week.map((date) => {
+      const city = cities.find((candidate) => candidate.days.includes(date));
+      const dateItems = items.filter((item) => item.date === date);
+      return {
+        date,
+        day: String(Number(date.slice(-2))),
+        city,
+        cityIndex: city ? city.days.indexOf(date) + 1 : undefined,
+        items: dateItems,
+        outside: !city && date !== "2026-07-08",
+      };
+    }),
+  );
+}
+
+function CalendarCell({
+  cell,
+  selected,
+  onClick,
+}: {
+  cell: CalendarCellData;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const bg = cell.city
+    ? `linear-gradient(145deg, ${cell.city.color}72, rgba(17,18,17,0.94))`
+    : "#191A19";
+  const shownItems = cell.items.slice(0, 2);
+  const overflow = Math.max(cell.items.length - shownItems.length, 0);
+
   return (
     <button
       onClick={onClick}
-      onPointerDown={() => setPressed(true)}
-      onPointerUp={() => setPressed(false)}
-      onPointerLeave={() => setPressed(false)}
-      className="w-full relative rounded-[24px] overflow-hidden h-52 flex flex-col p-5 text-left"
+      className={`relative min-h-[142px] rounded-[8px] border px-[5px] py-[8px] text-left transition hover:brightness-110 md:min-h-[128px] md:rounded-[12px] md:p-4 ${
+        cell.outside ? "opacity-62" : ""
+      }`}
       style={{
-        background: "#141414",
-        border: `1px solid ${tintColor}35`,
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.02)",
-        transform: pressed ? "scale(0.985)" : "scale(1)",
-        transition: "transform 200ms cubic-bezier(0.2, 0.7, 0.3, 1)",
+        background: bg,
+        borderColor: selected ? "#FFD16A" : cell.city ? `${cell.city.color}99` : "#2C2C2C",
+        boxShadow: selected ? "0 0 0 2px rgba(255,209,106,0.24)" : undefined,
       }}
     >
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: `
-            radial-gradient(ellipse 80% 50% at 15% 0%, ${tintColor}40 0%, transparent 60%),
-            radial-gradient(ellipse 60% 40% at 90% 100%, ${tintColor}25 0%, transparent 55%),
-            radial-gradient(ellipse 40% 30% at 50% 50%, ${tintColor}10 0%, transparent 70%)
-          `,
-        }}
-      />
-      <div
-        className="absolute inset-0 pointer-events-none animate-gradient-drift opacity-60"
-        style={{
-          background: `linear-gradient(115deg, ${tintColor}18 0%, transparent 40%, ${tintColor}0A 80%, ${tintColor}15 100%)`,
-          backgroundSize: "220% 220%",
-        }}
-      />
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.04] mix-blend-overlay"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)'/%3E%3C/svg%3E\")",
-        }}
-      />
-
-      <div className="relative flex items-start justify-between">
-        <div className="flex items-center gap-1.5 bg-[#0A84FF]/18 px-2.5 py-1 rounded-full">
-          <span className="text-[10px] font-bold text-[#0A84FF] uppercase tracking-wider">Próximo</span>
+      {selected && cell.city && (
+        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#71D3A6] text-[13px] font-black text-[#06110B] md:h-6 md:w-6">
+          ✓
+        </span>
+      )}
+      <p className={`text-[11px] font-semibold leading-none md:text-[18px] ${cell.outside ? "text-[#777]" : "text-white"}`}>
+        <span className="md:hidden">{formatCellDate(cell.date)}</span>
+        <span className="hidden md:inline">{cell.day}</span>
+      </p>
+      {cell.city ? (
+        <div className="mt-3 space-y-2 text-[#EEE9E1] md:mt-4 md:space-y-1.5 md:text-[15px]">
+          <p className="flex flex-col gap-1 md:block">
+            <span className="text-[13px] leading-none md:ml-1.5">{cell.city.flag}</span>
+            <span className="text-[12px] font-semibold leading-none md:hidden">{cell.city.code}</span>
+            <span className="hidden truncate md:inline">{cell.city.name}</span>
+          </p>
+          <p className="text-[11px] font-medium leading-none md:text-[15px]">{cell.cityIndex}/{cell.city.days.length}</p>
+          <div className="space-y-1 text-[10px] leading-none md:text-[13px] md:leading-normal">
+            {shownItems.map((item) => (
+              <p key={item.id} className="flex items-center gap-1 whitespace-nowrap">
+                <span aria-hidden>{itemIcon(item.type)}</span>
+                <span>{itemShortLabel(item)}</span>
+              </p>
+            ))}
+          </div>
         </div>
-        <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-white/60 text-[12px]">›</div>
+      ) : (
+        <p className="mt-4 text-[16px] text-[#777] md:text-[18px]">—</p>
+      )}
+      {overflow > 0 && (
+        <span className="absolute bottom-1.5 right-1.5 rounded-full bg-black/38 px-1.5 py-0.5 text-[10px] font-black md:bottom-3 md:right-3 md:px-2.5 md:py-1 md:text-[12px]">+{overflow}</span>
+      )}
+    </button>
+  );
+}
+
+function ListPanel() {
+  return (
+    <div className="space-y-5 border-t border-[#242424] bg-[#181A19] p-5">
+      {["2026-06-23", "2026-06-28", "2026-07-01", "2026-07-04"].map((date) => (
+        <div key={date}>
+          <p className="mb-2 text-[13px] font-black uppercase tracking-[0.14em] text-[#81786A]">{formatDate(date)}</p>
+          <div className="space-y-2">
+            {items.filter((item) => item.date === date).map((item) => (
+              <ItemRow key={item.id} item={item} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ItemsPanel() {
+  return (
+    <div className="grid gap-3 border-t border-[#242424] bg-[#181A19] p-5 md:grid-cols-2">
+      {items.slice(0, 8).map((item) => (
+        <ItemRow key={item.id} item={item} />
+      ))}
+    </div>
+  );
+}
+
+function CostsPanel() {
+  const knownTotal = items.reduce((sum, item) => sum + (item.priceUsd ?? 0), 0);
+  return (
+    <div className="grid gap-4 border-t border-[#242424] bg-[#181A19] p-5 md:grid-cols-[280px_1fr]">
+      <div className="rounded-[16px] border border-[#332E25] bg-[#171512] p-5">
+        <p className="text-[12px] font-black uppercase tracking-[0.16em] text-[#81786A]">Registrado</p>
+        <p className="mt-3 text-[36px] font-black text-[#FFD16A]">USD {knownTotal.toLocaleString("en-US")}</p>
+        <p className="mt-2 text-[14px] text-[#C6BDAE]">7 items con costo asociado</p>
       </div>
+      <div className="space-y-2">
+        {items.filter((item) => item.priceUsd).map((item) => (
+          <div key={item.id} className="flex items-center justify-between rounded-[14px] border border-[#252119] bg-[#171512] px-4 py-3">
+            <span className="font-semibold">{item.title}</span>
+            <span className="font-black text-[#FFD16A]">USD {item.priceUsd?.toLocaleString("en-US")}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-      <div className="flex-1" />
-
-      <div className="relative">
-        <h3 className="text-[28px] font-bold text-white leading-[1.05] tracking-tight">Europa 2026</h3>
-        <div className="flex items-center gap-2 mt-2">
-          <p className="text-white/75 text-[13px] font-medium">En {daysUntil} días</p>
-          <span className="text-white/25 text-[11px]">·</span>
-          <p className="text-white/75 text-[13px] font-mono tabular-nums">USD 3.240</p>
+function CatalogView() {
+  return (
+    <section className="mx-auto max-w-[1100px] px-5 py-8 pb-28 md:px-8 md:pb-10">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-[36px] font-black tracking-tight">Catálogo</h1>
+          <p className="mt-2 text-[#81786A]">Vuelos, hoteles y transportes del viaje.</p>
         </div>
+        <button className="flex items-center gap-2 rounded-full border border-[#252119] bg-[#171512] px-4 py-2 text-[#C6BDAE]">
+          <Search className="h-4 w-4" />
+          Buscar
+        </button>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {items.map((item) => <ItemRow key={item.id} item={item} />)}
+      </div>
+    </section>
+  );
+}
+
+function SettingsView() {
+  return (
+    <section className="mx-auto max-w-[760px] px-5 py-8 pb-28 md:px-8 md:pb-10">
+      <h1 className="text-[36px] font-black tracking-tight">Ajustes</h1>
+      <div className="mt-6 space-y-3">
+        {["Firebase", "Moneda principal", "Proveedor IA", "Preferencias de calendario"].map((label) => (
+          <div key={label} className="flex items-center justify-between rounded-[16px] border border-[#252119] bg-[#171512] px-5 py-4">
+            <span className="font-semibold">{label}</span>
+            <span className="text-[#81786A]">Configurar</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function BottomNavigation({
+  view,
+  onChange,
+  onAdd,
+}: {
+  view: View;
+  onChange: (view: View) => void;
+  onAdd: () => void;
+}) {
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/8 bg-[#11100D]/96 px-5 pb-5 pt-3 backdrop-blur md:hidden">
+      <div className="grid grid-cols-5 items-end text-center">
+        <MobileNav active={view === "dashboard"} icon={<Home className="h-7 w-7" />} label="Inicio" onClick={() => onChange("dashboard")} />
+        <MobileNav active={view === "trip"} icon={<Send className="h-7 w-7" />} label="Viajes" onClick={() => onChange("trip")} />
+        <button onClick={onAdd} className="-mt-11 flex justify-center">
+          <span className="flex h-[70px] w-[70px] items-center justify-center rounded-full bg-[#9C73E6] shadow-[0_0_48px_rgba(156,115,230,0.72)]">
+            <Plus className="h-9 w-9 text-white" strokeWidth={2.4} />
+          </span>
+        </button>
+        <MobileNav active={view === "catalog"} icon={<Briefcase className="h-7 w-7" />} label="Catálogo" onClick={() => onChange("catalog")} />
+        <MobileNav active={view === "settings"} icon={<Settings className="h-7 w-7" />} label="Ajustes" onClick={() => onChange("settings")} />
+      </div>
+    </nav>
+  );
+}
+
+function MobileNav({
+  icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button onClick={onClick} className={`flex flex-col items-center gap-1 text-[12px] font-bold ${active ? "text-white" : "text-[#81786A]"}`}>
+      {icon}
+      <span>{label}</span>
+      {active && <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-[#FFD16A]" />}
+    </button>
+  );
+}
+
+function DayDrawer({ date, onClose }: { date: string; onClose: () => void }) {
+  const dayItems = items.filter((item) => item.date === date);
+  const city = cities.find((candidate) => candidate.days.includes(date));
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/64 backdrop-blur-sm md:items-stretch md:justify-end" role="dialog" aria-modal="true">
+      <button className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Cerrar detalle del día" />
+      <aside className="relative w-full max-h-[76vh] overflow-hidden rounded-t-[28px] border border-[#252119] bg-[#11100D] shadow-[0_-24px_80px_rgba(0,0,0,0.58)] md:h-full md:max-h-none md:max-w-[420px] md:rounded-none md:border-y-0 md:border-r-0 md:border-l md:shadow-[0_0_80px_rgba(0,0,0,0.55)]">
+        <div className="flex justify-center pt-3 md:hidden">
+          <span className="h-1.5 w-12 rounded-full bg-[#3B352B]" />
+        </div>
+        <div className="max-h-[76vh] overflow-y-auto px-5 pb-[calc(20px+env(safe-area-inset-bottom))] pt-4 md:h-full md:max-h-none md:p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[12px] font-black uppercase tracking-[0.16em] text-[#81786A]">{formatDate(date)}</p>
+              <h2 className="mt-2 text-[28px] font-black">{city ? `${city.name} ${city.flag}` : "Sin ciudad"}</h2>
+              {city && <p className="mt-2 text-[14px] font-semibold text-[#C6BDAE]">{city.code} · Día {(city.days.indexOf(date) + 1)}/{city.days.length}</p>}
+            </div>
+            <button onClick={onClose} className="rounded-full border border-[#252119] bg-[#171512] p-2">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="mt-6 space-y-3">
+            {dayItems.length > 0 ? dayItems.map((item) => <ItemRow key={item.id} item={item} />) : (
+              <div className="rounded-[16px] border border-dashed border-[#332E25] p-5 text-[#81786A]">No hay items este día.</div>
+            )}
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function AiModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/72 p-5 backdrop-blur">
+      <div className="w-full max-w-[620px] rounded-[22px] border border-[#252119] bg-[#11100D] shadow-[0_30px_120px_rgba(0,0,0,0.62)]">
+        <div className="flex items-center justify-between border-b border-[#252119] px-6 py-5">
+          <div>
+            <h2 className="text-[20px] font-black">Agregar con IA</h2>
+            <p className="mt-1 text-[13px] text-[#81786A]">Pegá un email o confirmación de reserva.</p>
+          </div>
+          <button onClick={onClose} className="rounded-full border border-[#252119] bg-[#171512] p-2">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="p-6">
+          <textarea
+            className="h-48 w-full resize-none rounded-[16px] border border-[#332E25] bg-[#171512] p-4 text-white outline-none focus:border-[#A891E8]"
+            defaultValue={"Vuelo UX6030 Palma a Madrid el 7/7 a las 18:50. Hotel Viva Blue Alcúdia del 3/7 al 7/7."}
+          />
+          <div className="mt-4 grid gap-2 md:grid-cols-3">
+            {["Vuelo detectado 97%", "Hotel detectado 91%", "Traslado sugerido 74%"].map((result) => (
+              <div key={result} className="rounded-[14px] border border-[#71D3A6]/24 bg-[#71D3A6]/10 px-4 py-3 text-[13px] font-semibold text-[#9DE6C0]">
+                {result}
+              </div>
+            ))}
+          </div>
+          <button onClick={onClose} className="mt-5 w-full rounded-[14px] bg-[#A891E8] py-3 font-black text-white">
+            Confirmar y agregar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TripRow({ trip, onClick }: { trip: TripSummary; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="flex w-full items-center gap-4 rounded-[18px] border border-[#252119] bg-[#171512] px-4 py-3 text-left">
+      <div className="h-[58px] w-[58px] shrink-0 rounded-full bg-cover bg-center" style={{ backgroundImage: `url(${heroImage})` }} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[18px] font-black md:text-[20px]">
+          {trip.name} <span className="text-[15px]">{trip.flag}</span> <span>{trip.year}</span>
+        </p>
+        <p className="mt-1 text-[14px] font-medium text-[#81786A]">{trip.range}</p>
+      </div>
+      <div className="text-right">
+        <p className="text-[16px] font-black">USD {trip.totalUsd.toLocaleString("en-US")}</p>
+        <p className={`mt-2 rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.08em] ${
+          trip.status === "active" ? "bg-[#71D3A6]/18 text-[#8FE1B7]" : "bg-[#6CAFE8]/18 text-[#84C7F2]"
+        }`}>
+          {trip.status === "active" ? "En curso" : "Futuro"}
+        </p>
       </div>
     </button>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Trip Detail screen
-// ---------------------------------------------------------------------------
-
-const TRIP_TABS: TripTab[] = ["calendar", "list", "items"];
-
-function MockTripDetail({
-  tab, onTabChange, onBack, onOpenParse,
-}: {
-  tab: TripTab;
-  onTabChange: (t: TripTab) => void;
-  onBack: () => void;
-  onOpenParse: () => void;
-}) {
-  const totalDays = 14;
-  const tabIndex = TRIP_TABS.indexOf(tab);
-  const prevTabIndex = useRef(tabIndex);
-  const direction = tabIndex >= prevTabIndex.current ? 1 : -1;
-  prevTabIndex.current = tabIndex;
-
+function ItemRow({ item }: { item: TripItem }) {
   return (
-    <div className="mx-auto max-w-6xl pb-32 md:pb-16">
-      {/* Mobile header */}
-      <div className="md:hidden flex items-center gap-4 px-6 pt-4 pb-4 border-b border-[#1A1A1A] animate-fade-slide-up stagger-0">
-        <button
-          onClick={onBack}
-          className="w-9 h-9 flex items-center justify-center rounded-full bg-[#1A1A1A] border border-[#333] text-[#0A84FF] text-[17px] press-feedback"
-        >
-          ←
-        </button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-[20px] font-bold text-white truncate leading-tight">Europa 2026</h1>
-          <p className="text-[#707070] text-[12px] mt-0.5">15 may – 28 may 2026</p>
-        </div>
-        <button className="w-9 h-9 flex items-center justify-center rounded-full bg-[#1A1A1A] border border-[#333] text-[#A0A0A0] press-feedback">
-          ⋯
-        </button>
+    <div className="flex items-center gap-3 rounded-[14px] border border-[#252119] bg-[#171512] px-4 py-3">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[#FFD16A]/12 text-[#FFD16A]">
+        {itemIcon(item.type)}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold text-white">{item.title}</p>
+        <p className="mt-0.5 truncate text-[13px] text-[#81786A]">{formatDate(item.date)}{item.time ? ` · ${item.time}` : ""} · {item.detail}</p>
       </div>
-
-      {/* Desktop header */}
-      <div className="hidden md:flex items-end justify-between px-8 pt-10 pb-6 animate-fade-slide-up stagger-0">
-        <div className="flex items-center gap-5 min-w-0">
-          <button
-            onClick={onBack}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-[#161616] border border-[#262626] text-[#A0A0A0] hover:text-white hover:border-[#333] transition-colors flex-shrink-0"
-          >
-            ←
-          </button>
-          <div className="min-w-0">
-            <p className="text-[#707070] text-[11px] uppercase tracking-[0.18em] font-semibold mb-1.5">Viaje</p>
-            <h1 className="text-[38px] font-bold text-white truncate leading-[1.05] tracking-tight">Europa 2026</h1>
-            <p className="text-[#A0A0A0] text-[14px] mt-1.5">15 may – 28 may 2026 · {totalDays} días</p>
-          </div>
-        </div>
-        <button className="w-10 h-10 flex items-center justify-center rounded-full bg-[#161616] border border-[#262626] text-[#A0A0A0] hover:text-white hover:border-[#333] transition-colors flex-shrink-0">⋯</button>
-      </div>
-
-      {/* Summary card */}
-      <div className="px-6 md:px-8 pt-3 md:pt-0 pb-3 md:pb-6 animate-fade-slide-up stagger-2">
-        <div
-          className="rounded-[18px] px-5 md:px-7 py-3.5 md:py-5 overflow-hidden relative"
-          style={{
-            background: "linear-gradient(180deg, #171717 0%, #121212 100%)",
-            border: "1px solid #232323",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
-          }}
-        >
-          <div className="flex items-end justify-between gap-4 md:gap-8">
-            <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-[#707070] font-bold mb-1.5">Presupuesto</p>
-              <p className="text-[22px] md:text-[28px] font-bold text-white tabular-nums leading-none whitespace-nowrap tracking-tight">
-                USD <span className="text-[#0A84FF]">3.240</span>
-              </p>
-            </div>
-            <div className="hidden md:block w-px self-stretch bg-[#242424]" />
-            <div className="text-right flex-shrink-0">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-[#707070] font-bold mb-1.5">Duración</p>
-              <p className="text-[22px] md:text-[28px] font-bold text-white tabular-nums leading-none tracking-tight">
-                {totalDays}<span className="text-[14px] text-[#707070] font-semibold ml-0.5">d</span>
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs — sliding indicator */}
-      <div className="relative flex gap-1 mx-6 md:mx-auto md:max-w-md mb-4 mt-1 bg-[#141414] p-1 rounded-full border border-[#222] animate-fade-slide-up stagger-3">
-        {/* Sliding pill */}
-        <span
-          className="absolute top-1 bottom-1 rounded-full bg-[#242424] pointer-events-none"
-          style={{
-            boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
-            width: "calc((100% - 8px) / 3)",
-            left: `calc(4px + ${tabIndex} * (100% - 8px) / 3)`,
-            transition: "left 320ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-          }}
-        />
-        {TRIP_TABS.map((t) => (
-          <button
-            key={t}
-            onClick={() => onTabChange(t)}
-            className={`relative flex-1 py-2 text-[14px] font-semibold rounded-full transition-colors duration-200 ${
-              tab === t ? "text-white" : "text-[#707070]"
-            }`}
-          >
-            {t === "calendar" ? "Calendario" : t === "list" ? "Lista" : "Items"}
-          </button>
-        ))}
-      </div>
-
-      {/* Content — slides horizontally */}
-      <div
-        key={tab}
-        className={direction > 0 ? "animate-slide-in-right" : "animate-slide-in-left"}
-      >
-        {tab === "calendar" && (
-          <CalendarView
-            trip={MOCK_TRIP}
-            cities={MOCK_CITIES}
-            flights={MOCK_FLIGHTS}
-            hotels={MOCK_HOTELS}
-            transports={MOCK_TRANSPORTS}
-            onChanged={() => {}}
-          />
-        )}
-        {tab === "list" && (
-          <ListView
-            trip={MOCK_TRIP}
-            cities={MOCK_CITIES}
-            flights={MOCK_FLIGHTS}
-            hotels={MOCK_HOTELS}
-            transports={MOCK_TRANSPORTS}
-          />
-        )}
-        {tab === "items" && (
-          <ItemsView
-            trip={MOCK_TRIP}
-            cities={MOCK_CITIES}
-            flights={MOCK_FLIGHTS}
-            hotels={MOCK_HOTELS}
-            transports={MOCK_TRANSPORTS}
-            onChanged={() => {}}
-          />
-        )}
-      </div>
-
+      {item.priceUsd && <span className="font-black text-[#FFD16A]">USD {item.priceUsd.toLocaleString("en-US")}</span>}
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Parse Modal (mock — no llama a Firebase)
-// ---------------------------------------------------------------------------
-
-function MockParseModal({
-  showParsed, onClose, onParse,
-}: {
-  showParsed: boolean;
-  onClose: () => void;
-  onParse: () => void;
-}) {
-  const [mode, setMode] = useState<"chat" | "file" | "manual">("chat");
-  const [text, setText] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [msgIdx, setMsgIdx] = useState(0);
-
-  const msgs = ["Claude está leyendo…", "Identificando entidades…", "Estructurando datos…", "Calculando confianza…"];
-
-  function handleParse() {
-    if (!text.trim()) return;
-    setLoading(true);
-    let i = 0;
-    const iv = setInterval(() => { i++; setMsgIdx(i % msgs.length); }, 900);
-    setTimeout(() => { clearInterval(iv); setLoading(false); onParse(); }, 3200);
-  }
-
+function IconCircle({ children }: { children: ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 md:flex md:items-center md:justify-center">
-      <div className="hidden md:block absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div
-        className="
-          relative flex flex-col bg-[#0D0D0D]
-          w-full h-full
-          md:w-[92vw] md:max-w-[620px] md:h-auto md:max-h-[86vh]
-          md:rounded-[20px] md:border md:border-[#262626]
-          md:shadow-[0_24px_64px_rgba(0,0,0,0.55)]
-          md:overflow-hidden
-          animate-slide-up
-        "
-      >
-      <div className="flex items-center justify-between px-6 pt-12 md:pt-5 pb-4 border-b border-[#1E1E1E]">
-        <button onClick={onClose} className="text-[#0A84FF] md:text-[#A0A0A0] md:hover:text-white md:transition-colors text-[17px] md:text-[14px] font-medium press-feedback">Cancelar</button>
-        <h2 className="text-[17px] md:text-[16px] font-semibold text-white tracking-tight">Agregar al viaje</h2>
-        <div className="w-16" />
-      </div>
+    <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#2C2C2C] bg-[#171717]">
+      {children}
+    </span>
+  );
+}
 
-      {!showParsed && !loading && (
-        <div className="flex gap-1 mx-6 md:mx-7 mt-4 bg-[#1A1A1A] p-1 rounded-full border border-[#262626]">
-          {(["chat", "file", "manual"] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={`flex-1 py-2 text-[13px] font-semibold rounded-full transition-all press-feedback ${mode === m ? "text-white" : "text-[#707070]"}`}
-              style={mode === m ? { background: "linear-gradient(135deg, #BF5AF2, #9B3FD6)" } : undefined}
-            >
-              {m === "chat" ? "💬 Chat" : m === "file" ? "📄 Archivo" : "✏️ Manual"}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="flex-1 overflow-y-auto px-6 md:px-7 py-5">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-8">
-            <div className="relative w-24 h-24 flex items-center justify-center">
-              <span className="animate-sparkle-1 absolute top-0 left-4 text-[28px]">✨</span>
-              <span className="animate-sparkle-2 absolute top-2 right-2 text-[20px]">⭐</span>
-              <span className="animate-sparkle-3 absolute bottom-4 left-0 text-[22px]">✨</span>
-              <span className="animate-sparkle-4 absolute bottom-2 right-4 text-[16px]">⭐</span>
-              <div className="w-14 h-14 rounded-full flex items-center justify-center text-[28px]" style={{ background: "linear-gradient(135deg, #BF5AF2, #9B3FD6)" }}>
-                ✨
-              </div>
-            </div>
-            <div className="text-center space-y-2">
-              <p className="text-white text-[17px] font-semibold">{msgs[msgIdx]}</p>
-              <p className="text-[#707070] text-[13px]">Esto tarda unos segundos</p>
-            </div>
-            <div className="w-48 h-1 rounded-full overflow-hidden bg-[#242424]">
-              <div className="h-full rounded-full" style={{ width: "60%", background: "linear-gradient(90deg, transparent, #BF5AF2, transparent)", backgroundSize: "200% 100%", animation: "shimmer 1.2s infinite" }} />
-            </div>
-          </div>
-        ) : showParsed ? (
-          <ParsePreview items={MOCK_PARSED_ITEMS} onEdit={() => {}} />
-        ) : mode === "chat" ? (
-          <div>
-            <p className="text-[#A0A0A0] text-[14px] mb-3 leading-relaxed">
-              Pegá el email de confirmación o escribí los datos del vuelo, hotel o transporte.
-            </p>
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Ej: Mi vuelo Iberia IB6844 sale el 15/05 a las 21:35 de Buenos Aires a Madrid…"
-              className="w-full h-52 bg-[#1A1A1A] border border-[#333] rounded-[14px] px-4 py-3.5 text-white text-[15px] placeholder-[#4D4D4D] outline-none focus:border-[#BF5AF2] transition-colors resize-none"
-            />
-            <div className="flex gap-2 mt-3">
-              {["✈️ Vuelo", "🏨 Hotel", "🚆 Tren"].map((chip) => (
-                <button key={chip} onClick={() => setText(text + `[${chip.split(" ")[1]}] `)}
-                  className="px-3 py-1.5 bg-[#242424] border border-[#333] rounded-full text-[13px] text-[#A0A0A0] press-feedback">
-                  {chip}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-12 text-[#4D4D4D] text-[15px]">Próximamente</div>
-        )}
-      </div>
-
-      {!loading && (
-        <div className="px-6 md:px-7 pb-10 md:pb-5 pt-4 border-t border-[#1E1E1E]">
-          {showParsed ? (
-            <button onClick={onClose} className="w-full text-white rounded-[14px] md:rounded-[12px] py-4 md:py-3 text-[17px] md:text-[14px] font-semibold press-feedback" style={{ background: "linear-gradient(135deg, #30D158, #25A244)" }}>
-              Confirmar y agregar (3 items)
-            </button>
-          ) : (
-            <button
-              onClick={handleParse}
-              disabled={mode === "chat" && !text.trim()}
-              className="w-full text-white rounded-[14px] md:rounded-[12px] py-4 md:py-3 text-[17px] md:text-[14px] font-semibold disabled:opacity-40 flex items-center justify-center gap-2 press-feedback cta-shimmer"
-              style={{ background: "linear-gradient(135deg, #BF5AF2, #9B3FD6)", boxShadow: "0 4px 20px rgba(191,90,242,0.35)" }}
-            >
-              <span>✨</span> Parsear con Claude
-            </button>
-          )}
-        </div>
-      )}
+function ProgressRing({ size }: { size: number }) {
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
+        <circle cx="60" cy="60" r="48" fill="none" stroke="rgba(255,209,106,0.14)" strokeWidth="12" />
+        <circle cx="60" cy="60" r="48" fill="none" stroke="#FFD16A" strokeWidth="12" strokeLinecap="round" strokeDasharray="302" strokeDashoffset="268" />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className={size > 110 ? "text-[28px] font-black" : "text-[22px] font-black"}>11%</span>
+        <span className={size > 110 ? "mt-1 text-[15px] text-[#C6BDAE]" : "mt-1 text-[12px] text-[#C6BDAE]"}>Progreso</span>
       </div>
     </div>
   );
 }
 
-function ParsePreview({ items, onEdit }: { items: ParsedItem[]; onEdit: () => void }) {
-  const avg = Math.round(items.reduce((s, i) => s + i.confidence, 0) / items.length * 100);
+function DesktopMetric({ icon, value, label }: { icon: ReactNode; value: string; label: string }) {
   return (
-    <div>
-      <div className="flex items-center justify-between mb-5 animate-fade-slide-up stagger-0">
-        <div>
-          <h3 className="text-[20px] font-semibold text-white">{items.length} items detectados</h3>
-          <p className="text-[#707070] text-[13px] mt-0.5">Confianza promedio {avg}%</p>
-        </div>
-        <button onClick={onEdit} className="text-[#0A84FF] text-[15px] press-feedback">Editar</button>
-      </div>
-      <div className="space-y-3">
-        {items.map((item, i) => {
-          const conf = item.confidence;
-          const color = conf >= 0.9 ? "#30D158" : conf >= 0.7 ? "#FF9F0A" : "#FF453A";
-          const label = conf >= 0.9 ? "Alta confianza" : conf >= 0.7 ? "Revisar" : "Baja confianza";
-          const emoji = item.type === "flight" ? "✈️" : item.type === "hotel" ? "🏨" : "🚆";
-          const title = item.type === "flight"
-            ? `${item.airline ?? ""} ${item.flight_number ?? ""} · ${item.origin_iata ?? ""}→${item.destination_iata ?? ""}`.trim()
-            : item.type === "hotel" ? (item.name ?? "Hotel")
-            : `${item.origin ?? ""} → ${item.destination ?? ""}`.trim();
-          return (
-            <div
-              key={i}
-              className="bg-[#1A1A1A] rounded-[14px] px-4 py-4 flex items-start gap-3 animate-spring-up"
-              style={{ border: `1px solid ${color}30`, animationDelay: `${i * 80}ms` }}
-            >
-              <span className="text-[24px]">{emoji}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-[15px] font-semibold text-white truncate">{title}</p>
-                <p className="text-[12px] text-[#707070] mt-0.5 capitalize">{item.type}</p>
-              </div>
-              <div className="flex-shrink-0 flex flex-col items-end gap-1">
-                <div className="text-[11px] font-bold px-2 py-1 rounded-full animate-pop-in" style={{ color, backgroundColor: `${color}18`, animationDelay: `${i * 80 + 100}ms` }}>
-                  {Math.round(conf * 100)}%
-                </div>
-                <p className="text-[10px]" style={{ color }}>{label}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+    <div className="hidden border-l border-white/10 px-4 text-center md:block">
+      <div className="flex justify-center text-[#FFD16A]">{icon}</div>
+      <p className="mt-3 text-[28px] font-black leading-none">{value}</p>
+      <p className="mt-3 text-[12px] leading-tight text-[#C6BDAE]">{label}</p>
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Shared mini-components
-// ---------------------------------------------------------------------------
-
-function StatCard({
-  label, sublabel, value, numericValue, currencyPrefix, color, icon, staggerDelay = 0,
-}: {
-  label: string;
-  sublabel?: string;
-  value: string;
-  numericValue?: number;
-  currencyPrefix?: string;
-  color: string;
-  icon?: React.ReactNode;
-  staggerDelay?: number;
-}) {
-  const animated = useCountUp(numericValue ?? 0, 1200, staggerDelay + 80);
-  const displayValue =
-    numericValue !== undefined
-      ? `${currencyPrefix ?? ""}${animated.toLocaleString("es-AR")}`
-      : value;
-
+function MetricLine({ icon, value, label }: { icon: ReactNode; value: string; label: string }) {
   return (
-    <div
-      className="relative rounded-[18px] px-4 py-4 animate-pop-in overflow-hidden"
-      style={{
-        background: `linear-gradient(180deg, ${color}12 0%, #161616 100%)`,
-        border: `1px solid ${color}22`,
-        animationDelay: `${staggerDelay}ms`,
-        boxShadow: `inset 0 1px 0 ${color}15`,
-      }}
-    >
-      {icon && (
-        <div
-          className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: `${color}22`, color }}
-        >
-          {icon}
-        </div>
-      )}
-      <div className="flex flex-col gap-1 pr-8">
-        <div className="flex items-baseline gap-1">
-          <span className="text-[11px] font-semibold text-[#A0A0A0] uppercase tracking-wider">{label}</span>
-          {sublabel && <span className="text-[10px] text-[#4D4D4D] font-medium">{sublabel}</span>}
-        </div>
-        <p
-          className={`font-bold leading-none tracking-tight whitespace-nowrap ${currencyPrefix ? "text-[20px]" : "text-[26px]"}`}
-          style={{ color, textShadow: `0 0 24px ${color}22` }}
-        >
-          {displayValue}
-        </p>
-      </div>
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#FFD16A]/12 text-[#FFD16A]">{icon}</span>
+      <span className="text-[22px] font-black">{value}</span>
+      <span className="text-[17px] font-medium text-[#C6BDAE]">{label}</span>
     </div>
   );
 }
 
+function Legend({ color, label, flag }: { color: string; label: string; flag: string }) {
+  return (
+    <span className="flex items-center gap-2">
+      <span className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
+      <span>{flag}</span>
+      <span>{label}</span>
+    </span>
+  );
+}
+
+function tabLabel(tab: TripTab): string {
+  if (tab === "calendar") return "Calendario";
+  if (tab === "list") return "Lista";
+  if (tab === "items") return "Items";
+  return "Costos";
+}
+
+function itemIcon(type: ItemType): string {
+  if (type === "flight") return "✈";
+  if (type === "hotel") return "🏨";
+  return "🚆";
+}
+
+function itemShortLabel(item: TripItem): string {
+  if (item.time) return item.time;
+  if (item.title.includes("HM")) return "HM";
+  if (item.title.includes("Jumeirah")) return "JS";
+  if (item.title.includes("Viva")) return "Viva";
+  if (item.title.includes("Palma Blanc")) return "HM";
+  return shortTitle(item.title);
+}
+
+function shortTitle(title: string): string {
+  return title.split(" ").slice(0, 2).join(" ");
+}
+
+function formatCellDate(date: string): string {
+  return `${date.slice(8, 10)}/${date.slice(5, 7)}`;
+}
+
+function formatDate(date: string): string {
+  return new Date(`${date}T00:00:00`).toLocaleDateString("es-AR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}

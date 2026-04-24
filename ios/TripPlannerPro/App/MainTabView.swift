@@ -29,15 +29,15 @@ struct MainTabView: View {
                 }
                 AppGroupBridge.writeTripSummaries(summaries)
             })
-            .tabItem { Label("Viajes", systemImage: "airplane") }
+            .tabItem { Label("Inicio", systemImage: "house.fill") }
 
             CatalogView()
-                .tabItem { Label("Catálogo", systemImage: "square.grid.2x2") }
+                .tabItem { Label("Catálogo", systemImage: "rectangle.stack.fill") }
 
             SettingsView()
-                .tabItem { Label("Ajustes", systemImage: "gearshape") }
+                .tabItem { Label("Perfil", systemImage: "person") }
         }
-        .tint(Tokens.Color.accentBlue)
+        .tint(Tokens.Color.sunGold)
         .environment(firestoreClient)
         .onAppear {
             HouseholdConfig.ownerUID = user.uid

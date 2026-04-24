@@ -91,6 +91,22 @@ final class DashboardViewModel {
         trips.filter { $0.status_computed == .planned }.min(by: { $0.startDate < $1.startDate })
     }
 
+    var heroTrip: Trip? {
+        trips.first(where: { $0.status_computed == .active }) ?? upcomingTrip ?? trips.first
+    }
+
+    var tripsThisYear: [Trip] {
+        let year = Calendar.current.component(.year, from: Date())
+        return trips.filter { Calendar.current.component(.year, from: $0.startDate) == year }
+    }
+
+    var totalTravelDaysThisYear: Int {
+        tripsThisYear.reduce(0) { total, trip in
+            let days = Calendar.current.dateComponents([.day], from: trip.startDate, to: trip.endDate).day ?? 0
+            return total + max(days + 1, 0)
+        }
+    }
+
     var plannedTrips: [Trip] { trips.filter { $0.status_computed == .planned } }
     var activeTrips: [Trip] { trips.filter { $0.status_computed == .active } }
     var pastTrips: [Trip] { trips.filter { $0.status_computed == .past } }

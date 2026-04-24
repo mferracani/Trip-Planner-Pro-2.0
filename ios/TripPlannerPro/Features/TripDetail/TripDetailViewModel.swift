@@ -168,6 +168,16 @@ final class TripDetailViewModel {
         }
     }
 
+    func cityDayProgress(for date: Date) -> (current: Int, total: Int)? {
+        guard let city = city(for: date) else { return nil }
+        let day = calendar.startOfDay(for: date)
+        let start = calendar.startOfDay(for: city.startDate)
+        let end = calendar.startOfDay(for: city.endDate)
+        let current = (calendar.dateComponents([.day], from: start, to: day).day ?? 0) + 1
+        let total = (calendar.dateComponents([.day], from: start, to: end).day ?? 0) + 1
+        return (max(current, 1), max(total, 1))
+    }
+
     func flights(on date: Date) -> [Flight] {
         let d = calendar.startOfDay(for: date)
         return flights.filter { calendar.startOfDay(for: $0.departureUTC) == d }

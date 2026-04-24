@@ -324,7 +324,7 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
     <div className="px-3 md:px-8 pb-32 md:pb-8" style={{ userSelect: inSelectionMode ? "none" : "auto" }}>
       {/* Hint bar — selection mode */}
       {inSelectionMode && (
-        <div className="mb-3 px-3 py-2 bg-[#0A84FF]/12 border border-[#0A84FF]/30 rounded-[10px] text-[12px] text-[#0A84FF] font-medium text-center animate-fade-slide-up">
+        <div className="mb-3 px-3 py-2 bg-[#71D3A6]/12 border border-[#71D3A6]/30 rounded-[10px] text-[12px] text-[#71D3A6] font-medium text-center animate-fade-slide-up">
           {selection.size} día{selection.size === 1 ? "" : "s"} · mantené y arrastrá para extender
         </div>
       )}
@@ -352,7 +352,7 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 mb-1.5">
         {WEEKDAYS.map((day) => (
-          <div key={day} className="text-center text-[10px] font-semibold text-[#4D4D4D] uppercase tracking-wide py-1.5">
+          <div key={day} className="text-center text-[10px] font-bold text-[#81786A] uppercase tracking-wide py-1.5">
             {day}
           </div>
         ))}
@@ -410,7 +410,7 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
                 onClick={() => setFilterCity(isActive ? null : c)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide press-feedback transition-all"
                 style={{
-                  backgroundColor: isActive ? `${color}40` : `${color}20`,
+                  backgroundColor: isActive ? `${color}40` : `${color}18`,
                   color: color,
                   boxShadow: isActive ? `0 0 0 1px ${color}` : undefined,
                 }}
@@ -535,29 +535,29 @@ function DayCell({
   onPointerUp,
 }: DayCellProps) {
   const resolvedColor = city ? cityColor(city) : null;
-  const bg = resolvedColor ? `${resolvedColor}20` : "#1A1A1A";
-  const selectionColor = resolvedColor ?? "#0A84FF";
+  const bg = resolvedColor ? `${resolvedColor}18` : "#171512";
+  const selectionColor = resolvedColor ?? "#71D3A6";
   const borderColor = isSelected
     ? selectionColor
     : isToday
-    ? "#0A84FF"
+    ? "#FFD16A"
     : resolvedColor
     ? `${resolvedColor}50`
-    : "#262626";
+    : "#252119";
   const borderWidth = isSelected ? 2 : isToday ? 2 : 1;
 
   const countryCode = city ? detectCountryCode(city) : undefined;
   const flag = countryCode ? countryFlag(countryCode) : null;
   const hasHotel = (items?.hotels.length ?? 0) > 0;
   const showProgress = city && totalDays > 0 && dayIndex >= 0;
-  const progressPct = showProgress ? ((dayIndex + 1) / totalDays) * 100 : 0;
 
-  // Max 2 badges to leave room for progress + city tag
-  const badges = [
+  const allBadges = [
     ...(items?.flights ?? []).map((f) => ({ key: f.id, label: f.label, type: "flight" as const })),
     ...(items?.hotels ?? []).map((h) => ({ key: h.id, label: h.label, type: "hotel" as const })),
     ...(items?.transports ?? []).map((t) => ({ key: t.id, label: t.label, type: "transport" as const })),
-  ].slice(0, 2);
+  ];
+  const badges = allBadges.slice(0, 3);
+  const overflowCount = Math.max(allBadges.length - badges.length, 0);
 
   return (
     <div
@@ -569,7 +569,7 @@ function DayCell({
       aria-label={`${dateStr}${city ? ` — ${city.name}` : ""}`}
       className={`
         relative flex flex-col rounded-[10px] px-1 pt-1 pb-1
-        min-h-[96px] md:min-h-[116px] w-full text-left
+        min-h-[104px] md:min-h-[126px] w-full text-left
         transition-all
         ${inRange ? "cursor-pointer active:scale-[0.94]" : "opacity-25 cursor-default"}
         ${dimmed ? "opacity-30" : ""}
@@ -577,7 +577,7 @@ function DayCell({
         focus:outline-none
       `}
       style={{
-        backgroundColor: inRange ? bg : "#0D0D0D",
+        backgroundColor: inRange ? bg : "#090806",
         border: `${borderWidth}px solid ${borderColor}`,
         boxShadow: isSelected ? `0 0 0 3px ${selectionColor}33, 0 4px 12px ${selectionColor}22` : undefined,
         overflow: "hidden",
@@ -588,14 +588,14 @@ function DayCell({
       <div className="flex items-start justify-between px-0.5 mb-0.5">
         <span
           className="text-[11px] md:text-[13px] font-bold leading-none tabular-nums"
-          style={{ color: isToday ? "#0A84FF" : "#FFFFFF" }}
+          style={{ color: isToday ? "#FFD16A" : "#FFFFFF" }}
         >
           {dateLabel}
         </span>
         {flag && !isSelected ? (
           <span className="text-[11px] leading-none" style={{ lineHeight: 1 }}>{flag}</span>
         ) : !flag && isToday && !isSelected ? (
-          <div className="w-1.5 h-1.5 rounded-full bg-[#0A84FF] mt-0.5" />
+          <div className="w-1.5 h-1.5 rounded-full bg-[#FFD16A] mt-0.5" />
         ) : null}
       </div>
 
@@ -614,6 +614,11 @@ function DayCell({
         {badges.map((b) => (
           <ItemBadge key={b.key} label={b.label} type={b.type} />
         ))}
+        {overflowCount > 0 && (
+          <span className="text-[9px] md:text-[10px] font-bold px-1 py-[2px] rounded-[4px] leading-tight text-[#C6BDAE] bg-[#242018]">
+            +{overflowCount}
+          </span>
+        )}
       </div>
 
       {/* City tag + day counter */}
@@ -642,7 +647,7 @@ function DayCell({
       {hasHotel && (
         <div
           className="absolute bottom-0 left-0 right-0 h-[2px] rounded-b-[8px]"
-          style={{ backgroundColor: "#FF9F0A" }}
+          style={{ backgroundColor: "#FFD16A" }}
         />
       )}
     </div>
@@ -651,9 +656,9 @@ function DayCell({
 
 function ItemBadge({ label, type }: { label: string; type: "flight" | "hotel" | "transport" }) {
   const styles: Record<typeof type, { bg: string; text: string }> = {
-    flight: { bg: "#0A84FF22", text: "#0A84FF" },
-    hotel: { bg: "#FF9F0A22", text: "#FF9F0A" },
-    transport: { bg: "#BF5AF222", text: "#BF5AF2" },
+    flight: { bg: "#6CAFE822", text: "#6CAFE8" },
+    hotel: { bg: "#FFD16A24", text: "#FFD16A" },
+    transport: { bg: "#A891E824", text: "#A891E8" },
   };
   const { bg, text } = styles[type];
   const icon = type === "flight" ? "✈" : type === "hotel" ? "🏨" : "🚆";

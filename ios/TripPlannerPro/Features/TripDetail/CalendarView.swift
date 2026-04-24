@@ -4,15 +4,15 @@ struct CalendarView: View {
     let vm: TripDetailViewModel
     @State private var selectedDate: SelectedCalendarDate?
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 7)
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
     private let weekDays = ["L", "M", "X", "J", "V", "S", "D"]
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 2, pinnedViews: [.sectionHeaders]) {
+            LazyVStack(spacing: 4, pinnedViews: [.sectionHeaders]) {
                 Section {
                     ForEach(vm.weeks.indices, id: \.self) { weekIdx in
-                        LazyVGrid(columns: columns, spacing: 2) {
+                        LazyVGrid(columns: columns, spacing: 4) {
                             ForEach(0..<7, id: \.self) { dayIdx in
                                 if let date = vm.weeks[weekIdx][dayIdx] {
                                     DayCell(
@@ -22,8 +22,10 @@ struct CalendarView: View {
                                     )
                                     .onTapGesture { selectedDate = SelectedCalendarDate(date: date) }
                                 } else {
-                                    Color.clear
-                                        .frame(minHeight: 80)
+                                    RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                                        .fill(Tokens.Color.bgPrimary.opacity(0.35))
+                                        .frame(minHeight: 98)
+                                        .opacity(0.25)
                                 }
                             }
                         }
@@ -45,7 +47,7 @@ struct CalendarView: View {
         LazyVGrid(columns: columns, spacing: 2) {
             ForEach(weekDays, id: \.self) { day in
                 Text(day)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
                     .foregroundStyle(Tokens.Color.textTertiary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Tokens.Spacing.xs)
@@ -71,51 +73,98 @@ private struct DayCell: View {
     private var flights: [Flight] { vm.flights(on: date) }
     private var hotels: [Hotel] { vm.hotels(on: date) }
     private var transports: [Transport] { vm.transports(on: date) }
+    private var city: TripCity? { vm.city(for: date) }
+    private var cityProgress: (current: Int, total: Int)? { vm.cityDayProgress(for: date) }
     private var isToday: Bool { Calendar.current.isDateInToday(date) }
-    private var dayNumber: Int { Calendar.current.component(.day, from: date) }
+    private var dateLabel: String {
+        let day = Calendar.current.component(.day, from: date)
+        let month = Calendar.current.component(.month, from: date)
+        return "\(day)/\(month)"
+    }
+    private var visibleItemCount: Int { min(totalItemCount, 2) }
+    private var totalItemCount: Int { flights.count + hotels.count + transports.count }
+    private var overflowCount: Int { max(totalItemCount - visibleItemCount, 0) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            // Day number
-            Text("\(dayNumber)")
-                .font(.system(size: 13, weight: isToday ? .bold : .regular))
-                .foregroundStyle(isToday ? Tokens.Color.accentBlue : Tokens.Color.textPrimary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 5)
-                .padding(.top, 5)
+            HStack(alignment: .top, spacing: 2) {
+                Text(dateLabel)
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .foregroundStyle(isToday ? Tokens.Color.accentBlue : Tokens.Color.textPrimary)
+                    .lineLimit(1)
 
-            // Badges
-            VStack(alignment: .leading, spacing: 2) {
-                ForEach(flights.prefix(2)) { flight in
-                    ItemBadge(icon: "✈", text: timeString(flight.departureLocal), color: Tokens.Color.Category.flight)
-                }
-                ForEach(hotels.prefix(1)) { hotel in
-                    ItemBadge(icon: "🏨", text: shortName(hotel.name), color: Tokens.Color.Category.hotel)
-                }
-                ForEach(transports.prefix(1)) { t in
-                    ItemBadge(icon: "🚆", text: timeString(t.departureLocal), color: Tokens.Color.Category.transit)
+                Spacer(minLength: 0)
+
+                if let city, !city.countryCode.isEmpty {
+                    Text(Tokens.Country.flag(city.countryCode))
+                        .font(.system(size: 10))
                 }
             }
-            .padding(.horizontal, 3)
+
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(flights.prefix(1)) { flight in
+                    ItemBadge(icon: "✈", text: timeString(flight.departureLocal), color: Tokens.Color.Category.flight)
+                }
+                if flights.count < 2 {
+                    ForEach(hotels.prefix(1)) { hotel in
+                        ItemBadge(icon: "🏨", text: shortName(hotel.name), color: Tokens.Color.Category.hotel)
+                    }
+                }
+                if flights.isEmpty && hotels.isEmpty {
+                    ForEach(transports.prefix(1)) { t in
+                        ItemBadge(icon: "🚆", text: timeString(t.departureLocal), color: Tokens.Color.Category.transit)
+                    }
+                }
+                if overflowCount > 0 {
+                    ItemBadge(icon: "+", text: "\(overflowCount)", color: Tokens.Color.textSecondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 0)
+
+            if let city {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(city.name)
+                        .font(.system(size: 8, weight: .black, design: .rounded))
+                        .foregroundStyle(cityColor ?? Tokens.Color.textSecondary)
+                        .textCase(.uppercase)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
+
+                    if let cityProgress {
+                        Text("\(cityProgress.current)/\(cityProgress.total)")
+                            .font(.system(size: 9, weight: .black, design: .rounded))
+                            .foregroundStyle(cityColor ?? Tokens.Color.textSecondary)
+                    }
+                }
+            }
         }
-        .frame(minHeight: 80)
+        .padding(5)
+        .frame(minHeight: 98)
         .background(cellBackground)
         .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(isSelected ? Tokens.Color.accentBlue : (cityColor?.opacity(0.3) ?? Tokens.Color.border), lineWidth: isSelected ? 2 : 1)
+            RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                .stroke(isSelected ? Tokens.Color.travelMint : (cityColor?.opacity(0.42) ?? Tokens.Color.borderSoft), lineWidth: isSelected ? 2 : 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .overlay(alignment: .bottom) {
+            if !hotels.isEmpty {
+                Rectangle()
+                    .fill(Tokens.Color.Category.hotel)
+                    .frame(height: 2)
+                    .opacity(0.9)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.md))
     }
 
     @ViewBuilder
     private var cellBackground: some View {
         if let color = cityColor {
-            RoundedRectangle(cornerRadius: 4)
-                .fill(color.opacity(0.14))
+            RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                .fill(color.opacity(0.16))
         } else {
-            RoundedRectangle(cornerRadius: 4)
+            RoundedRectangle(cornerRadius: Tokens.Radius.md)
                 .fill(Tokens.Color.surface)
         }
     }
@@ -143,15 +192,16 @@ private struct ItemBadge: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            Text(icon).font(.system(size: 8))
+            Text(icon).font(.system(size: 8, weight: .bold))
             Text(text)
-                .font(.system(size: 9, weight: .medium))
+                .font(.system(size: 8, weight: .bold, design: .rounded))
                 .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
         .foregroundStyle(color)
         .padding(.horizontal, 3)
         .padding(.vertical, 1)
-        .background(RoundedRectangle(cornerRadius: 3).fill(color.opacity(0.18)))
+        .background(RoundedRectangle(cornerRadius: 4).fill(color.opacity(0.18)))
     }
 }
 

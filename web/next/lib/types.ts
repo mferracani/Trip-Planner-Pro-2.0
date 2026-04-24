@@ -171,14 +171,14 @@ export interface CitySetting {
 
 // Design system constants
 export const CITY_COLORS = [
-  "#FF6B6B", // coral
-  "#4ECDC4", // turquesa
-  "#FFD93D", // amarillo
-  "#95E1D3", // menta
-  "#C77DFF", // lavanda
-  "#FF8FA3", // rosa salmón
+  "#71D3A6", // menta viaje
+  "#74ACDF", // cielo
+  "#FFD16A", // sol
+  "#F29E7D", // coral cálido
+  "#A891E8", // lavanda IA
+  "#E98A9A", // rosa atardecer
   "#6BCB77", // verde fresco
-  "#4D96FF", // azul eléctrico
+  "#6CAFE8", // azul costa
 ];
 
 // Representative color per country (ISO 3166-1 alpha-2) — drawn from flag palettes
