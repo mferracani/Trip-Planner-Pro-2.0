@@ -332,7 +332,7 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
       {/* Filter city hint */}
       {filterCity && !inSelectionMode && (() => {
         const fc = filterCity;
-        const fcColor = cityColor(fc);
+        const fcColor = fc.color;
         const fcCode = detectCountryCode(fc);
         return (
           <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-[10px] animate-fade-slide-up" style={{ backgroundColor: `${fcColor}15`, border: `1px solid ${fcColor}40` }}>
@@ -403,7 +403,7 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
           {enhancedCities.map((c) => {
             const isActive = filterCity?.id === c.id;
             const cc = detectCountryCode(c);
-            const color = cityColor(c);
+            const color = c.color;
             return (
               <button
                 key={c.id}
@@ -534,7 +534,7 @@ function DayCell({
   onPointerEnter,
   onPointerUp,
 }: DayCellProps) {
-  const resolvedColor = city ? cityColor(city) : null;
+  const resolvedColor = city?.color ?? null;
   const selectionColor = resolvedColor ?? "#0A84FF";
 
   // Gradient: rich city color top-left fading to near-black
@@ -918,7 +918,7 @@ function DayDetailSheet({
           <div>
             <h3 className="text-[20px] font-semibold text-white capitalize leading-tight">{label}</h3>
             {city && (() => {
-              const sheetColor = cityColor(city);
+              const sheetColor = city.color;
               const sheetCode = detectCountryCode(city);
               return (
                 <button
@@ -936,7 +936,7 @@ function DayDetailSheet({
                   >
                     {city.name}
                   </span>
-                  <span className="text-[10px] text-[#555]">✎</span>
+                  <span className="text-[14px]" style={{ color: "#FFD16A" }}>✎</span>
                 </button>
               );
             })()}
