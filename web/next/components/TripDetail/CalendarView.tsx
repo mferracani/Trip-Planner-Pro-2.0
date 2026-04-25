@@ -352,7 +352,7 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 mb-1.5">
         {WEEKDAYS.map((day) => (
-          <div key={day} className="text-center text-[10px] font-bold text-[#81786A] uppercase tracking-wide py-1.5">
+          <div key={day} className="text-center text-[10px] font-bold text-[#707070] uppercase tracking-wide py-1.5">
             {day}
           </div>
         ))}
@@ -408,19 +408,19 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
               <button
                 key={c.id}
                 onClick={() => setFilterCity(isActive ? null : c)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide press-feedback transition-all"
-                style={{
-                  backgroundColor: isActive ? `${color}40` : `${color}18`,
-                  color: color,
-                  boxShadow: isActive ? `0 0 0 1px ${color}` : undefined,
-                }}
+                className="flex items-center gap-1.5 press-feedback transition-all"
+                style={{ opacity: isActive ? 1 : 0.65 }}
               >
-                {cc ? (
-                  <span className="text-[13px] leading-none">{countryFlag(cc)}</span>
-                ) : (
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+                <div
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: color }}
+                />
+                {cc && (
+                  <span className="text-[12px] leading-none">{countryFlag(cc)}</span>
                 )}
-                {c.name}
+                <span className="text-[12px] font-medium" style={{ color: "#C6BDAE" }}>
+                  {c.name}
+                </span>
               </button>
             );
           })}
@@ -535,26 +535,37 @@ function DayCell({
   onPointerUp,
 }: DayCellProps) {
   const resolvedColor = city ? cityColor(city) : null;
-  const bg = resolvedColor ? `${resolvedColor}18` : "#171512";
-  const selectionColor = resolvedColor ?? "#71D3A6";
+  const selectionColor = resolvedColor ?? "#0A84FF";
+
+  // Gradient: rich city color top-left fading to near-black
+  const bg = resolvedColor
+    ? `linear-gradient(145deg, ${resolvedColor}42 0%, ${resolvedColor}14 100%)`
+    : inRange
+    ? "#1A1A1A"
+    : "#0D0D0D";
+
+  // Border: city color at 40%, default #333333
   const borderColor = isSelected
     ? selectionColor
     : isToday
     ? "#FFD16A"
     : resolvedColor
-    ? `${resolvedColor}50`
-    : "#252119";
-  const borderWidth = isSelected ? 2 : isToday ? 2 : 1;
+    ? `${resolvedColor}66`
+    : "#333333";
+  const borderWidth = isSelected || isToday ? 2 : 1;
 
   const countryCode = city ? detectCountryCode(city) : undefined;
   const flag = countryCode ? countryFlag(countryCode) : null;
-  const hasHotel = (items?.hotels.length ?? 0) > 0;
   const showProgress = city && totalDays > 0 && dayIndex >= 0;
 
+  // Just the day number, not DD/MM
+  const dayNumber = dateStr.split("-")[2];
+
+  // Flights + transports first (time-critical), hotels last
   const allBadges = [
     ...(items?.flights ?? []).map((f) => ({ key: f.id, label: f.label, type: "flight" as const })),
-    ...(items?.hotels ?? []).map((h) => ({ key: h.id, label: h.label, type: "hotel" as const })),
     ...(items?.transports ?? []).map((t) => ({ key: t.id, label: t.label, type: "transport" as const })),
+    ...(items?.hotels ?? []).map((h) => ({ key: h.id, label: h.label, type: "hotel" as const })),
   ];
   const badges = allBadges.slice(0, 3);
   const overflowCount = Math.max(allBadges.length - badges.length, 0);
@@ -568,109 +579,108 @@ function DayCell({
       aria-disabled={!inRange}
       aria-label={`${dateStr}${city ? ` — ${city.name}` : ""}`}
       className={`
-        relative flex flex-col rounded-[10px] px-1 pt-1 pb-1
-        min-h-[104px] md:min-h-[126px] w-full text-left
+        relative flex flex-col rounded-[10px] p-1.5 md:rounded-[12px] md:p-2
+        min-h-[120px] md:min-h-[140px] w-full text-left
         transition-all
-        ${inRange ? "cursor-pointer active:scale-[0.94]" : "opacity-25 cursor-default"}
+        ${inRange ? "cursor-pointer active:scale-[0.94]" : "opacity-20 cursor-default"}
         ${dimmed ? "opacity-30" : ""}
         ${isSelected ? "scale-[0.96]" : ""}
         focus:outline-none
       `}
       style={{
-        backgroundColor: inRange ? bg : "#090806",
+        background: bg,
         border: `${borderWidth}px solid ${borderColor}`,
         boxShadow: isSelected ? `0 0 0 3px ${selectionColor}33, 0 4px 12px ${selectionColor}22` : undefined,
         overflow: "hidden",
         touchAction: "none",
       }}
     >
-      {/* Top row: date DD/MM + flag (or today dot if no city) */}
-      <div className="flex items-start justify-between px-0.5 mb-0.5">
+      {/* Row 1: DD/MM date + badge */}
+      <div className="flex items-start justify-between mb-1">
         <span
-          className="text-[11px] md:text-[13px] font-bold leading-none tabular-nums"
-          style={{ color: isToday ? "#FFD16A" : "#FFFFFF" }}
+          className="text-[11px] md:text-[12px] font-bold leading-none tabular-nums"
+          style={{ color: isToday ? "#FFD16A" : inRange ? "#A0A0A0" : "#444" }}
         >
           {dateLabel}
         </span>
-        {flag && !isSelected ? (
-          <span className="text-[11px] leading-none" style={{ lineHeight: 1 }}>{flag}</span>
-        ) : !flag && isToday && !isSelected ? (
-          <div className="w-1.5 h-1.5 rounded-full bg-[#FFD16A] mt-0.5" />
+        {isSelected ? (
+          <div
+            className="w-[15px] h-[15px] rounded-full flex items-center justify-center text-white text-[8px] font-bold animate-pop-in flex-shrink-0"
+            style={{ backgroundColor: selectionColor }}
+          >
+            ✓
+          </div>
+        ) : isToday ? (
+          <div className="w-[15px] h-[15px] rounded-full bg-[#30D158] flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0">
+            ✓
+          </div>
         ) : null}
       </div>
 
-      {/* Selection checkmark */}
-      {isSelected && (
-        <div
-          className="absolute top-1 right-1 w-4 h-4 rounded-full flex items-center justify-center text-white text-[10px] font-bold animate-pop-in"
-          style={{ backgroundColor: selectionColor }}
-        >
-          ✓
-        </div>
-      )}
+      {/* City block — mobile: 3-char abbrev; desktop: full name */}
+      {city && inRange && resolvedColor && (
+        <div className="mb-2">
+          {/* Flag */}
+          <span className="text-[12px] md:text-[13px] leading-none block mb-0.5">{flag ?? ""}</span>
 
-      {/* Badges */}
-      <div className="flex flex-col gap-[3px] flex-1 w-full overflow-hidden">
-        {badges.map((b) => (
-          <ItemBadge key={b.key} label={b.label} type={b.type} />
-        ))}
-        {overflowCount > 0 && (
-          <span className="text-[9px] md:text-[10px] font-bold px-1 py-[2px] rounded-[4px] leading-tight text-[#C6BDAE] bg-[#242018]">
-            +{overflowCount}
-          </span>
-        )}
-      </div>
+          {/* Mobile: 3-char abbreviation */}
+          <p
+            className="text-[14px] font-bold leading-none tracking-tight md:hidden"
+            style={{ color: "#FFFFFF" }}
+          >
+            {city.name.substring(0, 3).toUpperCase()}
+          </p>
 
-      {/* City tag + day counter */}
-      {city && resolvedColor && (
-        <div className="mt-auto w-full px-0.5 pb-0.5">
-          <div className="flex items-end justify-between gap-1">
-            <span
-              className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest truncate leading-none"
-              style={{ color: resolvedColor }}
+          {/* Desktop: full city name */}
+          <p
+            className="hidden md:block text-[15px] font-bold leading-tight truncate"
+            style={{ color: "#FFFFFF" }}
+          >
+            {city.name}
+          </p>
+
+          {/* Counter */}
+          {showProgress && (
+            <p
+              className="text-[10px] md:text-[11px] font-semibold leading-none tabular-nums mt-0.5"
+              style={{ color: `${resolvedColor}B0` }}
             >
-              {city.name}
-            </span>
-            {showProgress && (
-              <span
-                className="text-[10px] md:text-[11px] font-bold leading-none flex-shrink-0 tabular-nums"
-                style={{ color: resolvedColor }}
-              >
-                {dayIndex + 1}/{totalDays}
-              </span>
-            )}
-          </div>
+              {dayIndex + 1}/{totalDays}
+            </p>
+          )}
         </div>
       )}
 
-      {/* Hotel continued strip */}
-      {hasHotel && (
-        <div
-          className="absolute bottom-0 left-0 right-0 h-[2px] rounded-b-[8px]"
-          style={{ backgroundColor: "#FFD16A" }}
-        />
+      {/* Items */}
+      {inRange && (
+        <div className="flex flex-col gap-[3px] mt-auto overflow-hidden">
+          {badges.map((b) => (
+            <ItemRow key={b.key} label={b.label} type={b.type} />
+          ))}
+          {overflowCount > 0 && (
+            <span className="text-[8px] text-[#555] font-semibold">+{overflowCount}</span>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
-function ItemBadge({ label, type }: { label: string; type: "flight" | "hotel" | "transport" }) {
-  const styles: Record<typeof type, { bg: string; text: string }> = {
-    flight: { bg: "#6CAFE822", text: "#6CAFE8" },
-    hotel: { bg: "#FFD16A24", text: "#FFD16A" },
-    transport: { bg: "#A891E824", text: "#A891E8" },
-  };
-  const { bg, text } = styles[type];
-  const icon = type === "flight" ? "✈" : type === "hotel" ? "🏨" : "🚆";
+function ItemRow({ label, type }: { label: string; type: "flight" | "hotel" | "transport" }) {
+  const icon = type === "flight" ? "✈" : type === "hotel" ? "🏨" : "🚌";
+  // Design system: vuelo #60A5FA · hotel #FBBF24 · transit #D8B4FE
+  const color = type === "flight" ? "#60A5FA" : type === "hotel" ? "#FBBF24" : "#D8B4FE";
 
   return (
-    <span
-      className="text-[9px] md:text-[10px] font-semibold px-1 py-[2px] rounded-[4px] truncate leading-tight flex items-center gap-0.5"
-      style={{ backgroundColor: bg, color: text }}
-    >
-      <span className="text-[8px]">{icon}</span>
-      <span className="truncate">{label}</span>
-    </span>
+    <div className="flex items-center gap-[3px] min-w-0 overflow-hidden">
+      <span className="text-[9px] md:text-[10px] flex-shrink-0 leading-none">{icon}</span>
+      <span
+        className="text-[9px] md:text-[11px] font-medium truncate leading-tight"
+        style={{ color }}
+      >
+        {label}
+      </span>
+    </div>
   );
 }
 

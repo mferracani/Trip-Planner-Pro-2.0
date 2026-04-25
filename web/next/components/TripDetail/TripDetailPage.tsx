@@ -191,8 +191,59 @@ export function TripDetailPage({ tripId }: Props) {
           </button>
         </div>
 
-        {/* Premium trip hero — same source of truth as the approved mockup */}
-        <div className="px-6 md:px-8 pt-3 md:pt-0 pb-3 md:pb-6 animate-fade-slide-up stagger-2">
+        {/* Mobile compact hero strip */}
+        {(() => {
+          const today = new Date().toISOString().split("T")[0];
+          const isActive = trip.start_date <= today && trip.end_date >= today;
+          const tripDay = isActive
+            ? Math.ceil((new Date(today + "T00:00:00").getTime() - new Date(trip.start_date + "T00:00:00").getTime()) / 86400000) + 1
+            : 0;
+          const progress = totalDays > 0 ? Math.round((tripDay / totalDays) * 100) : 0;
+          return (
+            <div className="md:hidden px-4 pt-2 pb-3 animate-fade-slide-up stagger-2">
+              <div className="rounded-[14px] border border-[#333] bg-[#1A1A1A] px-4 py-3">
+                <div className="flex items-center gap-3">
+                  {/* Day + progress */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] text-[#A0A0A0] font-medium leading-none mb-1.5">
+                      {isActive ? `Día ${tripDay} de ${totalDays}` : `${totalDays} días`}
+                    </p>
+                    <div className="h-[4px] bg-[#333] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#30D158] rounded-full transition-all"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+                  {/* USD */}
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-[9px] text-[#707070] font-semibold uppercase tracking-wide leading-none mb-0.5">USD</p>
+                    <p className="text-[18px] font-black text-[#FFD16A] leading-none tabular-nums">
+                      {(trip.total_usd ?? 0).toLocaleString("es-AR")}
+                    </p>
+                  </div>
+                  {/* Divider */}
+                  <div className="w-px h-8 bg-[#333] flex-shrink-0" />
+                  {/* Cities */}
+                  <div className="text-center flex-shrink-0">
+                    <MapPin size={13} className="text-[#FFD16A] mx-auto mb-0.5" />
+                    <p className="text-[15px] font-black text-white leading-none">{cities.length || trip.cities_count || 0}</p>
+                    <p className="text-[9px] text-[#707070] leading-none mt-0.5">ciudades</p>
+                  </div>
+                  {/* Flights */}
+                  <div className="text-center flex-shrink-0">
+                    <Plane size={13} className="text-[#FFD16A] mx-auto mb-0.5" />
+                    <p className="text-[15px] font-black text-white leading-none">{flights.length}</p>
+                    <p className="text-[9px] text-[#707070] leading-none mt-0.5">vuelos</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Desktop hero card */}
+        <div className="hidden md:block px-8 pt-0 pb-6 animate-fade-slide-up stagger-2">
           <TripHeroCard
             name={trip.name}
             dateRange={dateRange}
@@ -311,7 +362,7 @@ function TripSummaryCard({
   totalUsd,
   totalDays,
 }: {
-  totalUsd: number;
+  totalUsd: number | undefined;
   totalDays: number;
 }) {
   return (
@@ -324,7 +375,7 @@ function TripSummaryCard({
       }}
     >
       <div className="flex items-end justify-between gap-4 md:gap-8">
-        <Metric label="Presupuesto" value={`USD ${totalUsd.toLocaleString("es-AR")}`} accent="#FFD16A" />
+        <Metric label="Presupuesto" value={`USD ${(totalUsd ?? 0).toLocaleString("es-AR")}`} accent="#FFD16A" />
         <div className="hidden md:block w-px self-stretch bg-[#332E25]" />
         <Metric
           label="Duración"
@@ -354,7 +405,7 @@ function TripHeroCard({
   name: string;
   dateRange: string;
   totalDays: number;
-  totalUsd: number;
+  totalUsd: number | undefined;
   citiesCount: number;
   flightsCount: number;
   status: "active" | "planned";
@@ -395,7 +446,7 @@ function TripHeroCard({
             <div className="border-t border-white/10 pt-4 md:border-l md:border-t-0 md:px-6 md:pt-0">
               <p className="text-[12px] font-semibold text-[#C6BDAE]">USD</p>
               <p className="text-[34px] font-black leading-none text-[#FFD16A] md:text-[32px]">
-                {totalUsd.toLocaleString("es-AR")}
+                {(totalUsd ?? 0).toLocaleString("es-AR")}
               </p>
               <p className="mt-2 text-[13px] font-medium text-[#81786A]">Total gastado</p>
             </div>
