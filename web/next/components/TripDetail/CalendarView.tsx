@@ -10,6 +10,8 @@ import { FlightForm } from "../forms/FlightForm";
 import { HotelForm } from "../forms/HotelForm";
 import { TransportForm } from "../forms/TransportForm";
 
+type SelectionAddType = "city" | "hotel";
+
 interface Props {
   trip: Trip;
   cities: City[];
@@ -159,6 +161,7 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [filterCity, setFilterCity] = useState<City | null>(null);
+  const [addingFromSelection, setAddingFromSelection] = useState<SelectionAddType | null>(null);
 
   const longPressTimer = useRef<number | null>(null);
   const dragStartDate = useRef<string | null>(null);
@@ -497,6 +500,30 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
             setFilterCity(c);
             clearSelection();
           }}
+          onAddCity={() => setAddingFromSelection("city")}
+          onAddHotel={() => setAddingFromSelection("hotel")}
+        />
+      )}
+
+      {/* Forms triggered from selection */}
+      {addingFromSelection === "city" && (
+        <CityForm
+          tripId={trip.id}
+          tripStart={trip.start_date}
+          tripEnd={trip.end_date}
+          usedColors={cities.map((c) => c.color)}
+          initialDays={Array.from(selection).sort()}
+          onClose={() => setAddingFromSelection(null)}
+          onSaved={() => { setAddingFromSelection(null); clearSelection(); onChanged(); }}
+        />
+      )}
+      {addingFromSelection === "hotel" && (
+        <HotelForm
+          tripId={trip.id}
+          cities={cities}
+          initialDate={Array.from(selection).sort()[0]}
+          onClose={() => setAddingFromSelection(null)}
+          onSaved={() => { setAddingFromSelection(null); clearSelection(); onChanged(); }}
         />
       )}
     </div>
@@ -688,10 +715,14 @@ function SelectionActionBar({
   stats,
   onClose,
   onFilterCity,
+  onAddCity,
+  onAddHotel,
 }: {
   stats: SelectionStats;
   onClose: () => void;
   onFilterCity: (c: City) => void;
+  onAddCity: () => void;
+  onAddHotel: () => void;
 }) {
   return (
     <div
@@ -733,12 +764,14 @@ function SelectionActionBar({
           {stats.hasEmpty && (
             <>
               <button
+                onClick={onAddCity}
                 className="px-3 py-2.5 text-white text-[12px] font-semibold rounded-full press-feedback whitespace-nowrap flex items-center gap-1"
                 style={{ background: "linear-gradient(135deg, #FF6B6B, #E85959)" }}
               >
                 + Ciudad
               </button>
               <button
+                onClick={onAddHotel}
                 className="px-3 py-2.5 text-white text-[12px] font-semibold rounded-full press-feedback whitespace-nowrap flex items-center gap-1"
                 style={{ background: "linear-gradient(135deg, #FF9F0A, #E68908)" }}
               >

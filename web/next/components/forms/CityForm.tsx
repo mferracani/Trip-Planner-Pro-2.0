@@ -15,6 +15,7 @@ interface Props {
   usedColors: string[];
   existing?: City;
   initialDay?: string;
+  initialDays?: string[];
   onClose: () => void;
   onSaved: () => void;
 }
@@ -38,7 +39,7 @@ function cityFlag(countryCode: string): string {
     .join("");
 }
 
-export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, initialDay, onClose, onSaved }: Props) {
+export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, initialDay, initialDays, onClose, onSaved }: Props) {
   const { user } = useAuth();
   const [name, setName] = useState(existing?.name ?? "");
   const [lat, setLat] = useState<number | null>(existing?.lat ?? null);
@@ -47,7 +48,7 @@ export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, ini
   const [color, setColor] = useState(
     existing?.color ?? CITY_COLORS.find((c) => !usedColors.includes(c)) ?? CITY_COLORS[0]
   );
-  const [days, setDays] = useState<string[]>(existing?.days ?? (initialDay ? [initialDay] : []));
+  const [days, setDays] = useState<string[]>(existing?.days ?? (initialDays?.length ? initialDays : initialDay ? [initialDay] : []));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
