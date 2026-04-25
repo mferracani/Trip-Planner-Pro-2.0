@@ -243,18 +243,37 @@ export function TripDetailPage({ tripId }: Props) {
         })()}
 
         {/* Desktop hero card */}
-        <div className="hidden md:block px-8 pt-0 pb-6 animate-fade-slide-up stagger-2">
-          <TripHeroCard
-            name={trip.name}
-            dateRange={dateRange}
-            totalDays={totalDays}
-            totalUsd={trip.total_usd}
-            citiesCount={cities.length || trip.cities_count || 0}
-            flightsCount={flights.length}
-            status={trip.start_date <= new Date().toISOString().split("T")[0] && trip.end_date >= new Date().toISOString().split("T")[0] ? "active" : "planned"}
-            coverUrl={trip.cover_url}
-          />
-        </div>
+        {(() => {
+          let paidUsd = 0;
+          for (const f of flights) {
+            if ((f.paid_amount ?? 0) > 0) paidUsd += f.price_usd ?? 0;
+          }
+          for (const h of hotels) {
+            if ((h.paid_amount ?? 0) > 0) paidUsd += h.total_price_usd ?? 0;
+          }
+          for (const t of transports) {
+            if ((t.paid_amount ?? 0) > 0) paidUsd += t.price_usd ?? 0;
+          }
+          const paymentPct = (trip.total_usd ?? 0) > 0
+            ? Math.min(Math.round((paidUsd / trip.total_usd!) * 100), 100)
+            : 0;
+          const today = new Date().toISOString().split("T")[0];
+          return (
+            <div className="hidden md:block px-8 pt-0 pb-6 animate-fade-slide-up stagger-2">
+              <TripHeroCard
+                name={trip.name}
+                dateRange={dateRange}
+                totalDays={totalDays}
+                totalUsd={trip.total_usd}
+                citiesCount={cities.length || trip.cities_count || 0}
+                flightsCount={flights.length}
+                paidPct={paymentPct}
+                status={trip.start_date <= today && trip.end_date >= today ? "active" : "planned"}
+                coverUrl={trip.cover_url}
+              />
+            </div>
+          );
+        })()}
 
         {/* Tabs */}
         <div className="px-6 md:px-8 animate-fade-slide-up stagger-3">
@@ -399,6 +418,7 @@ function TripHeroCard({
   totalUsd,
   citiesCount,
   flightsCount,
+  paidPct,
   status,
   coverUrl,
 }: {
@@ -408,10 +428,11 @@ function TripHeroCard({
   totalUsd: number | undefined;
   citiesCount: number;
   flightsCount: number;
+  paidPct: number;
   status: "active" | "planned";
   coverUrl?: string;
 }) {
-  const progress = status === "active" ? 11 : 0;
+  const progress = paidPct;
   const heroImage = coverUrl || "/travel-hero.svg";
 
   return (
@@ -440,7 +461,7 @@ function TripHeroCard({
               </p>
             </div>
             <ProgressMetric value={progress} />
-            <DesktopHeroMetric icon={<Plane size={22} />} value={String(flightsCount || 4)} label="Viajes este año" />
+            <DesktopHeroMetric icon={<Plane size={22} />} value={String(flightsCount)} label="Vuelos" />
             <DesktopHeroMetric icon={<MapPin size={22} />} value={String(citiesCount)} label="Ciudades" />
             <DesktopHeroMetric icon={<CalendarDays size={22} />} value={String(totalDays)} label="Días viajando" />
             <div className="border-t border-white/10 pt-4 md:border-l md:border-t-0 md:px-6 md:pt-0">
@@ -479,7 +500,7 @@ function ProgressMetric({ value }: { value: number }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-[22px] font-black leading-none text-white">{value}%</span>
-        <span className="mt-1 text-[11px] font-semibold text-[#C6BDAE]">Progreso</span>
+        <span className="mt-1 text-[11px] font-semibold text-[#C6BDAE]">Pagado</span>
       </div>
     </div>
   );
