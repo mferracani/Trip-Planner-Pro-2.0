@@ -69,24 +69,38 @@
 
 ## Fase 4 — iOS app (semanas 4-5)
 
-- [ ] Crear Xcode project en `ios/TripPlannerPro/`
-  - [ ] Targets: iOS app + Share Extension + Widget Extension (v1.1)
-- [ ] Swift Package Manager:
-  - [ ] Firebase/Firestore + Firebase/Auth + Firebase/Storage
-  - [ ] SwiftKeychainWrapper
-- [ ] Configurar `GoogleService-Info.plist`
-- [ ] Estructura modular (`Features/`, `Core/`)
-- [ ] Paridad con web (en orden):
-  - [ ] Onboarding (3 pantallas)
-  - [ ] Sign in with Apple
-  - [ ] Dashboard con saludo contextual + countdown vivo
-  - [ ] Trip Detail — Calendar view (grid Mon→Sun)
-  - [ ] Day Detail sheet
-  - [ ] Modal Carga IA — Chat mode
-  - [ ] Modal Carga IA — File mode + Share Extension
-  - [ ] Settings
-- [ ] SwiftData para cache offline del viaje activo
-- [ ] Dark mode forzado
+- [x] Crear Xcode project via XcodeGen (`ios/project.yml`)
+  - [x] Targets: iOS app + Share Extension (Widget en v1.1)
+- [x] Swift Package Manager:
+  - [x] Firebase/Auth + Firestore + Storage + Functions
+  - [x] SwiftKeychainWrapper
+- [ ] Configurar `GoogleService-Info.plist` ← pendiente (requiere Mac con Xcode)
+- [x] Estructura modular (`Features/`, `Core/`, `DesignSystem/`)
+- [x] Paridad con web:
+  - [ ] Onboarding (3 pantallas) ← pendiente v1.1
+  - [x] Sign in with Apple nativo (ASAuthorizationAppleIDProvider)
+  - [x] Dashboard con saludo contextual + countdown vivo
+  - [x] Trip Detail — Calendar view (grid Mon→Sun, 7 cols fijas)
+  - [x] Day Detail sheet con cards ricas + booking ref copiable
+  - [x] Catálogo cross-trip (vuelos/hoteles/transportes)
+  - [x] Modal Carga IA — Chat mode + formularios manuales
+  - [x] Share Extension (Mail/Safari → AIParseModal)
+  - [x] Settings con info de cuenta + provider IA
+- [x] SwiftData cache offline (trips + flights + hotels + transports)
+- [x] Dark mode forzado (preferredColorScheme(.dark) en root + Info.plist)
+- [ ] Household sharing activado ← pendiente UIDs post-primer-login
+
+---
+
+## Pendientes antes de TestFlight (F4.7)
+
+- [ ] Registrar App Group en Apple Developer Console (`group.com.mferracani.tripplannerpro`)
+- [ ] Crear App ID para Share Extension (`com.mferracani.tripplannerpro.share`)
+- [ ] Poner `GoogleService-Info.plist` en `ios/TripPlannerPro/Resources/`
+- [ ] Reemplazar `REPLACE_WITH_PROJECT_ID` en `AIParseClient.swift` con URL real de Cloud Function
+- [ ] En Mac mini: `brew install xcodegen && cd ios && xcodegen && open TripPlannerPro.xcodeproj`
+- [ ] Archive + upload en Xcode → App Store Connect → TestFlight
+- [ ] Pasar a Claude los 2 UIDs (Mati + mujer) para activar household sharing en Firestore Rules
 
 ---
 

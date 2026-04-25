@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#020510"/><stop offset="100%" stop-color="#060E28"/></linearGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0A1E3A"/><stop offset="100%" stop-color="#060E20"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#sky)"/>
+  <circle cx="20" cy="15" r="1.5" fill="white" opacity="0.7"/>
+  <circle cx="70" cy="8" r="1" fill="white" opacity="0.6"/>
+  <circle cx="150" cy="20" r="1.5" fill="white" opacity="0.8"/>
+  <circle cx="230" cy="10" r="1" fill="white" opacity="0.7"/>
+  <circle cx="310" cy="18" r="1.5" fill="white" opacity="0.6"/>
+  <circle cx="380" cy="8" r="1" fill="white" opacity="0.8"/>
+  <rect x="0" y="130" width="30" height="120" fill="#0A1530"/>
+  <rect x="25" y="155" width="25" height="95" fill="#080E28"/>
+  <rect x="45" y="115" width="18" height="135" fill="#0A1530"/>
+  <rect x="58" y="140" width="22" height="110" fill="#080E28"/>
+  <rect x="75" y="100" width="20" height="150" fill="#0A1530"/>
+  <rect x="175" y="55" width="50" height="175" fill="#0C1838"/>
+  <rect x="182" y="48" width="36" height="20" fill="#0A1530"/>
+  <rect x="188" y="38" width="24" height="18" fill="#0C1838"/>
+  <rect x="193" y="28" width="14" height="18" fill="#0A1530"/>
+  <line x1="200" y1="28" x2="200" y2="8" stroke="#0A1530" stroke-width="3"/>
+  <circle cx="200" cy="8" r="3" fill="#4488FF" opacity="0.8"/>
+  <rect x="220" y="120" width="25" height="130" fill="#080E28"/>
+  <rect x="240" y="90" width="30" height="160" fill="#0A1530"/>
+  <rect x="265" y="110" width="22" height="140" fill="#080E28"/>
+  <rect x="282" y="75" width="35" height="175" fill="#0A1530"/>
+  <rect x="312" y="105" width="25" height="145" fill="#080E28"/>
+  <rect x="332" y="125" width="30" height="125" fill="#0A1530"/>
+  <rect x="357" y="90" width="22" height="160" fill="#080E28"/>
+  <rect x="374" y="115" width="30" height="135" fill="#0A1530"/>
+  <rect x="180" y="65" width="4" height="4" fill="#FFE566" opacity="0.9"/>
+  <rect x="190" y="75" width="4" height="4" fill="#87CEEB" opacity="0.7"/>
+  <rect x="205" y="68" width="4" height="4" fill="#FFE566" opacity="0.8"/>
+  <rect x="245" y="100" width="4" height="4" fill="#FFE566" opacity="0.7"/>
+  <rect x="285" y="88" width="4" height="4" fill="#FFE566" opacity="0.9"/>
+  <rect x="360" y="100" width="4" height="4" fill="#87CEEB" opacity="0.8"/>
+  <path d="M0 215 C80 205 160 218 240 208 C310 200 370 213 400 208 L400 250 L0 250Z" fill="url(#water)"/>
+  <rect x="25" y="188" width="8" height="22" fill="#1A4A3A"/>
+  <polygon points="21,188 29,180 37,188" fill="#1A4A3A"/>
+  <line x1="29" y1="182" x2="36" y2="175" stroke="#1A4A3A" stroke-width="2"/>
+</svg>

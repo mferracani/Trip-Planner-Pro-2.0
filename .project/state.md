@@ -3,6 +3,12 @@
 ## Fase actual
 `backend` — Firebase setup (Fase 1 del ROADMAP)
 
+## Reentrada rapida
+- Backlog activo de mejoras iOS: `.project/ios-improvements-backlog.md`
+- Handoff para retomar en otra sesion/maquina: `.project/ios-improvements-handoff.md`
+- QA Fase 4 iOS: `.project/qa-checklist-fase4.md`
+- Proximo ticket recomendado: `Ciudades reutilizables sin duplicados` con `backend-designer` antes de tocar UI
+
 ## Gate status
 - [x] Gate 1: PRD aprobado ✅ — docs/PRD.md v1.0 (2026-04-19)
 - [x] Gate 2: Design aprobado ✅ — docs/DESIGN_BRIEF.md v1.0 (2026-04-19) · wireframes Claude Design pendientes
@@ -16,6 +22,18 @@
 - 2026-04-19 [PM] Dos codebases (iOS SwiftUI + Next.js web) — Share Sheet nativo es el diferencial del parse
 - 2026-04-19 [Arquitecto] Timezone calculations con Luxon en Cloud Functions (no moment.js)
 - 2026-04-19 [Arquitecto] `duration_minutes` calculado al escribir en Cloud Function (Firestore no tiene generated columns)
+- 2026-04-24 [QA] Checklist Fase 4 iOS creado en `.project/qa-checklist-fase4.md`; cierre bloqueado hasta compilar/probar en Mac con Xcode
+- 2026-04-24 [PM] Backlog de mejoras iOS priorizado en `.project/ios-improvements-backlog.md`; light mode queda fuera de MVP por regla dark mode only
+- 2026-04-24 [Frontend] Ticket iOS 1 implementado: eliminar viaje desde Dashboard con confirmacion y error state; pendiente build Xcode
+- 2026-04-24 [Frontend] Ticket iOS 2 implementado: editar fechas de viaje, persistir en Firestore y recalcular calendario; pendiente build Xcode
+- 2026-04-24 [Frontend] Tickets iOS 8/9 implementados: detalle desde Catalogo y formateo monetario con simbolos; pendiente build Xcode
+- 2026-04-24 [Frontend] Xcode 26.4.1 + XcodeGen 2.45.4 configurados; `xcodebuild` Debug iOS Simulator para `TripPlannerPro` pasa en esta Mac
+- 2026-04-24 [Setup] Skill global `ui-designer-expert` creada en `/Users/mac017/.codex/skills/ui-designer-expert`
+- 2026-04-24 [Frontend] Rediseño premium core aplicado en iOS + web: tokens warm dark, Home hero, Trip Detail y calendario 7 columnas; `next build` y `xcodebuild` pasan
+- 2026-04-24 [Frontend] Mockup premium aplicado a pantallas reales: web Trip Detail usa hero con foto/progreso/metricas; iOS Dashboard y Trip Detail usan la misma composicion visual; `next build` y `xcodebuild` pasan
+- 2026-04-24 [Frontend] `/dev` convertido en prototipo funcional in-memory: navegacion real, tabs, calendario 7 columnas, drawer de dia y modal IA; removidos marcos/canvas/clases de mockup; `next build` pasa
+- 2026-04-24 [Frontend] Calendario mobile de `/dev` ajustado a slots legibles: fecha dd/mm, bandera, codigo de ciudad, contador de estadia e items abreviados; `next build` pasa
+- 2026-04-24 [Frontend] Interaccion mobile de calendario corregida: tocar un dia abre bottom sheet desde abajo; desktop conserva panel lateral; `next build` pasa
 
 ## Progreso por fase
 
@@ -42,13 +60,38 @@
 
 ### ⬜ Fase 2 — Web UI + CRUD (bloqueado por Fase 1)
 ### ⬜ Fase 3 — Módulo IA en web (bloqueado por Fase 2)
-### ⬜ Fase 4 — iOS app (bloqueado por Fase 3)
+### ⏳ Fase 4 — iOS app (en progreso — rama feat/ios-app)
+
+#### iOS progress
+- [x] Onboarding stub
+- [x] Sign in with Apple
+- [x] Dashboard
+- [x] Trip Detail — Calendar view
+- [x] Day Detail sheet
+- [x] Modal Carga IA — Chat mode
+- [x] Modal Carga IA — File mode + Share Extension stub
+- [x] CatalogView real (vuelos / hoteles / traslados cross-trip, búsqueda, skeleton shimmer)
+- [x] ManualForms en AIParseModal (Vuelo / Hotel / Traslado con DatePicker y validación)
+- [x] FirestoreClient.allItemsStream() + CatalogItems struct
+- [x] FirestoreClient+ManualSave.swift
+- [x] Eliminar viaje desde Dashboard (pendiente build Xcode)
+- [x] Editar fechas de viaje y recalcular calendario (pendiente build Xcode)
+- [x] Detalle desde Catálogo (pendiente build Xcode)
+- [x] Monedas con símbolos en Catálogo/Costos/Formularios (pendiente build Xcode)
+- [x] Build Debug iOS Simulator compila en Xcode 26.4.1
+- [ ] Settings
+- [ ] Tests (checklist QA creado; ejecucion Xcode pendiente)
 ### ⬜ Fase 5 — TestFlight (bloqueado por Fase 4)
 
 ## Handoffs pendientes
 - [ ] [setup] → [backend-designer]: iniciar Firebase setup (Fase 1)
 - [ ] [backend-designer] → [security-reviewer]: auditar Security Rules antes de deploy
 - [ ] [backend-designer] → [frontend-engineer]: API contracts listos para Fase 2
+- [x] [product-manager] → [frontend-engineer]: implementar Ticket 1 iOS — eliminar viaje
+- [x] [frontend-engineer] → [frontend-engineer]: implementar Ticket 2 iOS — editar fechas y recalcular dias
+- [x] [frontend-engineer] → [frontend-engineer]: implementar Ticket 9 iOS — detalle desde Catalogo
+- [x] [frontend-engineer] → [frontend-engineer]: implementar Ticket 8 iOS — monedas con simbolos
+- [ ] [frontend-engineer] → [backend-designer]: definir estrategia para ciudades reutilizables sin duplicados
 
 ## Open questions para el usuario
 - ¿Ya tenés proyecto en Firebase Console creado? (si sí, agregar URL al CLAUDE.md)

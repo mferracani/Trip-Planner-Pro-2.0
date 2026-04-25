@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#020814"/><stop offset="100%" stop-color="#0A1E30"/></linearGradient>
+    <linearGradient id="a1" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#00C8A0" stop-opacity="0"/><stop offset="50%" stop-color="#00C8A0" stop-opacity="0.5"/><stop offset="100%" stop-color="#00C8A0" stop-opacity="0"/></linearGradient>
+    <linearGradient id="a2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4488FF" stop-opacity="0"/><stop offset="40%" stop-color="#4488FF" stop-opacity="0.35"/><stop offset="100%" stop-color="#4488FF" stop-opacity="0"/></linearGradient>
+    <linearGradient id="a3" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#88FFCC" stop-opacity="0"/><stop offset="60%" stop-color="#88FFCC" stop-opacity="0.3"/><stop offset="100%" stop-color="#88FFCC" stop-opacity="0"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#sky)"/>
+  <path d="M-50 60 C50 40 150 80 250 55 C320 38 380 62 450 48" stroke="url(#a1)" stroke-width="18" fill="none" opacity="0.7"/>
+  <path d="M-50 85 C30 65 130 100 230 78 C310 60 390 85 450 70" stroke="url(#a2)" stroke-width="12" fill="none" opacity="0.6"/>
+  <path d="M-50 110 C80 88 180 118 300 95 C360 80 420 105 450 92" stroke="url(#a3)" stroke-width="10" fill="none" opacity="0.5"/>
+  <circle cx="20" cy="18" r="1.5" fill="white" opacity="0.8"/>
+  <circle cx="80" cy="10" r="1" fill="white" opacity="0.7"/>
+  <circle cx="160" cy="22" r="1" fill="white" opacity="0.9"/>
+  <circle cx="260" cy="8" r="1.5" fill="white" opacity="0.6"/>
+  <circle cx="340" cy="18" r="1" fill="white" opacity="0.8"/>
+  <polygon points="-20,230 60,130 140,230" fill="#0A1E30"/>
+  <polygon points="80,230 180,110 280,230" fill="#0C2238"/>
+  <polygon points="220,230 310,125 400,230" fill="#0A1E30"/>
+  <polygon points="320,230 390,145 460,230" fill="#0C2238"/>
+  <polygon points="155,140 180,110 205,140 195,137 180,120 165,137" fill="white" opacity="0.85"/>
+  <polygon points="288,155 310,125 332,155 322,152 310,135 298,152" fill="white" opacity="0.85"/>
+  <path d="M0 230 C80 220 160 235 240 225 C320 215 380 228 400 222 L400 250 L0 250Z" fill="white" opacity="0.85"/>
+  <text x="290" y="185" font-size="14" fill="white" opacity="0.5">&#10052;</text>
+  <text x="50" y="170" font-size="10" fill="white" opacity="0.4">&#10052;</text>
+  <text x="370" y="175" font-size="8" fill="white" opacity="0.45">&#10052;</text>
+</svg>

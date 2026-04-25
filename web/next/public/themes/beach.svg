@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FF6B35"/><stop offset="100%" stop-color="#FFD166"/></linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0A84C8"/><stop offset="100%" stop-color="#044E8A"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#sky)"/>
+  <circle cx="310" cy="55" r="45" fill="#FFE066" opacity="0.95"/>
+  <circle cx="310" cy="55" r="55" fill="#FFE066" opacity="0.20"/>
+  <path d="M0 155 C80 135 160 165 240 145 C320 125 360 150 400 140 L400 250 L0 250Z" fill="url(#sea)"/>
+  <path d="M0 200 C60 192 140 208 220 198 C300 188 360 205 400 198 L400 250 L0 250Z" fill="#E8C84A"/>
+  <path d="M0 225 C80 218 180 230 280 222 C340 217 380 228 400 224 L400 250 L0 250Z" fill="#D4A820"/>
+  <path d="M95 230 C92 200 88 170 85 140 C83 120 86 108 90 98" stroke="#5D3A1A" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <ellipse cx="90" cy="95" rx="38" ry="9" fill="#27AE60" transform="rotate(-40 90 95)"/>
+  <ellipse cx="90" cy="95" rx="38" ry="9" fill="#2ECC71" transform="rotate(15 90 95)"/>
+  <ellipse cx="90" cy="95" rx="32" ry="8" fill="#27AE60" transform="rotate(-75 90 95)"/>
+  <ellipse cx="90" cy="95" rx="32" ry="8" fill="#52D68A" transform="rotate(50 90 95)"/>
+  <circle cx="90" cy="97" r="7" fill="#4A2800"/>
+</svg>

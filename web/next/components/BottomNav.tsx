@@ -23,7 +23,7 @@ export function BottomNav({ active, onAdd, addIcon = "plus", onTabChange }: Prop
       <div
         className="mx-auto max-w-md pointer-events-auto relative"
         style={{
-          background: "rgba(13,13,13,0.72)",
+          background: "rgba(9,8,6,0.76)",
           backdropFilter: "blur(32px) saturate(180%)",
           WebkitBackdropFilter: "blur(32px) saturate(180%)",
           borderTop: "0.5px solid rgba(255,255,255,0.08)",
@@ -72,8 +72,8 @@ export function BottomNav({ active, onAdd, addIcon = "plus", onTabChange }: Prop
             aria-label="Agregar"
             className="w-14 h-14 rounded-full flex items-center justify-center text-white animate-glow-pulse"
             style={{
-              background: "linear-gradient(135deg, #BF5AF2, #9B3FD6)",
-              boxShadow: "0 8px 24px rgba(191,90,242,0.5), 0 0 0 4px #0D0D0D",
+              background: "linear-gradient(135deg, #A891E8, #7C5FCE)",
+              boxShadow: "0 8px 24px rgba(168,145,232,0.48), 0 0 0 4px #090806",
             }}
           >
             {addIcon === "sparkles" ? (
@@ -101,14 +101,14 @@ function NavItem({
   href?: string;
   onClick?: () => void;
 }) {
-  const color = active ? "#0A84FF" : "#707070";
+  const color = active ? "#FFD16A" : "#81786A";
   const content = (
     <>
       <div
         className="flex items-center justify-center w-11 h-7 rounded-full transition-colors"
         style={{
           color,
-          backgroundColor: active ? "#0A84FF1F" : "transparent",
+          backgroundColor: active ? "#FFD16A1F" : "transparent",
         }}
       >
         {icon}

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Mediterranean travel hero</title>
+  <desc id="desc">A premium dark travel scene with turquoise sea, warm coast, cliffs, palms, and sunset light.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9fd8cf"/>
+      <stop offset="0.36" stop-color="#6bbba9"/>
+      <stop offset="0.78" stop-color="#25483b"/>
+      <stop offset="1" stop-color="#090806"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#70dec8"/>
+      <stop offset="0.42" stop-color="#167c75"/>
+      <stop offset="1" stop-color="#092723"/>
+    </linearGradient>
+    <linearGradient id="cliff" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d0b37a"/>
+      <stop offset="0.48" stop-color="#7e6a45"/>
+      <stop offset="1" stop-color="#1a1710"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ffd16a" stop-opacity="0.94"/>
+      <stop offset="0.52" stop-color="#ffd16a" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ffd16a" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softGrain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.78" numOctaves="3" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.12"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="blurGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#090806"/>
+  <rect width="1600" height="1000" fill="url(#sky)"/>
+  <circle cx="1110" cy="210" r="260" fill="url(#sun)"/>
+  <path d="M0 514 C220 455 390 488 552 446 C778 388 902 470 1080 422 C1308 362 1448 394 1600 344 L1600 1000 L0 1000 Z" fill="url(#sea)"/>
+  <path d="M0 583 C182 536 338 568 528 530 C742 486 908 522 1104 475 C1348 414 1450 444 1600 412 L1600 718 C1360 688 1150 680 945 704 C686 735 482 704 256 746 C148 765 55 770 0 760 Z" fill="#75e7d0" opacity="0.22"/>
+  <path d="M-80 755 C90 612 214 548 340 555 C464 562 548 648 696 648 C830 648 948 585 1078 612 C1240 646 1340 784 1680 716 L1680 1000 L-80 1000 Z" fill="#12120e" opacity="0.7"/>
+  <path d="M-70 725 C78 584 202 518 338 514 C484 510 574 606 692 612 C826 618 928 548 1074 568 C1268 594 1400 738 1690 670 L1690 1000 L-70 1000 Z" fill="url(#cliff)"/>
+  <path d="M-60 760 C154 658 304 650 512 704 C698 752 828 740 982 682 C1176 608 1328 676 1660 610 L1660 1000 L-60 1000 Z" fill="#0b0c08" opacity="0.58"/>
+  <path d="M76 672 C198 608 320 612 452 650 C594 690 720 696 852 660" fill="none" stroke="#f5d697" stroke-width="10" stroke-linecap="round" opacity="0.35"/>
+  <path d="M1030 424 C1120 370 1208 354 1302 382 C1192 398 1115 436 1054 506 Z" fill="#e6d2a0" opacity="0.42"/>
+  <path d="M1138 510 C1240 444 1360 432 1502 462 C1342 492 1246 552 1168 648 Z" fill="#231d13" opacity="0.76"/>
+
+  <g opacity="0.38" transform="translate(1170 426) rotate(-6)">
+    <path d="M54 284 C66 196 63 112 44 0" stroke="#11130d" stroke-width="20" stroke-linecap="round"/>
+    <path d="M48 40 C0 22 -48 26 -92 60 C-34 58 14 70 48 100 Z" fill="#11130d"/>
+    <path d="M54 52 C106 12 162 2 228 22 C156 44 108 78 66 124 Z" fill="#11130d"/>
+    <path d="M58 84 C118 92 168 126 210 184 C144 156 96 142 52 146 Z" fill="#11130d"/>
+    <path d="M42 84 C-18 100 -64 140 -98 202 C-42 172 12 150 54 148 Z" fill="#11130d"/>
+  </g>
+
+  <g opacity="0.18" transform="translate(760 150) rotate(-24)">
+    <path d="M76 0 L132 212 L322 270 C342 276 344 302 326 310 L164 380 L128 548 C124 570 94 574 84 554 L20 418 L-128 460 C-150 466 -166 440 -150 424 L-30 306 L-142 86 C-152 66 -130 46 -110 58 L76 166 L42 18 C36 -4 70 -18 76 0 Z" fill="#ffffff"/>
+  </g>
+
+  <rect width="1600" height="1000" fill="#090806" opacity="0.18"/>
+  <rect width="1600" height="1000" filter="url(#softGrain)" opacity="0.42"/>
+  <ellipse cx="800" cy="1035" rx="900" ry="260" fill="#000000" opacity="0.32" filter="url(#blurGlow)"/>
+</svg>

@@ -8,11 +8,61 @@ import { updateTrip, deleteTrip } from "@/lib/firestore";
 import type { Trip } from "@/lib/types";
 import { FormSheet } from "./FormSheet";
 import { Field, TextInput } from "./fields";
+import { TRIP_THEMES } from "@/lib/themes";
+import type { TripTheme } from "@/lib/themes";
 
 interface Props {
   trip: Trip;
   onClose: () => void;
   onSaved: () => void;
+}
+
+const NATURE_THEMES = TRIP_THEMES.filter(t => t.category === 'nature');
+const CITY_THEMES   = TRIP_THEMES.filter(t => t.category === 'city');
+
+function ThemeGrid({
+  themes,
+  selected,
+  onSelect,
+}: {
+  themes: TripTheme[];
+  selected: string;
+  onSelect: (coverUrl: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {themes.map(theme => {
+        const isSelected = selected === theme.coverUrl;
+        return (
+          <button
+            key={theme.id}
+            type="button"
+            onClick={() => onSelect(theme.coverUrl)}
+            className="relative overflow-hidden rounded-[10px] aspect-video transition-all"
+            style={{
+              border: isSelected ? '2px solid #FFFFFF' : '2px solid transparent',
+              opacity: isSelected ? 1 : 0.5,
+            }}
+          >
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${theme.coverUrl})` }}
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `linear-gradient(160deg, ${theme.gradientFrom}, rgba(13,13,13,0.7) 100%)`,
+              }}
+            />
+            <div className="relative flex flex-col items-center justify-between h-full px-1 pt-2 pb-1.5">
+              <span className="text-[18px] leading-none">{theme.emoji}</span>
+              <span className="text-white text-[10px] font-semibold leading-none">{theme.label}</span>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 export function TripForm({ trip, onClose, onSaved }: Props) {
@@ -37,7 +87,7 @@ export function TripForm({ trip, onClose, onSaved }: Props) {
         name: name.trim(),
         start_date: startDate,
         end_date: endDate,
-        cover_url: coverUrl.trim() || undefined,
+        cover_url: coverUrl || undefined,
       });
       onSaved();
     } catch (err) {
@@ -84,9 +134,34 @@ export function TripForm({ trip, onClose, onSaved }: Props) {
         </Field>
       </div>
 
-      <Field label="Portada (URL)" hint="Opcional — imagen de fondo para el hero card">
-        <TextInput value={coverUrl} onChange={setCoverUrl} placeholder="https://…" />
-      </Field>
+      <div>
+        <label className="block text-[12px] font-semibold text-[#A0A0A0] uppercase tracking-wide mb-2">
+          Portada
+        </label>
+
+        <button
+          type="button"
+          onClick={() => setCoverUrl("")}
+          className="mb-3 w-full rounded-[10px] border py-2 text-[13px] font-semibold transition-all"
+          style={{
+            border: coverUrl === "" ? "2px solid #FFFFFF" : "2px solid #333",
+            color: coverUrl === "" ? "#FFFFFF" : "#707070",
+            background: coverUrl === "" ? "#242424" : "transparent",
+          }}
+        >
+          Sin tema
+        </button>
+
+        <p className="text-[11px] font-semibold text-[#707070] uppercase tracking-wide mb-1.5">
+          Naturaleza
+        </p>
+        <ThemeGrid themes={NATURE_THEMES} selected={coverUrl} onSelect={setCoverUrl} />
+
+        <p className="text-[11px] font-semibold text-[#707070] uppercase tracking-wide mt-3 mb-1.5">
+          Ciudades
+        </p>
+        <ThemeGrid themes={CITY_THEMES} selected={coverUrl} onSelect={setCoverUrl} />
+      </div>
     </FormSheet>
   );
 }

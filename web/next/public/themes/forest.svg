@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#040E08"/><stop offset="100%" stop-color="#0D2B14"/></linearGradient>
+    <radialGradient id="moon" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FFFDE0"/><stop offset="100%" stop-color="#FFE88A"/></radialGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#sky)"/>
+  <circle cx="320" cy="45" r="50" fill="#FFE88A" opacity="0.08"/>
+  <circle cx="320" cy="45" r="28" fill="url(#moon)" opacity="0.95"/>
+  <path d="M0 170 C100 155 200 175 300 160 C350 153 380 165 400 160 L400 185 L0 185Z" fill="#0D2B14" opacity="0.6"/>
+  <polygon points="-10,220 10,160 30,220" fill="#082010"/>
+  <polygon points="20,220 45,145 70,220" fill="#0A2814"/>
+  <polygon points="55,220 80,155 105,220" fill="#082010"/>
+  <polygon points="95,220 125,138 155,220" fill="#0C3018"/>
+  <polygon points="140,220 170,150 200,220" fill="#082010"/>
+  <polygon points="185,220 215,142 245,220" fill="#0A2814"/>
+  <polygon points="230,220 260,155 290,220" fill="#082010"/>
+  <polygon points="275,220 305,145 335,220" fill="#0C3018"/>
+  <polygon points="320,220 350,152 380,220" fill="#082010"/>
+  <polygon points="365,220 390,160 415,220" fill="#082010"/>
+  <polygon points="-10,250 20,185 50,250" fill="#051208"/>
+  <polygon points="35,250 70,172 105,250" fill="#061408"/>
+  <polygon points="90,250 130,168 170,250" fill="#051208"/>
+  <polygon points="155,250 195,175 235,250" fill="#061408"/>
+  <polygon points="220,250 260,170 300,250" fill="#051208"/>
+  <polygon points="285,250 325,178 365,250" fill="#061408"/>
+  <polygon points="350,250 385,182 420,250" fill="#051208"/>
+  <rect x="0" y="235" width="400" height="15" fill="#030B05"/>
+</svg>

@@ -7,13 +7,13 @@ import { getTrips } from "@/lib/firestore";
 import { Trip } from "@/lib/types";
 import { signOut } from "@/lib/auth";
 import { useCountUp } from "@/lib/hooks";
-import { Pressable } from "./ui/Pressable";
 import { BottomNav } from "./BottomNav";
 import { TopNav } from "./TopNav";
 import { CreateTripModal } from "./CreateTripModal";
 import { TripCard } from "./TripCard";
 import { Plane, MapPin, DollarSign, CalendarDays, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { getTheme } from "@/lib/themes";
 
 type Filter = "all" | "future" | "active" | "past";
 
@@ -84,7 +84,13 @@ export function Dashboard() {
   const totalDaysThisYear = yearTrips.reduce((sum, t) => sum + getTotalDays(t), 0);
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D]">
+    <div
+      className="min-h-screen"
+      style={{
+        background:
+          "radial-gradient(circle at 8% 0%, rgba(168,145,232,0.12), transparent 34%), radial-gradient(circle at 90% 90%, rgba(113,211,166,0.10), transparent 30%), #090806",
+      }}
+    >
       <TopNav
         active="trips"
         onAdd={() => setCreateOpen(true)}
@@ -95,16 +101,16 @@ export function Dashboard() {
       {/* Mobile header */}
       <div className="md:hidden flex items-center justify-between px-6 pt-14 pb-6 animate-fade-slide-up stagger-0">
         <div>
-          <p className="text-[#A0A0A0] text-[13px] mb-0.5">
-            {new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
+          <p className="text-[#81786A] text-[20px] mb-1">
+            Buen día
           </p>
-          <h1 className="text-[28px] font-bold text-white leading-tight">
-            {line1} <span className="text-[#BF5AF2]">{line2}</span>
+          <h1 className="text-[38px] font-bold text-white leading-tight tracking-tight">
+            {activeTrip ? `Día ${getActiveDayNumber(activeTrip)} de tu viaje` : `${line1} ${line2}`}
           </h1>
         </div>
         <button
           onClick={() => signOut()}
-          className="w-10 h-10 rounded-full bg-[#1A1A1A] border border-[#333] flex items-center justify-center text-[15px] font-semibold text-white press-feedback"
+          className="w-16 h-16 rounded-full bg-[#242018] flex items-center justify-center text-[18px] font-bold text-[#F3ECE1] press-feedback"
           title="Cerrar sesión"
         >
           {(user?.displayName?.[0] ?? user?.email?.[0] ?? "M").toUpperCase()}
@@ -119,7 +125,7 @@ export function Dashboard() {
               {new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
             </p>
             <h1 className="text-[34px] font-bold text-white leading-[1.1] tracking-tight">
-              {line1} <span className="text-[#BF5AF2]">{line2}</span>
+              {line1} <span className="text-[#FFD16A]">{line2}</span>
             </h1>
           </div>
           <p className="text-[#4D4D4D] text-[13px] font-mono tabular-nums">
@@ -127,24 +133,31 @@ export function Dashboard() {
           </p>
         </div>
 
-        {/* Desktop: hero + stats side-by-side ; Mobile: stacked */}
-        <div className="grid md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-3 md:gap-5 animate-spring-up stagger-2">
+        {/* Hero + stats */}
+        <div className="grid md:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.75fr)] gap-4 md:gap-5 animate-spring-up stagger-2">
           <div className="md:h-full">
             {heroTrip ? (
-              <HeroTripCard trip={heroTrip} status={classifyTrip(heroTrip)} />
+              <HeroTripCard
+                trip={heroTrip}
+                status={classifyTrip(heroTrip)}
+                tripsThisYear={yearTrips.length}
+                totalCities={totalCities}
+                totalDaysThisYear={totalDaysThisYear}
+                totalUsd={totalUsd}
+              />
             ) : (
               <EmptyHeroCard onCreateTrip={() => setCreateOpen(true)} />
             )}
           </div>
 
-          {/* Stats 2×2 — glued next to hero on desktop */}
-          <div className="grid grid-cols-2 gap-3 md:content-stretch md:h-full">
+          {/* Desktop supporting stats */}
+          <div className="hidden md:grid grid-cols-2 gap-3 md:content-stretch md:h-full">
           <StatCard
             label="Viajes"
             sublabel="este año"
             value={String(yearTrips.length)}
             numericValue={yearTrips.length}
-            color="#0A84FF"
+            color="#71D3A6"
             icon={<Plane size={16} strokeWidth={2.2} />}
             staggerDelay={200}
           />
@@ -153,7 +166,7 @@ export function Dashboard() {
             sublabel="visitadas"
             value={String(totalCities)}
             numericValue={totalCities}
-            color="#BF5AF2"
+            color="#A891E8"
             icon={<MapPin size={16} strokeWidth={2.2} />}
             staggerDelay={260}
           />
@@ -163,7 +176,7 @@ export function Dashboard() {
             value={`USD ${totalUsd.toLocaleString("es-AR")}`}
             numericValue={totalUsd}
             currencyPrefix="USD "
-            color="#FF9F0A"
+            color="#FFD16A"
             icon={<DollarSign size={16} strokeWidth={2.2} />}
             staggerDelay={320}
           />
@@ -172,7 +185,7 @@ export function Dashboard() {
             sublabel="viajando"
             value={String(totalDaysThisYear)}
             numericValue={totalDaysThisYear}
-            color="#30D158"
+            color="#6CAFE8"
             icon={<CalendarDays size={16} strokeWidth={2.2} />}
             staggerDelay={380}
           />
@@ -198,7 +211,7 @@ export function Dashboard() {
                   className={`px-3.5 py-1.5 rounded-full text-[12px] md:text-[13px] font-medium whitespace-nowrap transition-colors flex-shrink-0 press-feedback ${
                     filter === f
                       ? "bg-white text-black"
-                      : "bg-[#161616] text-[#A0A0A0] border border-[#262626] hover:border-[#333] hover:text-white"
+                      : "bg-[#171512] text-[#C6BDAE] border border-[#252119] hover:border-[#332E25] hover:text-white"
                   }`}
                 >
                   {f === "all" ? "Todos" : f === "future" ? "Futuros" : f === "active" ? "En curso" : "Pasados"}
@@ -215,7 +228,7 @@ export function Dashboard() {
               ))}
             </div>
           ) : filteredTrips.length === 0 ? (
-            <div className="text-center py-16 md:py-24 text-[#4D4D4D] text-[15px] border border-dashed border-[#1F1F1F] rounded-[18px]">
+            <div className="text-center py-16 md:py-24 text-[#81786A] text-[15px] border border-dashed border-[#252119] rounded-[18px]">
               {filter === "all"
                 ? "Todavía no tenés viajes."
                 : `No hay viajes ${filter === "future" ? "futuros" : filter === "active" ? "en curso" : "pasados"}.`}
@@ -243,14 +256,31 @@ export function Dashboard() {
   );
 }
 
-function HeroTripCard({ trip, status }: { trip: Trip; status: "active" | "future" | "past" }) {
+function HeroTripCard({
+  trip,
+  status,
+  tripsThisYear,
+  totalCities,
+  totalDaysThisYear,
+  totalUsd,
+}: {
+  trip: Trip;
+  status: "active" | "future" | "past";
+  tripsThisYear: number;
+  totalCities: number;
+  totalDaysThisYear: number;
+  totalUsd: number;
+}) {
   const isActive = status === "active";
   const dayNum = isActive ? getActiveDayNumber(trip) : null;
   const totalDays = getTotalDays(trip);
   const daysUntil = !isActive ? getDaysUntil(trip.start_date) : null;
 
-  const tintColor = (trip as Trip & { primary_color?: string }).primary_color ?? "#BF5AF2";
-  const progress = isActive && dayNum ? Math.min(dayNum / totalDays, 1) : 0;
+  const progress = isActive && dayNum ? Math.min(dayNum / totalDays, 1) : status === "future" ? 0.11 : 1;
+
+  const theme = getTheme(trip.cover_url);
+  const gradFrom = theme?.gradientFrom ?? "rgba(113,211,166,0.78)";
+  const gradMid  = theme?.gradientMid  ?? "rgba(36,68,55,0.72)";
 
   const [pressed, setPressed] = useState(false);
 
@@ -260,109 +290,111 @@ function HeroTripCard({ trip, status }: { trip: Trip; status: "active" | "future
         onPointerDown={() => setPressed(true)}
         onPointerUp={() => setPressed(false)}
         onPointerLeave={() => setPressed(false)}
-        className="relative rounded-[24px] overflow-hidden h-52 flex flex-col p-5 cursor-pointer"
+        className="relative rounded-[32px] overflow-hidden min-h-[620px] md:min-h-[520px] flex flex-col cursor-pointer"
         style={{
-          background: "#141414",
-          border: `1px solid ${tintColor}35`,
-          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.02)`,
+          background: "#171512",
+          border: "1px solid rgba(255,255,255,0.06)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 18px 48px rgba(0,0,0,0.36)",
           transform: pressed ? "scale(0.985)" : "scale(1)",
           transition: "transform 200ms cubic-bezier(0.2, 0.7, 0.3, 1)",
         }}
       >
-        {/* Mesh gradient background */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: `
-              radial-gradient(ellipse 80% 50% at 15% 0%, ${tintColor}40 0%, transparent 60%),
-              radial-gradient(ellipse 60% 40% at 90% 100%, ${tintColor}25 0%, transparent 55%),
-              radial-gradient(ellipse 40% 30% at 50% 50%, ${tintColor}10 0%, transparent 70%)
-            `,
-          }}
-        />
+        <div className="relative min-h-[320px] md:min-h-[280px] p-6 md:p-7 overflow-hidden">
+          {/* Theme SVG background */}
+          {trip.cover_url && (
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${trip.cover_url})`, opacity: 0.55 }}
+            />
+          )}
 
-        {/* Living drift layer */}
-        <div
-          className="absolute inset-0 pointer-events-none animate-gradient-drift opacity-60"
-          style={{
-            background: `linear-gradient(115deg, ${tintColor}18 0%, transparent 40%, ${tintColor}0A 80%, ${tintColor}15 100%)`,
-            backgroundSize: "220% 220%",
-          }}
-        />
-
-        {/* Noise/grain subtle */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-[0.04] mix-blend-overlay"
-          style={{
-            backgroundImage:
-              "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)'/%3E%3C/svg%3E\")",
-          }}
-        />
-
-        {/* Cover image (if any) */}
-        {trip.cover_url && (
+          {/* Gradient overlay — dynamic per theme */}
           <div
-            className="absolute inset-0 bg-cover bg-center opacity-25"
-            style={{ backgroundImage: `url(${trip.cover_url})` }}
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `linear-gradient(135deg, ${gradFrom} 0%, ${gradMid} 48%, rgba(9,8,6,0.98) 100%)`,
+            }}
           />
-        )}
 
-        {/* Header row: status pill + chevron */}
-        <div className="relative flex items-start justify-between">
-          {isActive ? (
-            <div className="flex items-center gap-1.5 bg-[#30D158]/18 px-2.5 py-1 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#30D158] animate-soft-pulse" />
-              <span className="text-[10px] font-bold text-[#30D158] uppercase tracking-wider">En curso</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 bg-[#0A84FF]/18 px-2.5 py-1 rounded-full">
-              <span className="text-[10px] font-bold text-[#0A84FF] uppercase tracking-wider">Próximo</span>
+          {/* Fallback watermark when no theme */}
+          {!trip.cover_url && (
+            <div className="absolute inset-0 opacity-[0.08] text-white text-[136px] md:text-[150px] font-black flex items-center justify-center rotate-[-18deg]">
+              ✈
             </div>
           )}
 
-          <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-white/60 backdrop-blur-sm">
-            <ChevronRight size={16} strokeWidth={2.4} />
+          <div className="relative flex items-start justify-between">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full">
+              <span className="text-[11px] font-black text-[#FFD16A] uppercase tracking-[0.28em]">
+                {isActive ? "En curso" : status === "future" ? "Próximo" : "Pasado"}
+              </span>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-black/24 flex items-center justify-center text-white">
+              <ChevronRight size={22} strokeWidth={2.6} />
+            </div>
+          </div>
+
+          <div className="relative h-24 md:h-16" />
+
+          <div className="relative">
+            <h3 className="text-[48px] md:text-[56px] font-bold text-white leading-[1.02] tracking-tight line-clamp-2">
+              {trip.name}
+            </h3>
+            <p className="text-white/88 text-[20px] font-bold mt-3">
+              {isActive ? `Día ${dayNum}` : `En ${daysUntil} ${daysUntil === 1 ? "día" : "días"}`}
+            </p>
           </div>
         </div>
 
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Title + info */}
-        <div className="relative">
-          <h3 className="text-[28px] font-bold text-white leading-[1.05] tracking-tight">
-            {trip.name}
-          </h3>
-          <div className="flex items-center gap-2 mt-2">
-            <p className="text-white/75 text-[13px] font-medium">
-              {isActive ? `Día ${dayNum} de ${totalDays}` : `En ${daysUntil} ${daysUntil === 1 ? "día" : "días"}`}
-            </p>
-            {trip.total_usd > 0 && (
-              <>
-                <span className="text-white/25 text-[11px]">·</span>
-                <p className="text-white/75 text-[13px] font-mono tabular-nums">
-                  USD {trip.total_usd.toLocaleString("es-AR")}
-                </p>
-              </>
-            )}
-          </div>
-
-          {/* Progress bar (solo si active) */}
-          {isActive && (
-            <div className="mt-3 h-1 rounded-full bg-white/10 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{
-                  width: `${progress * 100}%`,
-                  background: `linear-gradient(90deg, ${tintColor}, ${tintColor}CC)`,
-                  boxShadow: `0 0 12px ${tintColor}88`,
-                }}
+        <div className="relative grid md:grid-cols-[160px_1fr] gap-6 p-6 md:p-7">
+          <div className="relative w-32 h-32 md:w-30 md:h-30">
+            <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+              <circle cx="60" cy="60" r="48" fill="none" stroke="rgba(255,209,106,0.13)" strokeWidth="12" />
+              <circle
+                cx="60"
+                cy="60"
+                r="48"
+                fill="none"
+                stroke="#FFD16A"
+                strokeWidth="12"
+                strokeLinecap="round"
+                strokeDasharray="302"
+                strokeDashoffset={302 - 302 * Math.max(progress, 0.11)}
               />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-white text-[26px] font-black">{Math.round(Math.max(progress, 0.11) * 100)}%</span>
+              <span className="text-[#81786A] text-[11px] font-bold tracking-widest">Progreso</span>
             </div>
-          )}
+          </div>
+          <div className="space-y-3">
+            <HeroStat icon="✈" value={String(tripsThisYear)} label="Viajes este año" />
+            <HeroStat icon="⚓" value={String(totalCities)} label="Ciudades" />
+            <HeroStat icon="▦" value={String(totalDaysThisYear)} label="Días viajando" />
+          </div>
+        </div>
+
+        <div className="border-t border-[#252119] px-6 md:px-7 py-6">
+          <p className="text-[#81786A] text-[12px] font-bold uppercase tracking-wider">Total gastado</p>
+          <p className="mt-1 text-[#FFD16A] text-[46px] md:text-[52px] leading-none font-black tabular-nums">
+            <span className="text-[#81786A] text-[18px] mr-2">USD</span>
+            {(totalUsd || trip.total_usd || 0).toLocaleString("es-AR")}
+          </p>
         </div>
       </div>
     </Link>
+  );
+}
+
+function HeroStat({ icon, value, label }: { icon: string; value: string; label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-9 h-9 rounded-[11px] bg-[#FFD16A]/12 text-[#FFD16A] flex items-center justify-center text-[16px]">
+        {icon}
+      </span>
+      <span className="text-white text-[22px] font-black tabular-nums">{value}</span>
+      <span className="text-[#C6BDAE] text-[17px] font-medium truncate">{label}</span>
+    </div>
   );
 }
 
@@ -370,7 +402,7 @@ function EmptyHeroCard({ onCreateTrip }: { onCreateTrip: () => void }) {
   return (
     <button
       onClick={onCreateTrip}
-      className="w-full bg-[#1A1A1A] rounded-[20px] border border-dashed border-[#333] h-44 flex flex-col items-center justify-center gap-3 transition-all hover:border-[#BF5AF2]/50 press-feedback"
+      className="w-full bg-[#171512] rounded-[20px] border border-dashed border-[#332E25] h-44 flex flex-col items-center justify-center gap-3 transition-all hover:border-[#71D3A6]/50 press-feedback"
     >
       <span className="text-4xl">✈️</span>
       <div className="text-center">
