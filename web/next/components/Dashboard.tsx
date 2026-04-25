@@ -6,12 +6,11 @@ import { useAuth } from "@/context/AuthContext";
 import { getTrips } from "@/lib/firestore";
 import { Trip } from "@/lib/types";
 import { signOut } from "@/lib/auth";
-import { useCountUp } from "@/lib/hooks";
 import { BottomNav } from "./BottomNav";
 import { TopNav } from "./TopNav";
 import { CreateTripModal } from "./CreateTripModal";
 import { TripCard } from "./TripCard";
-import { Plane, MapPin, DollarSign, CalendarDays, ChevronRight } from "lucide-react";
+import { MapPin, CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { getTheme } from "@/lib/themes";
 
@@ -79,9 +78,7 @@ export function Dashboard() {
 
   const thisYear = new Date().getFullYear().toString();
   const yearTrips = trips.filter((t) => t.start_date.startsWith(thisYear));
-  const totalUsd = yearTrips.reduce((sum, t) => sum + (t.total_usd ?? 0), 0);
   const totalCities = yearTrips.reduce((sum, t) => sum + (t.cities_count ?? 0), 0);
-  const totalDaysThisYear = yearTrips.reduce((sum, t) => sum + getTotalDays(t), 0);
 
   return (
     <div
@@ -133,63 +130,13 @@ export function Dashboard() {
           </p>
         </div>
 
-        {/* Hero + stats */}
-        <div className="grid md:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.75fr)] gap-4 md:gap-5 animate-spring-up stagger-2">
-          <div className="md:h-full">
-            {heroTrip ? (
-              <HeroTripCard
-                trip={heroTrip}
-                status={classifyTrip(heroTrip)}
-                tripsThisYear={yearTrips.length}
-                totalCities={totalCities}
-                totalDaysThisYear={totalDaysThisYear}
-                totalUsd={totalUsd}
-              />
-            ) : (
-              <EmptyHeroCard onCreateTrip={() => setCreateOpen(true)} />
-            )}
-          </div>
-
-          {/* Desktop supporting stats */}
-          <div className="hidden md:grid grid-cols-2 gap-3 md:content-stretch md:h-full">
-          <StatCard
-            label="Viajes"
-            sublabel="este año"
-            value={String(yearTrips.length)}
-            numericValue={yearTrips.length}
-            color="#71D3A6"
-            icon={<Plane size={16} strokeWidth={2.2} />}
-            staggerDelay={200}
-          />
-          <StatCard
-            label="Ciudades"
-            sublabel="visitadas"
-            value={String(totalCities)}
-            numericValue={totalCities}
-            color="#A891E8"
-            icon={<MapPin size={16} strokeWidth={2.2} />}
-            staggerDelay={260}
-          />
-          <StatCard
-            label="Total"
-            sublabel="gastado"
-            value={`USD ${totalUsd.toLocaleString("es-AR")}`}
-            numericValue={totalUsd}
-            currencyPrefix="USD "
-            color="#FFD16A"
-            icon={<DollarSign size={16} strokeWidth={2.2} />}
-            staggerDelay={320}
-          />
-          <StatCard
-            label="Días"
-            sublabel="viajando"
-            value={String(totalDaysThisYear)}
-            numericValue={totalDaysThisYear}
-            color="#6CAFE8"
-            icon={<CalendarDays size={16} strokeWidth={2.2} />}
-            staggerDelay={380}
-          />
-          </div>
+        {/* Hero */}
+        <div className="animate-spring-up stagger-2">
+          {heroTrip ? (
+            <HeroTripCard trip={heroTrip} status={classifyTrip(heroTrip)} />
+          ) : (
+            <EmptyHeroCard onCreateTrip={() => setCreateOpen(true)} />
+          )}
         </div>
 
         {/* Mis viajes */}
@@ -256,144 +203,107 @@ export function Dashboard() {
   );
 }
 
-function HeroTripCard({
-  trip,
-  status,
-  tripsThisYear,
-  totalCities,
-  totalDaysThisYear,
-  totalUsd,
-}: {
-  trip: Trip;
-  status: "active" | "future" | "past";
-  tripsThisYear: number;
-  totalCities: number;
-  totalDaysThisYear: number;
-  totalUsd: number;
-}) {
+function HeroTripCard({ trip, status }: { trip: Trip; status: "active" | "future" | "past" }) {
   const isActive = status === "active";
   const dayNum = isActive ? getActiveDayNumber(trip) : null;
   const totalDays = getTotalDays(trip);
   const daysUntil = !isActive ? getDaysUntil(trip.start_date) : null;
 
-  const progress = isActive && dayNum ? Math.min(dayNum / totalDays, 1) : status === "future" ? 0.11 : 1;
-
   const theme = getTheme(trip.cover_url);
   const gradFrom = theme?.gradientFrom ?? "rgba(113,211,166,0.78)";
   const gradMid  = theme?.gradientMid  ?? "rgba(36,68,55,0.72)";
+  const heroImage = trip.cover_url || "/travel-hero.svg";
+
+  const dateRange = `${new Date(trip.start_date + "T00:00:00").toLocaleDateString("es-AR", {
+    day: "numeric", month: "short",
+  })} – ${new Date(trip.end_date + "T00:00:00").toLocaleDateString("es-AR", {
+    day: "numeric", month: "short", year: "numeric",
+  })}`;
 
   const [pressed, setPressed] = useState(false);
 
   return (
     <Link href={`/trips/${trip.id}`}>
-      <div
+      <section
         onPointerDown={() => setPressed(true)}
         onPointerUp={() => setPressed(false)}
         onPointerLeave={() => setPressed(false)}
-        className="relative rounded-[32px] overflow-hidden min-h-[620px] md:min-h-[520px] flex flex-col cursor-pointer"
+        className="relative overflow-hidden rounded-[20px] cursor-pointer"
         style={{
-          background: "#171512",
-          border: "1px solid rgba(255,255,255,0.06)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 18px 48px rgba(0,0,0,0.36)",
-          transform: pressed ? "scale(0.985)" : "scale(1)",
+          border: "1px solid rgba(255,255,255,0.07)",
+          background: "#15130F",
+          boxShadow: "0 18px 70px rgba(0,0,0,0.34)",
+          transform: pressed ? "scale(0.994)" : "scale(1)",
           transition: "transform 200ms cubic-bezier(0.2, 0.7, 0.3, 1)",
         }}
       >
-        <div className="relative min-h-[320px] md:min-h-[280px] p-6 md:p-7 overflow-hidden">
-          {/* Theme SVG background */}
-          {trip.cover_url && (
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${trip.cover_url})`, opacity: 0.55 }}
-            />
-          )}
-
-          {/* Gradient overlay — dynamic per theme */}
+        <div className="grid md:grid-cols-[240px_1fr]">
+          {/* Image column — desktop only */}
           <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: `linear-gradient(135deg, ${gradFrom} 0%, ${gradMid} 48%, rgba(9,8,6,0.98) 100%)`,
-            }}
+            className="hidden bg-cover bg-center md:block"
+            style={{ backgroundImage: `url(${heroImage})` }}
           />
 
-          {/* Fallback watermark when no theme */}
-          {!trip.cover_url && (
-            <div className="absolute inset-0 opacity-[0.08] text-white text-[136px] md:text-[150px] font-black flex items-center justify-center rotate-[-18deg]">
-              ✈
-            </div>
-          )}
+          {/* Content */}
+          <div className="relative overflow-hidden">
+            {/* Mobile SVG background */}
+            <div
+              className="absolute inset-0 bg-cover bg-center opacity-50 md:hidden"
+              style={{ backgroundImage: `url(${heroImage})` }}
+            />
+            {/* Gradient overlay */}
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `linear-gradient(115deg, ${gradFrom}, ${gradMid} 34%, rgba(13,13,13,0.98) 100%)`,
+              }}
+            />
 
-          <div className="relative flex items-start justify-between">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full">
-              <span className="text-[11px] font-black text-[#FFD16A] uppercase tracking-[0.28em]">
-                {isActive ? "En curso" : status === "future" ? "Próximo" : "Pasado"}
-              </span>
-            </div>
-            <div className="w-12 h-12 rounded-full bg-black/24 flex items-center justify-center text-white">
-              <ChevronRight size={22} strokeWidth={2.6} />
-            </div>
-          </div>
+            {/* Metrics grid */}
+            <div className="relative grid min-h-[200px] items-center gap-y-4 p-5 md:min-h-[180px] md:grid-cols-[minmax(200px,1.4fr)_repeat(2,minmax(100px,130px))_minmax(150px,180px)] md:gap-y-0 md:p-0">
+              {/* Trip name + badge + subtitle */}
+              <div className="md:px-7">
+                <span className="rounded-full bg-[#FFD16A]/18 px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-[#FFD16A]">
+                  {isActive ? "En curso" : "Próximo"}
+                </span>
+                <h2 className="mt-4 line-clamp-2 text-[34px] font-black leading-none tracking-tight text-white md:text-[26px]">
+                  {trip.name}
+                </h2>
+                <p className="mt-1.5 text-[14px] font-semibold text-white/70">
+                  {isActive
+                    ? `Día ${dayNum} de ${totalDays} · ${dateRange}`
+                    : `En ${daysUntil} ${daysUntil === 1 ? "día" : "días"} · ${dateRange}`}
+                </p>
+              </div>
 
-          <div className="relative h-24 md:h-16" />
+              {/* Ciudades */}
+              <HeroMetric icon={<MapPin size={20} />} value={String(trip.cities_count ?? 0)} label="Ciudades" />
 
-          <div className="relative">
-            <h3 className="text-[48px] md:text-[56px] font-bold text-white leading-[1.02] tracking-tight line-clamp-2">
-              {trip.name}
-            </h3>
-            <p className="text-white/88 text-[20px] font-bold mt-3">
-              {isActive ? `Día ${dayNum}` : `En ${daysUntil} ${daysUntil === 1 ? "día" : "días"}`}
-            </p>
+              {/* Días */}
+              <HeroMetric icon={<CalendarDays size={20} />} value={String(totalDays)} label="Días" />
+
+              {/* Total USD */}
+              <div className="border-t border-white/10 pt-4 md:border-l md:border-t-0 md:px-6 md:pt-0">
+                <p className="text-[12px] font-semibold text-[#C6BDAE]">USD</p>
+                <p className="mt-0.5 text-[36px] font-black leading-none text-[#FFD16A] tabular-nums md:text-[32px]">
+                  {(trip.total_usd ?? 0).toLocaleString("es-AR")}
+                </p>
+                <p className="mt-1 text-[11px] font-medium text-[#707070]">total</p>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div className="relative grid md:grid-cols-[160px_1fr] gap-6 p-6 md:p-7">
-          <div className="relative w-32 h-32 md:w-30 md:h-30">
-            <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-              <circle cx="60" cy="60" r="48" fill="none" stroke="rgba(255,209,106,0.13)" strokeWidth="12" />
-              <circle
-                cx="60"
-                cy="60"
-                r="48"
-                fill="none"
-                stroke="#FFD16A"
-                strokeWidth="12"
-                strokeLinecap="round"
-                strokeDasharray="302"
-                strokeDashoffset={302 - 302 * Math.max(progress, 0.11)}
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-white text-[26px] font-black">{Math.round(Math.max(progress, 0.11) * 100)}%</span>
-              <span className="text-[#81786A] text-[11px] font-bold tracking-widest">Progreso</span>
-            </div>
-          </div>
-          <div className="space-y-3">
-            <HeroStat icon="✈" value={String(tripsThisYear)} label="Viajes este año" />
-            <HeroStat icon="⚓" value={String(totalCities)} label="Ciudades" />
-            <HeroStat icon="▦" value={String(totalDaysThisYear)} label="Días viajando" />
-          </div>
-        </div>
-
-        <div className="border-t border-[#252119] px-6 md:px-7 py-6">
-          <p className="text-[#81786A] text-[12px] font-bold uppercase tracking-wider">Total gastado</p>
-          <p className="mt-1 text-[#FFD16A] text-[46px] md:text-[52px] leading-none font-black tabular-nums">
-            <span className="text-[#81786A] text-[18px] mr-2">USD</span>
-            {(totalUsd || trip.total_usd || 0).toLocaleString("es-AR")}
-          </p>
-        </div>
-      </div>
+      </section>
     </Link>
   );
 }
 
-function HeroStat({ icon, value, label }: { icon: string; value: string; label: string }) {
+function HeroMetric({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="w-9 h-9 rounded-[11px] bg-[#FFD16A]/12 text-[#FFD16A] flex items-center justify-center text-[16px]">
-        {icon}
-      </span>
-      <span className="text-white text-[22px] font-black tabular-nums">{value}</span>
-      <span className="text-[#C6BDAE] text-[17px] font-medium truncate">{label}</span>
+    <div className="flex flex-col items-center justify-center gap-1.5 md:border-l md:border-white/8 md:py-6">
+      <div className="text-[#FFD16A]/70">{icon}</div>
+      <p className="text-[28px] font-black leading-none text-white tabular-nums md:text-[26px]">{value}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-[#707070]">{label}</p>
     </div>
   );
 }
@@ -413,63 +323,3 @@ function EmptyHeroCard({ onCreateTrip }: { onCreateTrip: () => void }) {
   );
 }
 
-function StatCard({
-  label,
-  sublabel,
-  value,
-  numericValue,
-  currencyPrefix,
-  color,
-  icon,
-  staggerDelay = 0,
-}: {
-  label: string;
-  sublabel?: string;
-  value: string;
-  numericValue?: number;
-  currencyPrefix?: string;
-  color: string;
-  icon?: React.ReactNode;
-  staggerDelay?: number;
-}) {
-  const animated = useCountUp(numericValue ?? 0, 1200, staggerDelay + 80);
-  const displayValue =
-    numericValue !== undefined
-      ? `${currencyPrefix ?? ""}${animated.toLocaleString("es-AR")}`
-      : value;
-
-  return (
-    <div
-      className="relative rounded-[18px] px-4 py-4 animate-pop-in overflow-hidden"
-      style={{
-        background: `linear-gradient(180deg, ${color}12 0%, #161616 100%)`,
-        border: `1px solid ${color}22`,
-        animationDelay: `${staggerDelay}ms`,
-        boxShadow: `inset 0 1px 0 ${color}15`,
-      }}
-    >
-      {/* Icon chip */}
-      {icon && (
-        <div
-          className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: `${color}22`, color }}
-        >
-          {icon}
-        </div>
-      )}
-
-      <div className="flex flex-col gap-1 pr-8">
-        <div className="flex items-baseline gap-1">
-          <span className="text-[11px] font-semibold text-[#A0A0A0] uppercase tracking-wider">{label}</span>
-          {sublabel && <span className="text-[10px] text-[#4D4D4D] font-medium">{sublabel}</span>}
-        </div>
-        <p
-          className={`font-bold leading-none tracking-tight whitespace-nowrap ${currencyPrefix ? "text-[20px]" : "text-[26px]"}`}
-          style={{ color, textShadow: `0 0 24px ${color}22` }}
-        >
-          {displayValue}
-        </p>
-      </div>
-    </div>
-  );
-}
