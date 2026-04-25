@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
-import { getTrips } from "@/lib/firestore";
+import { getTrips, updateTripStatus } from "@/lib/firestore";
 import { Trip } from "@/lib/types";
 import { signOut } from "@/lib/auth";
 import { BottomNav } from "./BottomNav";
@@ -14,7 +14,7 @@ import { MapPin, CalendarDays, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { getTheme } from "@/lib/themes";
 
-type Filter = "all" | "future" | "active" | "past";
+type Filter = "all" | "future" | "active" | "past" | "draft";
 
 function getContextualGreeting(name: string): { line1: string; line2: string } {
   const hour = new Date().getHours();
@@ -24,10 +24,11 @@ function getContextualGreeting(name: string): { line1: string; line2: string } {
   return { line1: `Buenas noches,`, line2: firstName };
 }
 
-function classifyTrip(trip: Trip): "active" | "future" | "past" {
+function classifyTrip(trip: Trip): "draft" | "active" | "future" | "past" {
+  if (trip.status === "draft") return "draft";
   const today = new Date().toISOString().split("T")[0];
-  if (trip.end_date < today) return "past";
-  if (trip.start_date > today) return "future";
+  if (!trip.end_date || trip.end_date < today) return "past";
+  if (!trip.start_date || trip.start_date > today) return "future";
   return "active";
 }
 
@@ -51,6 +52,36 @@ function getTotalDays(trip: Trip): number {
   return Math.ceil((end.getTime() - start.getTime()) / 86400000) + 1;
 }
 
+function DraftConfirmButton({
+  tripId,
+  userId,
+  onConfirmed,
+}: {
+  tripId: string;
+  userId: string;
+  onConfirmed: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  async function confirm() {
+    setLoading(true);
+    try {
+      await updateTripStatus(userId, tripId, "planned");
+      onConfirmed();
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <button
+      onClick={confirm}
+      disabled={loading}
+      className="w-full mt-1.5 py-2 rounded-[12px] text-[13px] font-semibold text-[#FFD16A] border border-[#FFD16A]/30 bg-[#FFD16A]/8 press-feedback hover:bg-[#FFD16A]/15 transition-colors disabled:opacity-50"
+    >
+      {loading ? "Confirmando..." : "Confirmar viaje →"}
+    </button>
+  );
+}
+
 export function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const [filter, setFilter] = useState<Filter>("all");
@@ -65,15 +96,18 @@ export function Dashboard() {
   const displayName = user?.displayName || user?.email || "Mati";
   const { line1, line2 } = getContextualGreeting(displayName);
 
-  const activeTrip = trips.find((t) => classifyTrip(t) === "active");
-  const nextTrip = trips
+  // Exclude drafts from hero
+  const nonDraftTrips = trips.filter((t) => classifyTrip(t) !== "draft");
+  const activeTrip = nonDraftTrips.find((t) => classifyTrip(t) === "active");
+  const nextTrip = nonDraftTrips
     .filter((t) => classifyTrip(t) === "future")
     .sort((a, b) => a.start_date.localeCompare(b.start_date))[0];
   const heroTrip = activeTrip ?? nextTrip;
 
   const filteredTrips = trips.filter((t) => {
-    if (filter === "all") return true;
-    return classifyTrip(t) === filter;
+    const s = classifyTrip(t);
+    if (filter === "all") return s !== "draft";
+    return s === filter;
   });
 
   const thisYear = new Date().getFullYear().toString();
@@ -115,7 +149,7 @@ export function Dashboard() {
       </div>
 
       <div className="mx-auto max-w-6xl px-6 md:px-8 space-y-6 pb-32 md:pb-16 md:pt-8">
-        {/* Desktop greeting — inline, editorial feel */}
+        {/* Desktop greeting */}
         <div className="hidden md:flex items-baseline justify-between animate-fade-slide-up stagger-0">
           <div>
             <p className="text-[#707070] text-[12px] uppercase tracking-[0.2em] font-semibold mb-2">
@@ -133,7 +167,7 @@ export function Dashboard() {
         {/* Hero */}
         <div className="animate-spring-up stagger-2">
           {heroTrip ? (
-            <HeroTripCard trip={heroTrip} status={classifyTrip(heroTrip)} />
+            <HeroTripCard trip={heroTrip} status={classifyTrip(heroTrip) as "active" | "future" | "past"} />
           ) : (
             <EmptyHeroCard onCreateTrip={() => setCreateOpen(true)} />
           )}
@@ -145,13 +179,22 @@ export function Dashboard() {
             <div>
               <h2 className="text-[20px] md:text-[22px] font-semibold text-white tracking-tight">Mis viajes</h2>
               <p className="hidden md:block text-[#707070] text-[12px] mt-1">
-                {filteredTrips.length} {filter === "all" ? "total" : filter === "future" ? "próximos" : filter === "active" ? "en curso" : "pasados"}
+                {filteredTrips.length}{" "}
+                {filter === "all"
+                  ? "total"
+                  : filter === "future"
+                  ? "próximos"
+                  : filter === "active"
+                  ? "en curso"
+                  : filter === "past"
+                  ? "pasados"
+                  : "borradores"}
               </p>
             </div>
 
             {/* Filtros */}
             <div className="flex gap-1.5 overflow-x-auto no-scrollbar ios-scroll pb-1">
-              {(["all", "future", "active", "past"] as Filter[]).map((f) => (
+              {(["all", "future", "active", "past", "draft"] as Filter[]).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
@@ -161,7 +204,15 @@ export function Dashboard() {
                       : "bg-[#171512] text-[#C6BDAE] border border-[#252119] hover:border-[#332E25] hover:text-white"
                   }`}
                 >
-                  {f === "all" ? "Todos" : f === "future" ? "Futuros" : f === "active" ? "En curso" : "Pasados"}
+                  {f === "all"
+                    ? "Todos"
+                    : f === "future"
+                    ? "Futuros"
+                    : f === "active"
+                    ? "En curso"
+                    : f === "past"
+                    ? "Pasados"
+                    : "Borradores"}
                 </button>
               ))}
             </div>
@@ -178,13 +229,31 @@ export function Dashboard() {
             <div className="text-center py-16 md:py-24 text-[#81786A] text-[15px] border border-dashed border-[#252119] rounded-[18px]">
               {filter === "all"
                 ? "Todavía no tenés viajes."
-                : `No hay viajes ${filter === "future" ? "futuros" : filter === "active" ? "en curso" : "pasados"}.`}
+                : filter === "future"
+                ? "No hay viajes futuros."
+                : filter === "active"
+                ? "No hay viajes en curso."
+                : filter === "past"
+                ? "No hay viajes pasados."
+                : "No tenés borradores."}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {filteredTrips.map((trip) => (
-                <TripCard key={trip.id} trip={trip} status={classifyTrip(trip)} />
-              ))}
+              {filteredTrips.map((trip) => {
+                const tripStatus = classifyTrip(trip);
+                return (
+                  <div key={trip.id}>
+                    <TripCard trip={trip} status={tripStatus} />
+                    {tripStatus === "draft" && (
+                      <DraftConfirmButton
+                        tripId={trip.id}
+                        userId={user!.uid}
+                        onConfirmed={() => refetch()}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -210,9 +279,7 @@ function HeroTripCard({ trip, status }: { trip: Trip; status: "active" | "future
   const daysUntil = !isActive ? getDaysUntil(trip.start_date) : null;
 
   const theme = getTheme(trip.cover_url);
-  // Use theme color for the left accent bar — subtle tint
   const accentRaw = theme?.gradientFrom ?? "rgba(255,209,106,0.9)";
-  // Extract a muted bg tint from the theme
   const bgTint = theme?.gradientFrom.replace(/[\d.]+\)$/, "0.06)") ?? "rgba(255,209,106,0.06)";
 
   const dateRange = `${new Date(trip.start_date + "T00:00:00").toLocaleDateString("es-AR", {
@@ -297,4 +364,3 @@ function EmptyHeroCard({ onCreateTrip }: { onCreateTrip: () => void }) {
     </button>
   );
 }
-

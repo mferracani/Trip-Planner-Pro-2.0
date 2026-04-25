@@ -5,13 +5,14 @@ import { Trip } from "@/lib/types";
 
 interface TripCardProps {
   trip: Trip;
-  status: "active" | "future" | "past";
+  status: "active" | "future" | "past" | "draft";
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   active: { label: "En curso", color: "text-[#30D158] bg-[#30D158]/15" },
   future: { label: "Futuro", color: "text-[#0A84FF] bg-[#0A84FF]/15" },
   past: { label: "Pasado", color: "text-[#A0A0A0] bg-[#333]/50" },
+  draft: { label: "Borrador", color: "text-[#A0A0A0] bg-[#333]/30" },
 };
 
 function formatDateRange(start: string, end: string): string {
@@ -25,7 +26,8 @@ function formatDateRange(start: string, end: string): string {
 }
 
 export function TripCard({ trip, status }: TripCardProps) {
-  const badge = STATUS_LABELS[status];
+  const badge = STATUS_LABELS[status] ?? STATUS_LABELS.future;
+  const isDraft = trip.status === "draft";
 
   return (
     <Link href={`/trips/${trip.id}`} className="group">
@@ -75,7 +77,9 @@ export function TripCard({ trip, status }: TripCardProps) {
               {badge.label}
             </span>
           </div>
-          <p className="text-[#A0A0A0] text-[13px]">{formatDateRange(trip.start_date, trip.end_date)}</p>
+          <p className="text-[#A0A0A0] text-[13px]">
+            {isDraft ? "~ " : ""}{formatDateRange(trip.start_date, trip.end_date)}
+          </p>
           {trip.total_usd > 0 && (
             <p className="text-[#707070] text-[12px] font-mono tabular-nums mt-0.5">
               USD {trip.total_usd.toLocaleString()}

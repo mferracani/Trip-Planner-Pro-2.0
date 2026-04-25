@@ -193,10 +193,11 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
   const weeks = buildWeeks(trip.start_date, trip.end_date);
   const dayItemsMap = buildDayItemsMap(flights, hotels, transports);
 
-  const dateCityMap: Record<string, City> = {};
+  const dateCitiesMap: Record<string, City[]> = {};
   for (const city of enhancedCities) {
     for (const d of city.days ?? []) {
-      dateCityMap[d] = city;
+      if (!dateCitiesMap[d]) dateCitiesMap[d] = [];
+      dateCitiesMap[d].push(city);
     }
   }
 
@@ -306,11 +307,11 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
     let hasCity = false;
     const cityIds = new Set<string>();
     for (const d of selection) {
-      const city = dateCityMap[d];
-      if (!city) hasEmpty = true;
+      const citiesOnDay = dateCitiesMap[d] ?? [];
+      if (citiesOnDay.length === 0) hasEmpty = true;
       else {
         hasCity = true;
-        cityIds.add(city.id);
+        citiesOnDay.forEach((c) => cityIds.add(c.id));
       }
     }
     return {
@@ -367,15 +368,16 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
           <div key={wi} className="grid grid-cols-7 gap-1">
             {week.map((dateStr) => {
               const inRange = dateStr >= trip.start_date && dateStr <= trip.end_date;
-              const city = dateCityMap[dateStr];
+              const citiesOnDay = dateCitiesMap[dateStr] ?? [];
+              const primaryCity = citiesOnDay[0];
               const items = dayItemsMap[dateStr];
               const isSelected = selection.has(dateStr);
               const isToday = dateStr === todayStr;
               const [, mm, dd] = dateStr.split("-");
               const dateLabel = `${dd}/${mm}`;
-              const dayIndex = city ? (city.days ?? []).indexOf(dateStr) : -1;
-              const totalDays = city ? (city.days ?? []).length : 0;
-              const dimmed = !!filterCity && (!city || city.id !== filterCity.id);
+              const dayIndex = primaryCity ? (primaryCity.days ?? []).indexOf(dateStr) : -1;
+              const totalDays = primaryCity ? (primaryCity.days ?? []).length : 0;
+              const dimmed = !!filterCity && !citiesOnDay.some((c) => c.id === filterCity.id);
 
               return (
                 <DayCell
@@ -385,7 +387,7 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
                   dayIndex={dayIndex}
                   totalDays={totalDays}
                   inRange={inRange}
-                  city={city}
+                  cities={citiesOnDay}
                   items={items}
                   isSelected={isSelected}
                   isToday={isToday}
@@ -480,12 +482,12 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
       {selectedDay && !inSelectionMode && (
         <DayDetailSheet
           dateStr={selectedDay}
-          city={dateCityMap[selectedDay]}
+          cities={dateCitiesMap[selectedDay] ?? []}
           flights={flights}
           hotels={hotels}
           transports={transports}
           trip={trip}
-          cities={enhancedCities}
+          allCities={enhancedCities}
           onChanged={onChanged}
           onClose={() => setSelectedDay(null)}
         />
@@ -536,7 +538,7 @@ interface DayCellProps {
   dayIndex: number;
   totalDays: number;
   inRange: boolean;
-  city?: City;
+  cities: City[];
   items?: DayItems;
   isSelected: boolean;
   isToday: boolean;
@@ -552,7 +554,7 @@ function DayCell({
   dayIndex,
   totalDays,
   inRange,
-  city,
+  cities,
   items,
   isSelected,
   isToday,
@@ -561,11 +563,15 @@ function DayCell({
   onPointerEnter,
   onPointerUp,
 }: DayCellProps) {
-  const resolvedColor = city?.color ?? null;
+  const primaryCity = cities[0];
+  const isSplit = cities.length >= 2;
+  const resolvedColor = primaryCity?.color ?? null;
   const selectionColor = resolvedColor ?? "#0A84FF";
 
-  // Gradient: rich city color top-left fading to near-black
-  const bg = resolvedColor
+  // Background: split diagonal when two cities share the day
+  const bg = isSplit
+    ? `linear-gradient(135deg, ${cities[0].color}35 0% 50%, ${cities[1].color}35 50% 100%)`
+    : resolvedColor
     ? `linear-gradient(145deg, ${resolvedColor}42 0%, ${resolvedColor}14 100%)`
     : inRange
     ? "#1A1A1A"
@@ -581,12 +587,11 @@ function DayCell({
     : "#333333";
   const borderWidth = isSelected || isToday ? 2 : 1;
 
-  const countryCode = city ? detectCountryCode(city) : undefined;
-  const flag = countryCode ? countryFlag(countryCode) : null;
-  const showProgress = city && totalDays > 0 && dayIndex >= 0;
+  const showProgress = !isSplit && primaryCity && totalDays > 0 && dayIndex >= 0;
 
   // Just the day number, not DD/MM
   const dayNumber = dateStr.split("-")[2];
+  void dayNumber; // used in aria-label only
 
   // Flights + transports first (time-critical), hotels last
   const allBadges = [
@@ -604,7 +609,7 @@ function DayCell({
       onPointerUp={onPointerUp}
       data-date={dateStr}
       aria-disabled={!inRange}
-      aria-label={`${dateStr}${city ? ` — ${city.name}` : ""}`}
+      aria-label={`${dateStr}${primaryCity ? ` — ${primaryCity.name}` : ""}`}
       className={`
         relative flex flex-col rounded-[10px] p-1.5 md:rounded-[12px] md:p-2
         min-h-[120px] md:min-h-[140px] w-full text-left
@@ -644,38 +649,55 @@ function DayCell({
         ) : null}
       </div>
 
-      {/* City block — mobile: 3-char abbrev; desktop: full name */}
-      {city && inRange && resolvedColor && (
-        <div className="mb-2">
-          {/* Flag */}
-          <span className="text-[12px] md:text-[13px] leading-none block mb-0.5">{flag ?? ""}</span>
-
-          {/* Mobile: 3-char abbreviation */}
-          <p
-            className="text-[14px] font-bold leading-none tracking-tight md:hidden"
-            style={{ color: "#FFFFFF" }}
-          >
-            {city.name.substring(0, 3).toUpperCase()}
-          </p>
-
-          {/* Desktop: full city name */}
-          <p
-            className="hidden md:block text-[15px] font-bold leading-tight truncate"
-            style={{ color: "#FFFFFF" }}
-          >
-            {city.name}
-          </p>
-
-          {/* Counter */}
-          {showProgress && (
+      {/* City block */}
+      {inRange && cities.length > 0 && (
+        isSplit ? (
+          // Split: two cities share the day
+          <div className="mb-1 flex flex-col gap-[2px]">
+            {cities.slice(0, 2).map((c) => {
+              const code = detectCountryCode(c);
+              const flag = code ? countryFlag(code) : null;
+              return (
+                <div key={c.id} className="flex items-center gap-[3px]">
+                  {flag && <span className="text-[9px] leading-none">{flag}</span>}
+                  <p className="text-[10px] md:text-[11px] font-bold leading-none truncate" style={{ color: c.color }}>
+                    {c.name.substring(0, 3).toUpperCase()}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          // Single city
+          <div className="mb-2">
+            <span className="text-[12px] md:text-[13px] leading-none block mb-0.5">
+              {(() => {
+                const code = detectCountryCode(primaryCity!);
+                return code ? countryFlag(code) : "";
+              })()}
+            </span>
             <p
-              className="text-[10px] md:text-[11px] font-semibold leading-none tabular-nums mt-0.5"
-              style={{ color: `${resolvedColor}B0` }}
+              className="text-[14px] font-bold leading-none tracking-tight md:hidden"
+              style={{ color: "#FFFFFF" }}
             >
-              {dayIndex + 1}/{totalDays}
+              {primaryCity!.name.substring(0, 3).toUpperCase()}
             </p>
-          )}
-        </div>
+            <p
+              className="hidden md:block text-[15px] font-bold leading-tight truncate"
+              style={{ color: "#FFFFFF" }}
+            >
+              {primaryCity!.name}
+            </p>
+            {showProgress && (
+              <p
+                className="text-[10px] md:text-[11px] font-semibold leading-none tabular-nums mt-0.5"
+                style={{ color: `${resolvedColor}B0` }}
+              >
+                {dayIndex + 1}/{totalDays}
+              </p>
+            )}
+          </div>
+        )
       )}
 
       {/* Items */}
@@ -890,28 +912,28 @@ type AddingType = "city" | "flight" | "hotel" | "transport";
 
 function DayDetailSheet({
   dateStr,
-  city,
+  cities,
   flights,
   hotels,
   transports,
   trip,
-  cities,
+  allCities,
   onChanged,
   onClose,
 }: {
   dateStr: string;
-  city?: City;
+  cities: City[];
   flights: Flight[];
   hotels: Hotel[];
   transports: Transport[];
   trip: Trip;
-  cities: City[];
+  allCities: City[];
   onChanged: () => void;
   onClose: () => void;
 }) {
   const [showPicker, setShowPicker] = useState(false);
   const [addingType, setAddingType] = useState<AddingType | null>(null);
-  const [editingCity, setEditingCity] = useState(false);
+  const [editingCity, setEditingCity] = useState<City | null>(null);
 
   function handleSaved() {
     setAddingType(null);
@@ -950,29 +972,33 @@ function DayDetailSheet({
         <div className="flex items-start justify-between mb-5">
           <div>
             <h3 className="text-[20px] font-semibold text-white capitalize leading-tight">{label}</h3>
-            {city && (() => {
-              const sheetColor = city.color;
-              const sheetCode = detectCountryCode(city);
-              return (
-                <button
-                  onClick={() => setEditingCity(true)}
-                  className="flex items-center gap-1.5 mt-1.5 press-feedback"
-                >
-                  {sheetCode ? (
-                    <span className="text-[15px] leading-none">{countryFlag(sheetCode)}</span>
-                  ) : (
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sheetColor }} />
-                  )}
-                  <span
-                    className="text-[12px] font-semibold uppercase tracking-wide"
-                    style={{ color: sheetColor }}
-                  >
-                    {city.name}
-                  </span>
-                  <span className="text-[14px]" style={{ color: "#FFD16A" }}>✎</span>
-                </button>
-              );
-            })()}
+            {cities.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                {cities.map((c) => {
+                  const sheetCode = detectCountryCode(c);
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setEditingCity(c)}
+                      className="flex items-center gap-1.5 press-feedback"
+                    >
+                      {sheetCode ? (
+                        <span className="text-[15px] leading-none">{countryFlag(sheetCode)}</span>
+                      ) : (
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />
+                      )}
+                      <span
+                        className="text-[12px] font-semibold uppercase tracking-wide"
+                        style={{ color: c.color }}
+                      >
+                        {c.name}
+                      </span>
+                      <span className="text-[14px]" style={{ color: "#FFD16A" }}>✎</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -1051,14 +1077,14 @@ function DayDetailSheet({
       </div>
 
       {/* Forms — rendered via createPortal inside each component */}
-      {editingCity && city && (
+      {editingCity && (
         <CityForm
           tripId={trip.id}
           tripStart={trip.start_date}
           tripEnd={trip.end_date}
-          usedColors={cities.map((c) => c.color)}
-          existing={city}
-          onClose={() => setEditingCity(false)}
+          usedColors={allCities.map((c) => c.color)}
+          existing={editingCity}
+          onClose={() => setEditingCity(null)}
           onSaved={handleSaved}
         />
       )}
@@ -1067,7 +1093,7 @@ function DayDetailSheet({
           tripId={trip.id}
           tripStart={trip.start_date}
           tripEnd={trip.end_date}
-          usedColors={cities.map((c) => c.color)}
+          usedColors={allCities.map((c) => c.color)}
           initialDay={dateStr}
           onClose={() => setAddingType(null)}
           onSaved={handleSaved}
@@ -1084,7 +1110,7 @@ function DayDetailSheet({
       {addingType === "hotel" && (
         <HotelForm
           tripId={trip.id}
-          cities={cities}
+          cities={allCities}
           initialDate={dateStr}
           onClose={() => setAddingType(null)}
           onSaved={handleSaved}

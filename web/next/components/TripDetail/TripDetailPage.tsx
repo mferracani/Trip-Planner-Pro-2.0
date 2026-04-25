@@ -3,8 +3,9 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { getTrip, getCities, getFlights, getHotels, getTransports, getExpenses, recalcTripAggregates, getFxRates } from "@/lib/firestore";
+import { getTrip, getCities, getFlights, getHotels, getTransports, getExpenses, recalcTripAggregates, getFxRates, updateTripStatus, updateTrip } from "@/lib/firestore";
 import { BottomNav } from "../BottomNav";
 import { TopNav } from "../TopNav";
 import { CalendarView } from "./CalendarView";
@@ -14,8 +15,9 @@ import { CostView } from "./CostView";
 import { AiParseModal } from "../AiParseModal";
 import { TripForm } from "../forms/TripForm";
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, MapPin, MoreHorizontal, Plane } from "lucide-react";
+import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, MapPin, MoreHorizontal, Plane } from "lucide-react";
 import { getTheme } from "@/lib/themes";
+import { Trip } from "@/lib/types";
 
 type Tab = "calendar" | "list" | "items" | "costos";
 const TABS: Tab[] = ["calendar", "list", "items", "costos"];
@@ -28,6 +30,7 @@ interface Props {
 export function TripDetailPage({ tripId }: Props) {
   const { user, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("calendar");
   const [parseOpen, setParseOpen] = useState(false);
   const [editTripOpen, setEditTripOpen] = useState(false);
@@ -108,12 +111,14 @@ export function TripDetailPage({ tripId }: Props) {
     );
   }
 
-  const totalDays =
-    Math.ceil(
-      (new Date(trip.end_date + "T00:00:00").getTime() -
-        new Date(trip.start_date + "T00:00:00").getTime()) /
-        86400000
-    ) + 1;
+  const hasDates = !!trip.start_date && !!trip.end_date;
+  const totalDays = hasDates
+    ? Math.ceil(
+        (new Date(trip.end_date + "T00:00:00").getTime() -
+          new Date(trip.start_date + "T00:00:00").getTime()) /
+          86400000
+      ) + 1
+    : 0;
 
   const dateRange = `${new Date(trip.start_date + "T00:00:00").toLocaleDateString("es-AR", {
     day: "numeric",
@@ -180,7 +185,9 @@ export function TripDetailPage({ tripId }: Props) {
               <h1 className="text-[38px] font-bold text-white truncate leading-[1.05] tracking-tight">
                 {trip.name}
               </h1>
-              <p className="text-[#C6BDAE] text-[14px] mt-1.5">{dateRange} · {totalDays} días</p>
+              <p className="text-[#C6BDAE] text-[14px] mt-1.5">
+                {trip.status === "draft" ? `~ ${dateRange}` : `${dateRange} · ${totalDays} días`}
+              </p>
             </div>
           </div>
           <button
@@ -192,89 +199,85 @@ export function TripDetailPage({ tripId }: Props) {
           </button>
         </div>
 
-        {/* Mobile compact hero strip */}
-        {(() => {
-          const today = new Date().toISOString().split("T")[0];
-          const isActive = trip.start_date <= today && trip.end_date >= today;
-          const tripDay = isActive
-            ? Math.ceil((new Date(today + "T00:00:00").getTime() - new Date(trip.start_date + "T00:00:00").getTime()) / 86400000) + 1
-            : 0;
-          const progress = totalDays > 0 ? Math.round((tripDay / totalDays) * 100) : 0;
-          return (
-            <div className="md:hidden px-4 pt-2 pb-3 animate-fade-slide-up stagger-2">
-              <div className="rounded-[14px] border border-[#333] bg-[#1A1A1A] px-4 py-3">
-                <div className="flex items-center gap-3">
-                  {/* Day + progress */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] text-[#A0A0A0] font-medium leading-none mb-1.5">
-                      {isActive ? `Día ${tripDay} de ${totalDays}` : `${totalDays} días`}
-                    </p>
-                    <div className="h-[4px] bg-[#333] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#30D158] rounded-full transition-all"
-                        style={{ width: `${progress}%` }}
-                      />
+        {/* Hero area: DraftDatePicker for drafts, compact strip + hero card for confirmed */}
+        {trip.status === "draft" ? (
+          <DraftDatePicker
+            trip={trip}
+            userId={user!.uid}
+            onDatesChanged={refetchTrip}
+            onConfirmed={() => router.refresh()}
+          />
+        ) : (
+          <>
+            {/* Mobile compact hero strip */}
+            {(() => {
+              const today = new Date().toISOString().split("T")[0];
+              const isActive = trip.start_date <= today && trip.end_date >= today;
+              const tripDay = isActive
+                ? Math.ceil((new Date(today + "T00:00:00").getTime() - new Date(trip.start_date + "T00:00:00").getTime()) / 86400000) + 1
+                : 0;
+              const progress = totalDays > 0 ? Math.round((tripDay / totalDays) * 100) : 0;
+              return (
+                <div className="md:hidden px-4 pt-2 pb-3 animate-fade-slide-up stagger-2">
+                  <div className="rounded-[14px] border border-[#333] bg-[#1A1A1A] px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] text-[#A0A0A0] font-medium leading-none mb-1.5">
+                          {isActive ? `Día ${tripDay} de ${totalDays}` : `${totalDays} días`}
+                        </p>
+                        <div className="h-[4px] bg-[#333] rounded-full overflow-hidden">
+                          <div className="h-full bg-[#30D158] rounded-full transition-all" style={{ width: `${progress}%` }} />
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-[9px] text-[#707070] font-semibold uppercase tracking-wide leading-none mb-0.5">USD</p>
+                        <p className="text-[18px] font-black text-[#FFD16A] leading-none tabular-nums">
+                          {(trip.total_usd ?? 0).toLocaleString("es-AR")}
+                        </p>
+                      </div>
+                      <div className="w-px h-8 bg-[#333] flex-shrink-0" />
+                      <div className="text-center flex-shrink-0">
+                        <MapPin size={13} className="text-[#FFD16A] mx-auto mb-0.5" />
+                        <p className="text-[15px] font-black text-white leading-none">{cities.length || trip.cities_count || 0}</p>
+                        <p className="text-[9px] text-[#707070] leading-none mt-0.5">ciudades</p>
+                      </div>
+                      <div className="text-center flex-shrink-0">
+                        <Plane size={13} className="text-[#FFD16A] mx-auto mb-0.5" />
+                        <p className="text-[15px] font-black text-white leading-none">{flights.length}</p>
+                        <p className="text-[9px] text-[#707070] leading-none mt-0.5">vuelos</p>
+                      </div>
                     </div>
                   </div>
-                  {/* USD */}
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-[9px] text-[#707070] font-semibold uppercase tracking-wide leading-none mb-0.5">USD</p>
-                    <p className="text-[18px] font-black text-[#FFD16A] leading-none tabular-nums">
-                      {(trip.total_usd ?? 0).toLocaleString("es-AR")}
-                    </p>
-                  </div>
-                  {/* Divider */}
-                  <div className="w-px h-8 bg-[#333] flex-shrink-0" />
-                  {/* Cities */}
-                  <div className="text-center flex-shrink-0">
-                    <MapPin size={13} className="text-[#FFD16A] mx-auto mb-0.5" />
-                    <p className="text-[15px] font-black text-white leading-none">{cities.length || trip.cities_count || 0}</p>
-                    <p className="text-[9px] text-[#707070] leading-none mt-0.5">ciudades</p>
-                  </div>
-                  {/* Flights */}
-                  <div className="text-center flex-shrink-0">
-                    <Plane size={13} className="text-[#FFD16A] mx-auto mb-0.5" />
-                    <p className="text-[15px] font-black text-white leading-none">{flights.length}</p>
-                    <p className="text-[9px] text-[#707070] leading-none mt-0.5">vuelos</p>
-                  </div>
                 </div>
-              </div>
-            </div>
-          );
-        })()}
+              );
+            })()}
 
-        {/* Desktop hero card */}
-        {(() => {
-          let paidUsd = 0;
-          for (const f of flights) {
-            if ((f.paid_amount ?? 0) > 0) paidUsd += f.price_usd ?? 0;
-          }
-          for (const h of hotels) {
-            if ((h.paid_amount ?? 0) > 0) paidUsd += h.total_price_usd ?? 0;
-          }
-          for (const t of transports) {
-            if ((t.paid_amount ?? 0) > 0) paidUsd += t.price_usd ?? 0;
-          }
-          const paymentPct = (trip.total_usd ?? 0) > 0
-            ? Math.min(Math.round((paidUsd / trip.total_usd!) * 100), 100)
-            : 0;
-          const today = new Date().toISOString().split("T")[0];
-          return (
-            <div className="hidden md:block px-8 pt-0 pb-6 animate-fade-slide-up stagger-2">
-              <TripHeroCard
-                name={trip.name}
-                dateRange={dateRange}
-                totalDays={totalDays}
-                totalUsd={trip.total_usd}
-                citiesCount={cities.length || trip.cities_count || 0}
-                flightsCount={flights.length}
-                paidPct={paymentPct}
-                status={trip.start_date <= today && trip.end_date >= today ? "active" : "planned"}
-                coverUrl={trip.cover_url}
-              />
-            </div>
-          );
-        })()}
+            {/* Desktop hero card */}
+            {(() => {
+              let paidUsd = 0;
+              for (const f of flights) { if ((f.paid_amount ?? 0) > 0) paidUsd += f.price_usd ?? 0; }
+              for (const h of hotels) { if ((h.paid_amount ?? 0) > 0) paidUsd += h.total_price_usd ?? 0; }
+              for (const t of transports) { if ((t.paid_amount ?? 0) > 0) paidUsd += t.price_usd ?? 0; }
+              const paymentPct = (trip.total_usd ?? 0) > 0 ? Math.min(Math.round((paidUsd / trip.total_usd!) * 100), 100) : 0;
+              const today = new Date().toISOString().split("T")[0];
+              return (
+                <div className="hidden md:block px-8 pt-0 pb-6 animate-fade-slide-up stagger-2">
+                  <TripHeroCard
+                    name={trip.name}
+                    dateRange={dateRange}
+                    totalDays={totalDays}
+                    totalUsd={trip.total_usd}
+                    citiesCount={cities.length || trip.cities_count || 0}
+                    flightsCount={flights.length}
+                    paidPct={paymentPct}
+                    status={trip.start_date <= today && trip.end_date >= today ? "active" : "planned"}
+                    coverUrl={trip.cover_url}
+                  />
+                </div>
+              );
+            })()}
+          </>
+        )}
 
         {/* Tabs */}
         <div className="px-6 md:px-8 animate-fade-slide-up stagger-3">
@@ -374,6 +377,226 @@ export function TripDetailPage({ tripId }: Props) {
           }}
         />
       )}
+    </div>
+  );
+}
+
+function addMonthsStr(monthStr: string, n: number): string {
+  const [y, m] = monthStr.split("-").map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function DraftDatePicker({
+  trip,
+  userId,
+  onDatesChanged,
+  onConfirmed,
+}: {
+  trip: Trip;
+  userId: string;
+  onDatesChanged: () => void;
+  onConfirmed: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [viewMonth, setViewMonth] = useState(trip.start_date.substring(0, 7));
+  const [activeEdge, setActiveEdge] = useState<"start" | "end" | null>(null);
+
+  const month1 = viewMonth;
+  const month2 = addMonthsStr(viewMonth, 1);
+
+  const mkLabel = (ms: string) => {
+    const [y, m] = ms.split("-").map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+  };
+
+  async function handleDayClick(dateStr: string) {
+    if (saving) return;
+    let updates: { start_date?: string; end_date?: string } = {};
+
+    if (activeEdge === "start") {
+      updates = dateStr > trip.end_date
+        ? { start_date: dateStr, end_date: dateStr }
+        : { start_date: dateStr };
+      setActiveEdge(null);
+    } else if (activeEdge === "end") {
+      updates = dateStr < trip.start_date
+        ? { start_date: dateStr, end_date: dateStr }
+        : { end_date: dateStr };
+      setActiveEdge(null);
+    } else {
+      if (dateStr < trip.start_date) updates = { start_date: dateStr };
+      else if (dateStr > trip.end_date) updates = { end_date: dateStr };
+    }
+
+    if (Object.keys(updates).length > 0) {
+      setSaving(true);
+      await updateTrip(userId, trip.id, updates);
+      onDatesChanged();
+      setSaving(false);
+    }
+  }
+
+  async function handleConfirm() {
+    setSaving(true);
+    await updateTripStatus(userId, trip.id, "planned");
+    onConfirmed();
+    setSaving(false);
+  }
+
+  const fmtDate = (d: string) =>
+    new Date(d + "T00:00:00").toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });
+
+  return (
+    <div className="px-4 md:px-8 pt-3 pb-5 animate-fade-slide-up stagger-2">
+      {/* Badge + confirm */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#FFD16A]/12 border border-[#FFD16A]/25 text-[11px] font-semibold text-[#FFD16A] uppercase tracking-wider">
+          Borrador
+        </span>
+        <button
+          onClick={handleConfirm}
+          disabled={saving}
+          className="flex-shrink-0 px-4 py-2 rounded-[10px] bg-[#FFD16A] text-black text-[13px] font-semibold press-feedback disabled:opacity-50 transition-opacity"
+        >
+          {saving ? "..." : "Confirmar →"}
+        </button>
+      </div>
+
+      {/* Date input pills */}
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        {(["start", "end"] as const).map((edge) => {
+          const isActive = activeEdge === edge;
+          return (
+            <button
+              key={edge}
+              onClick={() => setActiveEdge(isActive ? null : edge)}
+              className="text-left px-3.5 py-2.5 rounded-[12px] border transition-colors"
+              style={{
+                borderColor: isActive ? "#FFD16A" : "#252119",
+                background: isActive ? "rgba(255,209,106,0.07)" : "#171512",
+              }}
+            >
+              <p
+                className="text-[9px] font-bold uppercase tracking-[0.14em] mb-0.5"
+                style={{ color: isActive ? "#FFD16A" : "#707070" }}
+              >
+                {edge === "start" ? "Desde" : "Hasta"}
+              </p>
+              <p className="text-[13px] font-semibold text-white leading-snug">
+                {fmtDate(edge === "start" ? trip.start_date : trip.end_date)}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Month nav header */}
+      <div className="grid gap-1 mb-2" style={{ gridTemplateColumns: "28px 1fr 1fr 28px" }}>
+        <button
+          onClick={() => setViewMonth(addMonthsStr(viewMonth, -1))}
+          className="w-7 h-7 flex items-center justify-center rounded-full bg-[#171512] border border-[#252119] text-[#C6BDAE] hover:text-white hover:border-[#332E25] transition-colors"
+        >
+          <ChevronLeft size={14} />
+        </button>
+        <p className="text-center text-[11px] font-semibold text-[#A0A0A0] capitalize self-center">{mkLabel(month1)}</p>
+        <p className="text-center text-[11px] font-semibold text-[#A0A0A0] capitalize self-center">{mkLabel(month2)}</p>
+        <button
+          onClick={() => setViewMonth(addMonthsStr(viewMonth, 1))}
+          className="w-7 h-7 flex items-center justify-center rounded-full bg-[#171512] border border-[#252119] text-[#C6BDAE] hover:text-white hover:border-[#332E25] transition-colors"
+        >
+          <ChevronRight size={14} />
+        </button>
+      </div>
+
+      {/* Two month grids */}
+      <div className="grid grid-cols-2 gap-4">
+        <MiniMonthGrid month={month1} startDate={trip.start_date} endDate={trip.end_date} onDayClick={handleDayClick} />
+        <MiniMonthGrid month={month2} startDate={trip.start_date} endDate={trip.end_date} onDayClick={handleDayClick} />
+      </div>
+
+      {activeEdge && (
+        <p className="text-[11px] text-[#707070] text-center mt-3">
+          Tocá un día para mover la fecha {activeEdge === "start" ? "de inicio" : "de fin"}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function MiniMonthGrid({
+  month,
+  startDate,
+  endDate,
+  onDayClick,
+}: {
+  month: string;
+  startDate: string;
+  endDate: string;
+  onDayClick: (date: string) => void;
+}) {
+  const [year, m] = month.split("-").map(Number);
+  const firstDow = (new Date(year, m - 1, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, m, 0).getDate();
+  const cells: (string | null)[] = Array(firstDow).fill(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push(`${month}-${String(d).padStart(2, "0")}`);
+  }
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const isSingleDay = startDate === endDate;
+
+  return (
+    <div>
+      <div className="grid grid-cols-7 mb-1">
+        {["L", "M", "X", "J", "V", "S", "D"].map((d, i) => (
+          <p key={i} className="text-[8px] text-[#555] text-center font-semibold leading-none py-0.5">{d}</p>
+        ))}
+      </div>
+      <div className="grid grid-cols-7">
+        {cells.map((dateStr, i) => {
+          if (!dateStr) return <div key={i} className="h-[30px]" />;
+          const isStart = dateStr === startDate;
+          const isEnd = dateStr === endDate;
+          const inRange = !isSingleDay && dateStr > startDate && dateStr < endDate;
+          const isEdge = isStart || isEnd;
+          const day = Number(dateStr.split("-")[2]);
+
+          return (
+            <button
+              key={dateStr}
+              onClick={() => onDayClick(dateStr)}
+              className="relative flex items-center justify-center h-[30px]"
+            >
+              {/* Strip background */}
+              {(inRange || isEdge) && !isSingleDay && (
+                <span
+                  className="absolute inset-y-[3px] pointer-events-none"
+                  style={{
+                    left: isStart ? "50%" : "0",
+                    right: isEnd ? "50%" : "0",
+                    background: "rgba(255,209,106,0.18)",
+                  }}
+                />
+              )}
+              {/* Circle or plain number */}
+              <span
+                className="relative flex items-center justify-center text-[11px] leading-none"
+                style={{
+                  width: "26px",
+                  height: "26px",
+                  borderRadius: isEdge ? "50%" : undefined,
+                  background: isEdge ? "#FFD16A" : undefined,
+                  color: isEdge ? "#000" : inRange ? "#FFE9A0" : "#707070",
+                  fontWeight: isEdge ? 700 : inRange ? 500 : 400,
+                }}
+              >
+                {day}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

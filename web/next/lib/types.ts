@@ -3,6 +3,8 @@ import { Timestamp } from "firebase/firestore";
 export interface Trip {
   id: string;
   name: string;
+  status?: "draft" | "planned" | "active" | "past"; // optional for backward compatibility
+  is_tentative_dates?: boolean;
   start_date: string; // "2026-03-15"
   end_date: string;
   cover_url?: string;
