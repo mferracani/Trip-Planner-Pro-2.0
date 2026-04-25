@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0A1E48"/><stop offset="100%" stop-color="#1A3A7A"/></linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0A1428"/><stop offset="100%" stop-color="#060C1A"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#sky)"/>
+  <circle cx="200" cy="65" r="28" fill="#F5D020" opacity="0.85"/>
+  <circle cx="200" cy="65" r="18" fill="#F5D020"/>
+  <line x1="200" y1="30" x2="200" y2="20" stroke="#F5D020" stroke-width="3" opacity="0.8"/>
+  <line x1="200" y1="100" x2="200" y2="110" stroke="#F5D020" stroke-width="3" opacity="0.8"/>
+  <line x1="165" y1="65" x2="155" y2="65" stroke="#F5D020" stroke-width="3" opacity="0.8"/>
+  <line x1="235" y1="65" x2="245" y2="65" stroke="#F5D020" stroke-width="3" opacity="0.8"/>
+  <line x1="175" y1="40" x2="168" y2="33" stroke="#F5D020" stroke-width="2.5" opacity="0.7"/>
+  <line x1="225" y1="90" x2="232" y2="97" stroke="#F5D020" stroke-width="2.5" opacity="0.7"/>
+  <line x1="225" y1="40" x2="232" y2="33" stroke="#F5D020" stroke-width="2.5" opacity="0.7"/>
+  <line x1="175" y1="90" x2="168" y2="97" stroke="#F5D020" stroke-width="2.5" opacity="0.7"/>
+  <rect x="0" y="150" width="50" height="100" fill="#0A1830"/>
+  <rect x="45" y="165" width="40" height="85" fill="#081428"/>
+  <rect x="80" y="140" width="35" height="110" fill="#0A1830"/>
+  <rect x="110" y="158" width="45" height="92" fill="#081428"/>
+  <rect x="240" y="155" width="45" height="95" fill="#081428"/>
+  <rect x="280" y="140" width="35" height="110" fill="#0A1830"/>
+  <rect x="310" y="162" width="40" height="88" fill="#081428"/>
+  <rect x="345" y="148" width="55" height="102" fill="#0A1830"/>
+  <polygon points="190,55 210,55 206,220 194,220" fill="#0C1E40"/>
+  <polygon points="192,55 208,55 207,80 193,80" fill="#0E2248"/>
+  <polygon points="197,45 200,35 203,45" fill="#0C1E40"/>
+  <rect x="150" y="220" width="100" height="30" fill="url(#ground)"/>
+  <rect x="170" y="205" width="3" height="15" fill="#F5D020" opacity="0.5"/>
+  <rect x="228" y="205" width="3" height="15" fill="#F5D020" opacity="0.5"/>
+  <rect x="0" y="225" width="400" height="25" fill="#060C1A"/>
+  <rect x="12" y="162" width="4" height="4" fill="#FFE566" opacity="0.7"/>
+  <rect x="88" y="152" width="4" height="4" fill="#FFE566" opacity="0.8"/>
+  <rect x="288" y="155" width="4" height="4" fill="#FFE566" opacity="0.7"/>
+</svg>

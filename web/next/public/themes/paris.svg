@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2C1A00"/><stop offset="60%" stop-color="#A0520A"/><stop offset="100%" stop-color="#C88020"/></linearGradient>
+    <linearGradient id="river" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1A3A6A"/><stop offset="100%" stop-color="#0E2248"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#sky)"/>
+  <rect x="0" y="155" width="80" height="95" fill="#1A0E00" opacity="0.8"/>
+  <rect x="70" y="140" width="60" height="110" fill="#1A0E00" opacity="0.8"/>
+  <rect x="260" y="150" width="60" height="100" fill="#1A0E00" opacity="0.8"/>
+  <rect x="310" y="130" width="90" height="120" fill="#1A0E00" opacity="0.8"/>
+  <polygon points="195,45 205,45 220,155 180,155" fill="#0D0800"/>
+  <polygon points="198,45 202,45 215,100 185,100" fill="#120A00"/>
+  <polygon points="192,155 208,155 213,175 187,175" fill="#0D0800"/>
+  <polygon points="187,175 213,175 222,195 178,195" fill="#0D0800"/>
+  <rect x="185" y="100" width="30" height="4" fill="#0D0800"/>
+  <rect x="188" y="135" width="24" height="4" fill="#0D0800"/>
+  <rect x="183" y="162" width="34" height="4" fill="#0D0800"/>
+  <rect x="178" y="185" width="44" height="4" fill="#0D0800"/>
+  <line x1="200" y1="45" x2="200" y2="22" stroke="#0D0800" stroke-width="2.5"/>
+  <path d="M0 210 C100 202 200 215 300 205 C350 200 380 210 400 206 L400 235 L0 235Z" fill="url(#river)"/>
+  <rect x="0" y="195" width="400" height="15" fill="#120A00"/>
+  <circle cx="200" cy="95" r="80" fill="#FF8C00" opacity="0.06"/>
+</svg>

@@ -15,6 +15,7 @@ import { AiParseModal } from "../AiParseModal";
 import { TripForm } from "../forms/TripForm";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, MapPin, MoreHorizontal, Plane } from "lucide-react";
+import { getTheme } from "@/lib/themes";
 
 type Tab = "calendar" | "list" | "items" | "costos";
 const TABS: Tab[] = ["calendar", "list", "items", "costos"];
@@ -434,6 +435,9 @@ function TripHeroCard({
 }) {
   const progress = paidPct;
   const heroImage = coverUrl || "/travel-hero.svg";
+  const theme = getTheme(coverUrl);
+  const gradFrom = theme?.gradientFrom ?? 'rgba(113,211,166,0.78)';
+  const gradMid  = theme?.gradientMid  ?? 'rgba(36,68,55,0.72)';
 
   return (
     <section className="overflow-hidden rounded-[16px] border border-[#2E4638] bg-[#15130F] shadow-[0_18px_70px_rgba(0,0,0,0.34)]">
@@ -447,7 +451,12 @@ function TripHeroCard({
             className="absolute inset-0 bg-cover bg-center opacity-55 md:hidden"
             style={{ backgroundImage: `url(${heroImage})` }}
           />
-          <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(113,211,166,0.78),rgba(36,68,55,0.72)_34%,rgba(13,13,13,0.98)_100%)] md:bg-[linear-gradient(115deg,rgba(113,211,166,0.54),rgba(36,68,55,0.58)_36%,rgba(13,13,13,0.98)_100%)]" />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `linear-gradient(115deg, ${gradFrom}, ${gradMid} 34%, rgba(13,13,13,0.98) 100%)`,
+            }}
+          />
           <div className="relative grid min-h-[190px] items-center gap-4 p-5 md:min-h-[150px] md:grid-cols-[minmax(210px,1.15fr)_128px_repeat(3,minmax(90px,112px))_minmax(130px,150px)] md:p-0">
             <div className="md:px-6">
               <span className="rounded-full bg-[#FFD16A]/18 px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-[#FFD16A]">
