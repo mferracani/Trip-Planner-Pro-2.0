@@ -878,6 +878,7 @@ function DayDetailSheet({
 }) {
   const [showPicker, setShowPicker] = useState(false);
   const [addingType, setAddingType] = useState<AddingType | null>(null);
+  const [editingCity, setEditingCity] = useState(false);
 
   function handleSaved() {
     setAddingType(null);
@@ -920,7 +921,10 @@ function DayDetailSheet({
               const sheetColor = cityColor(city);
               const sheetCode = detectCountryCode(city);
               return (
-                <div className="flex items-center gap-1.5 mt-1.5">
+                <button
+                  onClick={() => setEditingCity(true)}
+                  className="flex items-center gap-1.5 mt-1.5 press-feedback"
+                >
                   {sheetCode ? (
                     <span className="text-[15px] leading-none">{countryFlag(sheetCode)}</span>
                   ) : (
@@ -932,7 +936,8 @@ function DayDetailSheet({
                   >
                     {city.name}
                   </span>
-                </div>
+                  <span className="text-[10px] text-[#555]">✎</span>
+                </button>
               );
             })()}
           </div>
@@ -1013,6 +1018,17 @@ function DayDetailSheet({
       </div>
 
       {/* Forms — rendered via createPortal inside each component */}
+      {editingCity && city && (
+        <CityForm
+          tripId={trip.id}
+          tripStart={trip.start_date}
+          tripEnd={trip.end_date}
+          usedColors={cities.map((c) => c.color)}
+          existing={city}
+          onClose={() => setEditingCity(false)}
+          onSaved={handleSaved}
+        />
+      )}
       {addingType === "city" && (
         <CityForm
           tripId={trip.id}
