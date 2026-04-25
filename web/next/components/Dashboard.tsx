@@ -13,6 +13,7 @@ import { CreateTripModal } from "./CreateTripModal";
 import { TripCard } from "./TripCard";
 import { Plane, MapPin, DollarSign, CalendarDays, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { getTheme } from "@/lib/themes";
 
 type Filter = "all" | "future" | "active" | "past";
 
@@ -277,6 +278,10 @@ function HeroTripCard({
 
   const progress = isActive && dayNum ? Math.min(dayNum / totalDays, 1) : status === "future" ? 0.11 : 1;
 
+  const theme = getTheme(trip.cover_url);
+  const gradFrom = theme?.gradientFrom ?? "rgba(113,211,166,0.78)";
+  const gradMid  = theme?.gradientMid  ?? "rgba(36,68,55,0.72)";
+
   const [pressed, setPressed] = useState(false);
 
   return (
@@ -295,22 +300,27 @@ function HeroTripCard({
         }}
       >
         <div className="relative min-h-[320px] md:min-h-[280px] p-6 md:p-7 overflow-hidden">
+          {/* Theme SVG background */}
+          {trip.cover_url && (
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${trip.cover_url})`, opacity: 0.55 }}
+            />
+          )}
+
+          {/* Gradient overlay — dynamic per theme */}
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              background:
-                "radial-gradient(ellipse 82% 60% at 12% 0%, rgba(113,211,166,0.78), transparent 64%), linear-gradient(135deg, #71D3A6 0%, #244437 52%, #090806 100%)",
+              background: `linear-gradient(135deg, ${gradFrom} 0%, ${gradMid} 48%, rgba(9,8,6,0.98) 100%)`,
             }}
           />
-          <div className="absolute inset-0 opacity-[0.08] text-white text-[136px] md:text-[150px] font-black flex items-center justify-center rotate-[-18deg]">
-            ✈
-          </div>
 
-          {trip.cover_url && (
-            <div
-              className="absolute inset-0 bg-cover bg-center opacity-18 mix-blend-overlay"
-              style={{ backgroundImage: `url(${trip.cover_url})` }}
-            />
+          {/* Fallback watermark when no theme */}
+          {!trip.cover_url && (
+            <div className="absolute inset-0 opacity-[0.08] text-white text-[136px] md:text-[150px] font-black flex items-center justify-center rotate-[-18deg]">
+              ✈
+            </div>
           )}
 
           <div className="relative flex items-start justify-between">
