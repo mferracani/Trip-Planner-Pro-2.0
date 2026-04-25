@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="london4_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1A2028"/><stop offset="100%" stop-color="#283040"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#london4_sky)"/>
+  <!-- Big Ben silhouette barely visible (very low opacity) -->
+  <rect x="170" y="90" width="60" height="100" fill="#202830" opacity="0.45"/>
+  <rect x="180" y="70" width="40" height="22" fill="#202830" opacity="0.40"/>
+  <polygon points="180,70 200,45 220,70" fill="#202830" opacity="0.40"/>
+  <line x1="200" y1="45" x2="200" y2="28" stroke="#202830" stroke-width="3" opacity="0.35"/>
+  <!-- Thick fog layer mid-height -->
+  <rect x="0" y="115" width="400" height="55" fill="white" opacity="0.18"/>
+  <!-- Victorian rooftops foreground -->
+  <!-- Left row -->
+  <rect x="0" y="180" width="50" height="70" fill="#141C22"/>
+  <polygon points="0,180 25,162 50,180" fill="#1A2430"/>
+  <line x1="25" y1="162" x2="25" y2="145" stroke="#141C22" stroke-width="3"/>
+  <rect x="50" y="185" width="45" height="65" fill="#141C22"/>
+  <polygon points="50,185 72,165 95,185" fill="#1A2430"/>
+  <line x1="72" y1="165" x2="72" y2="148" stroke="#141C22" stroke-width="3"/>
+  <!-- Right row -->
+  <rect x="300" y="182" width="48" height="68" fill="#141C22"/>
+  <polygon points="300,182 324,160 348,182" fill="#1A2430"/>
+  <line x1="324" y1="160" x2="324" y2="142" stroke="#141C22" stroke-width="3"/>
+  <rect x="348" y="178" width="52" height="72" fill="#141C22"/>
+  <polygon points="348,178 374,156 400,178" fill="#1A2430"/>
+  <line x1="374" y1="156" x2="374" y2="138" stroke="#141C22" stroke-width="3"/>
+  <!-- Ground -->
+  <rect x="0" y="240" width="400" height="10" fill="#101820"/>
+</svg>

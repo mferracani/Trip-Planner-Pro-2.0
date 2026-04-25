@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="mountain3_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1A6AB8"/><stop offset="100%" stop-color="#4A9AE8"/></linearGradient>
+    <linearGradient id="mountain3_slope" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FFFEF8"/><stop offset="100%" stop-color="#D8E8F0"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#mountain3_sky)"/>
+  <!-- Background peaks -->
+  <polygon points="100,175 200,55 300,175" fill="#2878C8" opacity="0.5"/>
+  <polygon points="250,175 350,80 400,175" fill="#2878C8" opacity="0.4"/>
+  <polygon points="0,175 100,95 180,175" fill="#2878C8" opacity="0.4"/>
+  <!-- Main snowy peak center -->
+  <polygon points="200,30 330,180 70,180" fill="#1A7A30"/>
+  <!-- Snow cap -->
+  <polygon points="200,30 245,95 200,88 155,95" fill="url(#mountain3_slope)"/>
+  <!-- Green slopes -->
+  <rect x="0" y="180" width="400" height="70" fill="#1A7A30"/>
+  <!-- Mid-ground pines -->
+  <polygon points="28,180 38,155 48,180" fill="#0D4018"/>
+  <polygon points="48,180 56,160 64,180" fill="#0D4018"/>
+  <polygon points="12,180 20,162 28,180" fill="#0D4018"/>
+  <polygon points="340,180 350,152 360,180" fill="#0D4018"/>
+  <polygon points="358,180 367,158 376,180" fill="#0D4018"/>
+  <polygon points="325,180 333,160 341,180" fill="#0D4018"/>
+  <!-- Alpine lake: teal ellipse center-bottom -->
+  <ellipse cx="200" cy="222" rx="65" ry="18" fill="#44AAAA" opacity="0.85"/>
+  <ellipse cx="200" cy="222" rx="55" ry="13" fill="#55CCCC" opacity="0.5"/>
+  <!-- Lake reflection of peak -->
+  <polygon points="190,230 200,208 210,230" fill="#1A5A80" opacity="0.3"/>
+</svg>

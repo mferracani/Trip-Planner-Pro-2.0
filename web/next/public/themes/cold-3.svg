@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="cold3_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2A1040"/><stop offset="55%" stop-color="#C87880"/><stop offset="100%" stop-color="#E8B860"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#cold3_sky)"/>
+  <!-- Snow-covered bank top -->
+  <path d="M0 155 C80 148 180 158 300 150 C360 146 390 153 400 150 L400 175 L0 175Z" fill="white" opacity="0.85"/>
+  <!-- Frozen lake: large pale blue ellipse -->
+  <ellipse cx="200" cy="200" rx="175" ry="52" fill="#B8D8F0"/>
+  <ellipse cx="200" cy="200" rx="155" ry="44" fill="#C8E4F8" opacity="0.7"/>
+  <!-- Ice cracks radiating from center -->
+  <line x1="200" y1="200" x2="145" y2="165" stroke="#6AA8CC" stroke-width="1" opacity="0.6"/>
+  <line x1="200" y1="200" x2="255" y2="168" stroke="#6AA8CC" stroke-width="1" opacity="0.55"/>
+  <line x1="200" y1="200" x2="200" y2="155" stroke="#6AA8CC" stroke-width="1" opacity="0.5"/>
+  <line x1="200" y1="200" x2="130" y2="195" stroke="#6AA8CC" stroke-width="1" opacity="0.5"/>
+  <line x1="200" y1="200" x2="270" y2="195" stroke="#6AA8CC" stroke-width="1" opacity="0.5"/>
+  <line x1="200" y1="200" x2="165" y2="235" stroke="#6AA8CC" stroke-width="1" opacity="0.4"/>
+  <line x1="200" y1="200" x2="240" y2="232" stroke="#6AA8CC" stroke-width="1" opacity="0.4"/>
+  <!-- Snow bank at bottom -->
+  <path d="M0 240 C70 232 160 245 280 236 C340 231 380 240 400 236 L400 250 L0 250Z" fill="white"/>
+</svg>

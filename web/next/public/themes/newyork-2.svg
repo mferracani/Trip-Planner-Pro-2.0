@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="newyork2_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#020510"/><stop offset="100%" stop-color="#060C22"/></linearGradient>
+    <linearGradient id="newyork2_water" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#030818"/><stop offset="100%" stop-color="#020510"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#newyork2_sky)"/>
+  <!-- Orange Manhattan glow on horizon -->
+  <rect x="0" y="145" width="400" height="10" fill="#FF6020" opacity="0.12"/>
+  <!-- East River water -->
+  <rect x="0" y="195" width="400" height="55" fill="url(#newyork2_water)"/>
+  <!-- Cable reflections in water: dotted lines -->
+  <line x1="148" y1="200" x2="148" y2="250" stroke="#1A2838" stroke-width="1" stroke-dasharray="3,4" opacity="0.5"/>
+  <line x1="252" y1="200" x2="252" y2="250" stroke="#1A2838" stroke-width="1" stroke-dasharray="3,4" opacity="0.5"/>
+  <!-- Left Gothic tower -->
+  <rect x="118" y="100" width="50" height="100" fill="#0A1428"/>
+  <!-- Pointed arch left tower top -->
+  <polygon points="118,100 143,68 168,100" fill="#0A1428"/>
+  <path d="M130 90 Q143 75 156 90" stroke="#1A2840" stroke-width="2" fill="none"/>
+  <!-- Right Gothic tower -->
+  <rect x="232" y="100" width="50" height="100" fill="#0A1428"/>
+  <!-- Pointed arch right tower top -->
+  <polygon points="232,100 257,68 282,100" fill="#0A1428"/>
+  <path d="M244 90 Q257 75 270 90" stroke="#1A2840" stroke-width="2" fill="none"/>
+  <!-- Road deck -->
+  <rect x="118" y="170" width="164" height="10" fill="#0A1428"/>
+  <!-- Suspension cables -->
+  <path d="M143 70 Q200 155 257 70" stroke="#1A2838" stroke-width="1.5" fill="none"/>
+  <path d="M143 70 C143 70 160 188 200 192" stroke="#1A2838" stroke-width="1" fill="none"/>
+  <path d="M257 70 C257 70 240 188 200 192" stroke="#1A2838" stroke-width="1" fill="none"/>
+  <!-- Stars -->
+  <circle cx="40" cy="20" r="1" fill="white" opacity="0.5"/>
+  <circle cx="350" cy="15" r="1" fill="white" opacity="0.45"/>
+  <circle cx="100" cy="35" r="1" fill="white" opacity="0.4"/>
+  <circle cx="310" cy="40" r="1" fill="white" opacity="0.4"/>
+</svg>

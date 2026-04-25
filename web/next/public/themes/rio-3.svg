@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="rio3_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0066AA"/><stop offset="100%" stop-color="#55AAEE"/></linearGradient>
+    <linearGradient id="rio3_ocean" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#006888"/><stop offset="100%" stop-color="#00455A"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#rio3_sky)"/>
+  <!-- Ocean -->
+  <rect x="0" y="110" width="400" height="70" fill="url(#rio3_ocean)"/>
+  <!-- Sandy beach strip -->
+  <rect x="0" y="180" width="400" height="30" fill="#E8D080"/>
+  <!-- Calçada mosaic pavement (promenade) - wave pattern black/white -->
+  <rect x="0" y="210" width="400" height="40" fill="#111111"/>
+  <!-- White wave shapes on pavement -->
+  <path d="M0 218 C30 212 60 224 90 218 C120 212 150 224 180 218 C210 212 240 224 270 218 C300 212 330 224 360 218 C390 212 400 220 400 220 L400 228 C370 222 340 234 310 228 C280 222 250 234 220 228 C190 222 160 234 130 228 C100 222 70 234 40 228 C10 222 0 230 0 230Z" fill="#EEEEEE" opacity="0.8"/>
+  <path d="M0 232 C30 226 60 238 90 232 C120 226 150 238 180 232 C210 226 240 238 270 232 C300 226 330 238 360 232 C390 226 400 234 400 234 L400 242 C370 236 340 248 310 242 C280 236 250 248 220 242 C190 236 160 248 130 242 C100 236 70 248 40 242 C10 236 0 244 0 244Z" fill="#EEEEEE" opacity="0.7"/>
+  <!-- Sugarloaf silhouette in far background -->
+  <circle cx="360" cy="108" r="30" fill="#1A3A22" opacity="0.7"/>
+  <path d="M335 140 C340 122 360 108 360 108 C360 108 380 122 385 140Z" fill="#1A3A22" opacity="0.7"/>
+  <!-- Wave on ocean -->
+  <path d="M0 125 C60 118 140 130 220 122 C300 114 360 126 400 120" stroke="white" stroke-width="1.5" fill="none" opacity="0.4"/>
+</svg>

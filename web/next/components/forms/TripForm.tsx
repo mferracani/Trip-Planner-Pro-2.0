@@ -20,7 +20,57 @@ interface Props {
 const NATURE_THEMES = TRIP_THEMES.filter(t => t.category === 'nature');
 const CITY_THEMES   = TRIP_THEMES.filter(t => t.category === 'city');
 
-function ThemeGrid({
+function groupByFamily(themes: TripTheme[]): [string, TripTheme[]][] {
+  const map = new Map<string, TripTheme[]>();
+  for (const t of themes) {
+    if (!map.has(t.groupId)) map.set(t.groupId, []);
+    map.get(t.groupId)!.push(t);
+  }
+  return Array.from(map.entries());
+}
+
+function ThemeCard({
+  theme,
+  selected,
+  onSelect,
+}: {
+  theme: TripTheme;
+  selected: string;
+  onSelect: (coverUrl: string) => void;
+}) {
+  const isSelected = selected === theme.coverUrl;
+  // Extract roman numeral suffix or show base indicator
+  const labelParts = theme.label.split(' ');
+  const suffix = labelParts.length > 1 ? labelParts[labelParts.length - 1] : theme.emoji;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(theme.coverUrl)}
+      className="relative overflow-hidden rounded-[8px] aspect-video transition-all"
+      style={{
+        border: isSelected ? '2px solid #FFFFFF' : '2px solid transparent',
+        opacity: isSelected ? 1 : 0.55,
+      }}
+    >
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url(${theme.coverUrl})` }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `linear-gradient(160deg, ${theme.gradientFrom}, rgba(13,13,13,0.7) 100%)`,
+        }}
+      />
+      <div className="relative flex flex-col items-center justify-end h-full pb-1">
+        <span className="text-white text-[9px] font-bold leading-none opacity-90">{suffix}</span>
+      </div>
+    </button>
+  );
+}
+
+function ThemeSection({
   themes,
   selected,
   onSelect,
@@ -30,35 +80,25 @@ function ThemeGrid({
   onSelect: (coverUrl: string) => void;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-2">
-      {themes.map(theme => {
-        const isSelected = selected === theme.coverUrl;
+    <div className="space-y-2.5">
+      {groupByFamily(themes).map(([groupId, variants]) => {
+        const baseLabel = variants[0].label.replace(/ (II|III|IV)$/, '');
         return (
-          <button
-            key={theme.id}
-            type="button"
-            onClick={() => onSelect(theme.coverUrl)}
-            className="relative overflow-hidden rounded-[10px] aspect-video transition-all"
-            style={{
-              border: isSelected ? '2px solid #FFFFFF' : '2px solid transparent',
-              opacity: isSelected ? 1 : 0.5,
-            }}
-          >
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${theme.coverUrl})` }}
-            />
-            <div
-              className="absolute inset-0"
-              style={{
-                background: `linear-gradient(160deg, ${theme.gradientFrom}, rgba(13,13,13,0.7) 100%)`,
-              }}
-            />
-            <div className="relative flex flex-col items-center justify-between h-full px-1 pt-2 pb-1.5">
-              <span className="text-[18px] leading-none">{theme.emoji}</span>
-              <span className="text-white text-[10px] font-semibold leading-none">{theme.label}</span>
+          <div key={groupId}>
+            <p className="text-[10px] text-[#555] uppercase tracking-wide mb-1">
+              {baseLabel}
+            </p>
+            <div className="grid grid-cols-4 gap-1.5">
+              {variants.map(theme => (
+                <ThemeCard
+                  key={theme.id}
+                  theme={theme}
+                  selected={selected}
+                  onSelect={onSelect}
+                />
+              ))}
             </div>
-          </button>
+          </div>
         );
       })}
     </div>
@@ -155,12 +195,12 @@ export function TripForm({ trip, onClose, onSaved }: Props) {
         <p className="text-[11px] font-semibold text-[#707070] uppercase tracking-wide mb-1.5">
           Naturaleza
         </p>
-        <ThemeGrid themes={NATURE_THEMES} selected={coverUrl} onSelect={setCoverUrl} />
+        <ThemeSection themes={NATURE_THEMES} selected={coverUrl} onSelect={setCoverUrl} />
 
         <p className="text-[11px] font-semibold text-[#707070] uppercase tracking-wide mt-3 mb-1.5">
           Ciudades
         </p>
-        <ThemeGrid themes={CITY_THEMES} selected={coverUrl} onSelect={setCoverUrl} />
+        <ThemeSection themes={CITY_THEMES} selected={coverUrl} onSelect={setCoverUrl} />
       </div>
     </FormSheet>
   );

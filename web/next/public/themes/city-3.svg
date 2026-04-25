@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <rect width="400" height="250" fill="#020408"/>
+  <!-- Buildings -->
+  <rect x="0" y="95" width="40" height="155" fill="#060C18"/>
+  <rect x="35" y="115" width="30" height="135" fill="#04090F"/>
+  <rect x="60" y="80" width="28" height="170" fill="#060C18"/>
+  <rect x="83" y="105" width="32" height="145" fill="#04090F"/>
+  <rect x="110" y="65" width="25" height="185" fill="#060C18"/>
+  <rect x="130" y="90" width="30" height="160" fill="#04090F"/>
+  <rect x="155" y="50" width="38" height="200" fill="#070D1A"/>
+  <rect x="188" y="78" width="28" height="172" fill="#04090F"/>
+  <rect x="212" y="58" width="32" height="192" fill="#060C18"/>
+  <rect x="240" y="85" width="28" height="165" fill="#04090F"/>
+  <rect x="263" y="68" width="38" height="182" fill="#060C18"/>
+  <rect x="296" y="50" width="42" height="200" fill="#070D1A"/>
+  <rect x="333" y="82" width="30" height="168" fill="#04090F"/>
+  <rect x="358" y="65" width="42" height="185" fill="#060C18"/>
+  <!-- Neon windows: pink -->
+  <rect x="15" y="108" width="5" height="4" fill="#FF2080" opacity="0.9"/>
+  <rect x="8" y="125" width="5" height="4" fill="#FF2080" opacity="0.75"/>
+  <rect x="68" y="92" width="4" height="4" fill="#FF2080" opacity="0.85"/>
+  <rect x="165" y="65" width="5" height="4" fill="#FF2080" opacity="0.9"/>
+  <rect x="220" y="72" width="5" height="4" fill="#FF2080" opacity="0.8"/>
+  <rect x="305" y="62" width="5" height="4" fill="#FF2080" opacity="0.85"/>
+  <!-- Neon windows: cyan -->
+  <rect x="25" y="118" width="5" height="4" fill="#00FFEE" opacity="0.8"/>
+  <rect x="90" y="118" width="4" height="4" fill="#00FFEE" opacity="0.85"/>
+  <rect x="145" y="102" width="5" height="4" fill="#00FFEE" opacity="0.75"/>
+  <rect x="198" y="90" width="4" height="4" fill="#00FFEE" opacity="0.9"/>
+  <rect x="275" y="80" width="5" height="4" fill="#00FFEE" opacity="0.8"/>
+  <rect x="370" y="78" width="5" height="4" fill="#00FFEE" opacity="0.75"/>
+  <!-- Neon windows: purple -->
+  <rect x="120" y="78" width="5" height="4" fill="#CC00FF" opacity="0.85"/>
+  <rect x="180" y="62" width="4" height="4" fill="#CC00FF" opacity="0.80"/>
+  <rect x="248" y="95" width="4" height="4" fill="#CC00FF" opacity="0.85"/>
+  <rect x="340" y="95" width="5" height="4" fill="#CC00FF" opacity="0.75"/>
+  <!-- Rain: thin vertical lines -->
+  <line x1="30" y1="0" x2="26" y2="80" stroke="white" stroke-width="0.5" opacity="0.28"/>
+  <line x1="80" y1="0" x2="76" y2="70" stroke="white" stroke-width="0.5" opacity="0.25"/>
+  <line x1="140" y1="0" x2="136" y2="90" stroke="white" stroke-width="0.5" opacity="0.30"/>
+  <line x1="200" y1="0" x2="196" y2="85" stroke="white" stroke-width="0.5" opacity="0.28"/>
+  <line x1="260" y1="0" x2="256" y2="75" stroke="white" stroke-width="0.5" opacity="0.25"/>
+  <line x1="320" y1="0" x2="316" y2="88" stroke="white" stroke-width="0.5" opacity="0.28"/>
+  <line x1="380" y1="0" x2="376" y2="72" stroke="white" stroke-width="0.5" opacity="0.25"/>
+  <line x1="55" y1="0" x2="51" y2="95" stroke="white" stroke-width="0.5" opacity="0.22"/>
+  <line x1="170" y1="0" x2="166" y2="82" stroke="white" stroke-width="0.5" opacity="0.22"/>
+  <line x1="350" y1="0" x2="346" y2="78" stroke="white" stroke-width="0.5" opacity="0.22"/>
+  <!-- Ground puddle reflections: neon splotches -->
+  <ellipse cx="25" cy="245" rx="18" ry="4" fill="#FF2080" opacity="0.25"/>
+  <ellipse cx="100" cy="242" rx="14" ry="3" fill="#00FFEE" opacity="0.22"/>
+  <ellipse cx="180" cy="248" rx="20" ry="4" fill="#CC00FF" opacity="0.20"/>
+  <ellipse cx="280" cy="244" rx="16" ry="3.5" fill="#FF2080" opacity="0.22"/>
+  <ellipse cx="360" cy="246" rx="15" ry="3" fill="#00FFEE" opacity="0.20"/>
+</svg>

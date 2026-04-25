@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="desert2_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#C86820"/><stop offset="100%" stop-color="#FFB84A"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#desert2_sky)"/>
+  <!-- Dune 1 (back, lighter) -->
+  <path d="M-20 250 C40 180 120 155 200 175 C280 195 340 170 420 195 L420 250Z" fill="#C89820" opacity="0.6"/>
+  <!-- Dune 2 (mid) shadow side -->
+  <path d="M-20 250 C20 210 80 185 160 195 C200 200 230 195 260 188 L260 250Z" fill="#B8901A"/>
+  <!-- Dune 2 (mid) light side -->
+  <path d="M260 188 C300 178 360 185 420 200 L420 250 L260 250Z" fill="#DEB840"/>
+  <!-- Dune 3 (front) -->
+  <path d="M-20 250 C50 235 130 218 210 228 C290 238 360 222 420 232 L420 250Z" fill="#DEB840"/>
+  <!-- Dune 3 shadow -->
+  <path d="M-20 250 C30 244 90 238 150 242 L150 250Z" fill="#B8901A" opacity="0.6"/>
+</svg>

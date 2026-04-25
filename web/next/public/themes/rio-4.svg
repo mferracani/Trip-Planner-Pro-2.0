@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="rio4_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#080410"/><stop offset="100%" stop-color="#200830"/></linearGradient>
+    <linearGradient id="rio4_fan1" x1="0.5" y1="1" x2="0.5" y2="0"><stop offset="0%" stop-color="#FF2080"/><stop offset="100%" stop-color="#FF60A0" stop-opacity="0.3"/></linearGradient>
+    <linearGradient id="rio4_fan2" x1="0.5" y1="1" x2="0.5" y2="0"><stop offset="0%" stop-color="#FF6010"/><stop offset="100%" stop-color="#FF9040" stop-opacity="0.3"/></linearGradient>
+    <linearGradient id="rio4_fan3" x1="0.5" y1="1" x2="0.5" y2="0"><stop offset="0%" stop-color="#FFD010"/><stop offset="100%" stop-color="#FFEE60" stop-opacity="0.3"/></linearGradient>
+    <linearGradient id="rio4_fan4" x1="0.5" y1="1" x2="0.5" y2="0"><stop offset="0%" stop-color="#10CC40"/><stop offset="100%" stop-color="#50EE80" stop-opacity="0.3"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#rio4_sky)"/>
+  <!-- Stars -->
+  <circle cx="30" cy="18" r="1" fill="white" opacity="0.6"/>
+  <circle cx="100" cy="10" r="1" fill="white" opacity="0.5"/>
+  <circle cx="300" cy="15" r="1.5" fill="white" opacity="0.6"/>
+  <circle cx="370" cy="25" r="1" fill="white" opacity="0.5"/>
+  <!-- Carnival headdress: large arching fan shapes from bottom center -->
+  <!-- Fan 1: pink (left outer) -->
+  <polygon points="200,250 55,60 85,45" fill="url(#rio4_fan1)" opacity="0.92"/>
+  <!-- Fan 2: orange (left) -->
+  <polygon points="200,250 95,55 130,38" fill="url(#rio4_fan2)" opacity="0.90"/>
+  <!-- Fan 3: yellow (center-left) -->
+  <polygon points="200,250 140,42 175,30" fill="url(#rio4_fan3)" opacity="0.88"/>
+  <!-- Fan 4: green (center-right) -->
+  <polygon points="200,250 225,30 260,42" fill="url(#rio4_fan4)" opacity="0.88"/>
+  <!-- Fan 5: orange (right) -->
+  <polygon points="200,250 270,38 305,55" fill="url(#rio4_fan2)" opacity="0.90"/>
+  <!-- Fan 6: pink (right outer) -->
+  <polygon points="200,250 315,45 345,60" fill="url(#rio4_fan1)" opacity="0.92"/>
+  <!-- Gold sequin dots scattered -->
+  <circle cx="120" cy="80" r="2.5" fill="#FFD700" opacity="0.85"/>
+  <circle cx="155" cy="62" r="2" fill="#FFD700" opacity="0.80"/>
+  <circle cx="175" cy="50" r="2.5" fill="#FFD700" opacity="0.90"/>
+  <circle cx="200" cy="45" r="3" fill="#FFD700" opacity="0.95"/>
+  <circle cx="225" cy="50" r="2.5" fill="#FFD700" opacity="0.90"/>
+  <circle cx="248" cy="62" r="2" fill="#FFD700" opacity="0.80"/>
+  <circle cx="280" cy="80" r="2.5" fill="#FFD700" opacity="0.85"/>
+  <circle cx="100" cy="100" r="2" fill="#FFD700" opacity="0.70"/>
+  <circle cx="300" cy="100" r="2" fill="#FFD700" opacity="0.70"/>
+  <circle cx="140" cy="115" r="2" fill="#FFD700" opacity="0.65"/>
+  <circle cx="260" cy="115" r="2" fill="#FFD700" opacity="0.65"/>
+  <!-- Samba dancer silhouette: abstract curved body outline at center bottom -->
+  <ellipse cx="200" cy="232" rx="14" ry="18" fill="#0C0415"/>
+  <circle cx="200" cy="210" r="9" fill="#0C0415"/>
+  <!-- Arms raised -->
+  <path d="M190 215 C175 205 168 195 172 185" stroke="#0C0415" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M210 215 C225 205 232 195 228 185" stroke="#0C0415" stroke-width="5" fill="none" stroke-linecap="round"/>
+</svg>

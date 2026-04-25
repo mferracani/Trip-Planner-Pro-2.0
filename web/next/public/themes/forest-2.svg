@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="forest2_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3A1200"/><stop offset="100%" stop-color="#C05010"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#forest2_sky)"/>
+  <!-- Background trees -->
+  <polygon points="20,200 36,145 52,200" fill="#A82010" opacity="0.6"/>
+  <polygon points="55,200 72,138 89,200" fill="#D4600A" opacity="0.6"/>
+  <polygon points="90,200 108,150 126,200" fill="#E8900A" opacity="0.6"/>
+  <polygon points="310,200 328,145 346,200" fill="#A82010" opacity="0.6"/>
+  <polygon points="345,200 362,140 379,200" fill="#D4600A" opacity="0.6"/>
+  <!-- Main foreground trees -->
+  <polygon points="60,200 82,120 104,200" fill="#D4600A"/>
+  <polygon points="110,200 135,108 160,200" fill="#E8900A"/>
+  <polygon points="165,200 190,95 215,200" fill="#A82010"/>
+  <polygon points="220,200 245,110 270,200" fill="#D4600A"/>
+  <polygon points="275,200 298,118 321,200" fill="#E8900A"/>
+  <polygon points="325,200 348,125 371,200" fill="#A82010"/>
+  <!-- Ground dark brown -->
+  <rect x="0" y="200" width="400" height="50" fill="#2A1005"/>
+  <!-- Fallen leaves: tiny ellipses scattered -->
+  <ellipse cx="45" cy="208" rx="5" ry="3" fill="#D4600A" opacity="0.7" transform="rotate(20 45 208)"/>
+  <ellipse cx="140" cy="215" rx="4" ry="2.5" fill="#E8900A" opacity="0.6" transform="rotate(-15 140 215)"/>
+  <ellipse cx="230" cy="210" rx="5" ry="3" fill="#A82010" opacity="0.7" transform="rotate(35 230 210)"/>
+  <ellipse cx="310" cy="220" rx="4" ry="2.5" fill="#D4600A" opacity="0.6" transform="rotate(-25 310 220)"/>
+  <ellipse cx="370" cy="212" rx="5" ry="3" fill="#E8900A" opacity="0.5" transform="rotate(10 370 212)"/>
+  <ellipse cx="195" cy="225" rx="4" ry="2" fill="#A82010" opacity="0.6" transform="rotate(-40 195 225)"/>
+</svg>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="ocean2_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1A6AB8"/><stop offset="100%" stop-color="#66AAEE"/></linearGradient>
+    <linearGradient id="ocean2_wave" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0088CC"/><stop offset="100%" stop-color="#005A9A"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#ocean2_sky)"/>
+  <!-- Background smaller wave -->
+  <path d="M0 155 C60 135 140 160 220 140 C300 120 360 145 400 132 L400 200 L0 200Z" fill="#0066AA" opacity="0.6"/>
+  <!-- Main cresting wave -->
+  <path d="M0 175 C50 145 120 170 200 148 C270 130 330 155 400 140 L400 250 L0 250Z" fill="url(#ocean2_wave)"/>
+  <!-- White foam top on wave -->
+  <path d="M0 175 C50 145 120 170 200 148 C270 130 330 155 400 140" stroke="white" stroke-width="4" fill="none" opacity="0.85" stroke-linecap="round"/>
+  <path d="M10 172 C55 142 125 167 205 146 C275 128 335 153 400 138" stroke="white" stroke-width="2" fill="none" opacity="0.45"/>
+  <!-- Spray dots -->
+  <circle cx="80" cy="160" r="2.5" fill="white" opacity="0.75"/>
+  <circle cx="95" cy="155" r="2" fill="white" opacity="0.65"/>
+  <circle cx="110" cy="162" r="2" fill="white" opacity="0.70"/>
+  <circle cx="200" cy="138" r="2.5" fill="white" opacity="0.80"/>
+  <circle cx="215" cy="133" r="2" fill="white" opacity="0.65"/>
+  <circle cx="310" cy="148" r="2" fill="white" opacity="0.70"/>
+  <circle cx="325" cy="142" r="2.5" fill="white" opacity="0.75"/>
+  <circle cx="340" cy="150" r="2" fill="white" opacity="0.60"/>
+</svg>

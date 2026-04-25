@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="paris4_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#08041A"/><stop offset="65%" stop-color="#D07020"/><stop offset="100%" stop-color="#E89040"/></linearGradient>
+    <linearGradient id="paris4_water" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#080410"/><stop offset="100%" stop-color="#040208"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#paris4_sky)"/>
+  <!-- Notre-Dame silhouette in background -->
+  <!-- Rectangular facade -->
+  <rect x="152" y="115" width="96" height="60" fill="#0A0408"/>
+  <!-- Two towers -->
+  <rect x="152" y="78" width="26" height="37" fill="#0A0408"/>
+  <rect x="222" y="78" width="26" height="37" fill="#0A0408"/>
+  <!-- Central spire (thin vertical from center) -->
+  <line x1="200" y1="115" x2="200" y2="52" stroke="#0A0408" stroke-width="3"/>
+  <!-- Bridge stone arch -->
+  <path d="M80 215 Q200 185 320 215" stroke="#8A7860" stroke-width="10" fill="none"/>
+  <rect x="80" y="215" width="240" height="8" fill="#8A7860"/>
+  <!-- Dark water -->
+  <rect x="0" y="210" width="400" height="40" fill="url(#paris4_water)"/>
+  <!-- Orange reflection stripe -->
+  <rect x="160" y="212" width="80" height="35" fill="#E89040" opacity="0.14"/>
+  <rect x="175" y="212" width="50" height="35" fill="#F0A040" opacity="0.10"/>
+  <!-- Ground / quay -->
+  <rect x="0" y="205" width="400" height="8" fill="#2A1808"/>
+  <!-- Left buildings -->
+  <rect x="0" y="140" width="55" height="70" fill="#0A0408"/>
+  <rect x="0" y="155" width="35" height="55" fill="#080308"/>
+  <!-- Right buildings -->
+  <rect x="350" y="138" width="50" height="72" fill="#0A0408"/>
+  <rect x="330" y="150" width="40" height="60" fill="#080308"/>
+</svg>

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <rect width="400" height="250" fill="#020408"/>
+  <!-- Tall buildings close together -->
+  <rect x="0" y="40" width="35" height="210" fill="#040810"/>
+  <rect x="30" y="60" width="28" height="190" fill="#030608"/>
+  <rect x="53" y="30" width="32" height="220" fill="#040810"/>
+  <rect x="80" y="55" width="25" height="195" fill="#030608"/>
+  <rect x="100" y="20" width="38" height="230" fill="#050912"/>
+  <rect x="133" y="45" width="28" height="205" fill="#030608"/>
+  <rect x="156" y="10" width="40" height="240" fill="#040810"/>
+  <rect x="191" y="38" width="28" height="212" fill="#030608"/>
+  <rect x="214" y="18" width="35" height="232" fill="#040810"/>
+  <rect x="244" y="42" width="30" height="208" fill="#030608"/>
+  <rect x="269" y="25" width="38" height="225" fill="#050912"/>
+  <rect x="302" y="50" width="32" height="200" fill="#030608"/>
+  <rect x="329" y="15" width="40" height="235" fill="#040810"/>
+  <rect x="364" y="40" width="36" height="210" fill="#030608"/>
+  <!-- Yellow windows -->
+  <rect x="5" y="55" width="5" height="4" fill="#FFD700" opacity="0.9"/>
+  <rect x="12" y="68" width="5" height="4" fill="#FFD700" opacity="0.8"/>
+  <rect x="58" y="42" width="5" height="4" fill="#FFD700" opacity="0.9"/>
+  <rect x="65" y="55" width="5" height="4" fill="#FFD700" opacity="0.8"/>
+  <rect x="107" y="32" width="5" height="4" fill="#FFD700" opacity="0.9"/>
+  <rect x="115" y="48" width="5" height="4" fill="#FFD700" opacity="0.8"/>
+  <rect x="163" y="22" width="5" height="4" fill="#FFD700" opacity="0.9"/>
+  <rect x="171" y="38" width="5" height="4" fill="#FFD700" opacity="0.8"/>
+  <rect x="220" y="28" width="5" height="4" fill="#FFD700" opacity="0.9"/>
+  <rect x="275" y="38" width="5" height="4" fill="#FFD700" opacity="0.85"/>
+  <rect x="335" y="28" width="5" height="4" fill="#FFD700" opacity="0.9"/>
+  <!-- Large sign mockups on buildings: yellow, red, cyan -->
+  <rect x="105" y="100" width="32" height="18" fill="#FFD700" opacity="0.85"/>
+  <rect x="162" y="85" width="36" height="22" fill="#FF2020" opacity="0.80"/>
+  <rect x="215" y="95" width="30" height="16" fill="#00FFFF" opacity="0.75"/>
+  <rect x="270" y="88" width="34" height="20" fill="#FFD700" opacity="0.80"/>
+  <rect x="330" y="78" width="32" height="18" fill="#FF2020" opacity="0.78"/>
+  <!-- Rain-wet street at bottom -->
+  <rect x="0" y="235" width="400" height="15" fill="#040810"/>
+  <!-- Color reflections in wet street -->
+  <rect x="100" y="236" width="32" height="12" fill="#FFD700" opacity="0.20"/>
+  <rect x="158" y="237" width="36" height="11" fill="#FF2020" opacity="0.18"/>
+  <rect x="210" y="236" width="30" height="12" fill="#00FFFF" opacity="0.16"/>
+  <rect x="265" y="237" width="34" height="11" fill="#FFD700" opacity="0.18"/>
+  <!-- Pink windows -->
+  <rect x="35" y="72" width="4" height="4" fill="#FF2080" opacity="0.75"/>
+  <rect x="84" y="62" width="4" height="4" fill="#FF2080" opacity="0.70"/>
+  <rect x="138" y="52" width="4" height="4" fill="#FF2080" opacity="0.75"/>
+  <rect x="198" y="45" width="4" height="4" fill="#FF2080" opacity="0.70"/>
+  <rect x="308" y="58" width="4" height="4" fill="#FF2080" opacity="0.72"/>
+</svg>

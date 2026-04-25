@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="desert3_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4A1800"/><stop offset="100%" stop-color="#A04010"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#desert3_sky)"/>
+  <!-- Background mesas/buttes -->
+  <polygon points="280,190 310,100 340,100 370,190" fill="#8B2010" opacity="0.6"/>
+  <polygon points="20,190 55,120 80,120 110,190" fill="#8B2010" opacity="0.55"/>
+  <!-- Main foreground formations -->
+  <!-- Left butte -->
+  <polygon points="30,210 60,90 90,90 120,210" fill="#8B2010"/>
+  <rect x="60" y="88" width="30" height="8" fill="#A83018"/>
+  <!-- Center-left butte -->
+  <polygon points="100,210 130,118 155,118 182,210" fill="#A83018"/>
+  <rect x="130" y="116" width="25" height="6" fill="#C03820"/>
+  <!-- Center-right butte -->
+  <polygon points="220,210 250,105 278,105 305,210" fill="#8B2010"/>
+  <rect x="250" y="103" width="28" height="7" fill="#A83018"/>
+  <!-- Right butte -->
+  <polygon points="310,210 338,125 360,125 385,210" fill="#A83018"/>
+  <rect x="338" y="123" width="22" height="6" fill="#C03820"/>
+  <!-- Sandy floor -->
+  <rect x="0" y="210" width="400" height="40" fill="#D4A030"/>
+  <path d="M0 212 C80 208 180 216 300 210 C360 207 390 213 400 210" stroke="#B8901A" stroke-width="1.5" fill="none" opacity="0.5"/>
+</svg>

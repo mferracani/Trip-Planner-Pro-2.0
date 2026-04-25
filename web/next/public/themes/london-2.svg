@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="london2_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#020810"/><stop offset="100%" stop-color="#060E20"/></linearGradient>
+    <linearGradient id="london2_water" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#080C18"/><stop offset="100%" stop-color="#040810"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#london2_sky)"/>
+  <!-- Stars -->
+  <circle cx="40" cy="18" r="1" fill="white" opacity="0.5"/>
+  <circle cx="120" cy="10" r="1" fill="white" opacity="0.45"/>
+  <circle cx="290" cy="22" r="1" fill="white" opacity="0.5"/>
+  <!-- Thames water -->
+  <rect x="0" y="195" width="400" height="55" fill="url(#london2_water)"/>
+  <!-- Tower Bridge: two Gothic towers -->
+  <!-- Left tower -->
+  <rect x="118" y="115" width="42" height="90" fill="#1A2838"/>
+  <!-- Pointed top left -->
+  <polygon points="118,115 139,88 160,115" fill="#1A2838"/>
+  <!-- Right tower -->
+  <rect x="240" y="115" width="42" height="90" fill="#1A2838"/>
+  <!-- Pointed top right -->
+  <polygon points="240,115 261,88 282,115" fill="#1A2838"/>
+  <!-- Bridge road (horizontal rect) -->
+  <rect x="118" y="168" width="164" height="12" fill="#1A2838"/>
+  <!-- Upper walkway -->
+  <rect x="140" y="138" width="120" height="8" fill="#1A2838"/>
+  <!-- Suspension cables left tower to deck -->
+  <line x1="139" y1="90" x2="120" y2="168" stroke="#2A3848" stroke-width="1.5"/>
+  <line x1="139" y1="90" x2="200" y2="168" stroke="#2A3848" stroke-width="1.5"/>
+  <!-- Suspension cables right tower to deck -->
+  <line x1="261" y1="90" x2="280" y2="168" stroke="#2A3848" stroke-width="1.5"/>
+  <line x1="261" y1="90" x2="200" y2="168" stroke="#2A3848" stroke-width="1.5"/>
+  <!-- Reflection in water -->
+  <rect x="118" y="198" width="42" height="35" fill="#1A2838" opacity="0.4"/>
+  <rect x="240" y="198" width="42" height="35" fill="#1A2838" opacity="0.4"/>
+  <rect x="118" y="198" width="164" height="8" fill="#1A2838" opacity="0.3"/>
+  <!-- Blue steel accent lights -->
+  <circle cx="139" cy="90" r="3" fill="#4A6A9A" opacity="0.8"/>
+  <circle cx="261" cy="90" r="3" fill="#4A6A9A" opacity="0.8"/>
+</svg>
