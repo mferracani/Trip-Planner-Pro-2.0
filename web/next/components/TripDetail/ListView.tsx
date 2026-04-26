@@ -1,6 +1,6 @@
 "use client";
 
-import { Trip, City, Flight, Hotel, Transport } from "@/lib/types";
+import { Trip, City, Flight, FlightLeg, Hotel, Transport } from "@/lib/types";
 
 interface Props {
   trip: Trip;
@@ -96,7 +96,113 @@ export function ListView({ trip, cities, flights, hotels, transports }: Props) {
   );
 }
 
+function fmtLegTime(localTime: string): string {
+  return localTime?.split("T")[1]?.slice(0, 5) ?? "";
+}
+
+function fmtLegDate(localTime: string): string {
+  const date = localTime?.split("T")[0];
+  if (!date) return "";
+  const d = new Date(date + "T00:00:00");
+  return d.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
+}
+
+function fmtDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+function LegLine({ leg }: { leg: FlightLeg }) {
+  const dep = fmtLegTime(leg.departure_local_time);
+  const arr = fmtLegTime(leg.arrival_local_time);
+  const date = fmtLegDate(leg.departure_local_time);
+  return (
+    <p className="text-[13px] text-[#A0A0A0]">
+      {leg.flight_number}
+      {date ? ` · ${date}` : ""}
+      {dep ? ` · ${dep}` : ""}
+      {arr ? ` → ${arr}` : ""}
+      {leg.duration_minutes > 0 ? ` · ${fmtDuration(leg.duration_minutes)}` : ""}
+    </p>
+  );
+}
+
 function FlightRow({ flight }: { flight: Flight }) {
+  if (flight.legs && flight.legs.length > 0) {
+    const outbound = flight.legs.filter((l) => l.direction === "outbound");
+    const inbound = flight.legs.filter((l) => l.direction === "inbound");
+
+    const outFirst = outbound[0];
+    const outLast = outbound[outbound.length - 1];
+
+    const outRoute = outbound.length > 0
+      ? outbound.map((l) => l.origin_iata).join(" → ") + " → " + (outLast?.destination_iata ?? "")
+      : "";
+    const outTotal = outFirst && outLast
+      ? fmtLegTime(outFirst.departure_local_time) + " → " + fmtLegTime(outLast.arrival_local_time)
+      : "";
+    const outTotalMins = outFirst && outLast
+      ? Math.round((outLast.arrival_utc.toMillis() - outFirst.departure_utc.toMillis()) / 60000)
+      : 0;
+
+    return (
+      <div className="bg-[#1A1A1A] border border-[#333] rounded-[14px] px-4 py-3 flex items-start gap-3">
+        <div className="w-10 h-10 rounded-full bg-[#0A84FF]/15 flex items-center justify-center text-xl shrink-0">
+          ✈️
+        </div>
+        <div className="flex-1 min-w-0 space-y-2">
+          {outbound.length > 0 && (
+            <div>
+              <p className="text-[15px] font-semibold text-white">
+                {outRoute}
+                {outbound.length > 1 && (
+                  <span className="ml-2 text-[11px] font-normal text-[#0A84FF] bg-[#0A84FF]/15 rounded px-1.5 py-0.5">
+                    {outbound.length} tramos
+                  </span>
+                )}
+              </p>
+              {outTotal && (
+                <p className="text-[13px] text-[#A0A0A0]">
+                  {outTotal}
+                  {outTotalMins > 0 ? ` · ${fmtDuration(outTotalMins)} total` : ""}
+                </p>
+              )}
+              {outbound.length > 1 &&
+                outbound.map((leg, i) => <LegLine key={i} leg={leg} />)}
+            </div>
+          )}
+
+          {inbound.length > 0 && (
+            <div className="pt-1 border-t border-[#2A2A2A]">
+              {inbound.map((leg, i) => {
+                const dep = fmtLegTime(leg.departure_local_time);
+                const arr = fmtLegTime(leg.arrival_local_time);
+                const date = fmtLegDate(leg.departure_local_time);
+                return (
+                  <div key={i}>
+                    <p className="text-[14px] font-semibold text-[#A0A0A0]">
+                      <span className="mr-1 text-[#A0A0A0]">↩</span>
+                      {leg.origin_iata} → {leg.destination_iata}
+                    </p>
+                    <p className="text-[13px] text-[#707070]">
+                      {leg.flight_number}
+                      {date ? ` · ${date}` : ""}
+                      {dep ? ` · ${dep}` : ""}
+                      {arr ? ` → ${arr}` : ""}
+                      {leg.duration_minutes > 0 ? ` · ${fmtDuration(leg.duration_minutes)}` : ""}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Legacy mono-leg doc
   const dep = flight.departure_local_time?.split("T")[1]?.slice(0, 5) ?? "";
   const arr = flight.arrival_local_time?.split("T")[1]?.slice(0, 5) ?? "";
   return (
@@ -108,7 +214,7 @@ function FlightRow({ flight }: { flight: Flight }) {
         </p>
         <p className="text-[13px] text-[#A0A0A0]">
           {dep} → {arr}
-          {flight.duration_minutes ? ` · ${Math.floor(flight.duration_minutes / 60)}h ${flight.duration_minutes % 60}m` : ""}
+          {flight.duration_minutes ? ` · ${fmtDuration(flight.duration_minutes)}` : ""}
         </p>
       </div>
     </div>

@@ -26,6 +26,23 @@ export interface City {
   country_code?: string; // ISO 3166-1 alpha-2, e.g. "ES", "AR"
 }
 
+export interface FlightLeg {
+  direction: "outbound" | "inbound";
+  airline: string;
+  flight_number: string;
+  origin_iata: string;
+  destination_iata: string;
+  departure_local_time: string;
+  departure_timezone: string;
+  departure_utc: Timestamp;
+  arrival_local_time: string;
+  arrival_timezone: string;
+  arrival_utc: Timestamp;
+  duration_minutes: number;
+  cabin_class?: "economy" | "premium_economy" | "business" | "first";
+  seat?: string;
+}
+
 export interface Flight {
   id: string;
   trip_id: string;
@@ -47,6 +64,7 @@ export interface Flight {
   currency?: string;
   price_usd?: number;
   paid_amount?: number;  // paid so far in original currency
+  legs?: FlightLeg[];   // undefined on legacy mono-leg docs
 }
 
 export interface Hotel {
