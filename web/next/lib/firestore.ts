@@ -70,6 +70,18 @@ export async function deleteTrip(uid: string, tripId: string) {
   await deleteDoc(tripRef(uid, tripId));
 }
 
+export async function updateTripStatus(
+  uid: string,
+  tripId: string,
+  status: "draft" | "planned"
+) {
+  await updateDoc(tripRef(uid, tripId), {
+    status,
+    is_tentative_dates: status === "draft",
+    updated_at: serverTimestamp(),
+  });
+}
+
 // Cities
 export async function getCities(uid: string, tripId: string): Promise<City[]> {
   const snap = await getDocs(citiesRef(uid, tripId));

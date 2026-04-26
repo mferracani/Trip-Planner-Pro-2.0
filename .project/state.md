@@ -15,6 +15,9 @@
 - [ ] Gate 3: Build completo
 
 ## Decisiones tomadas
+- 2026-04-25 [PM] Modo Borrador aprobado para MVP — entra en Módulo A (Viajes). Agrega campo `status: "draft"|"planned"|"active"|"past"` a Firestore trips. Plan completo en `docs/draft-mode-plan.md`. Tickets escritos para web (Fase 2) e iOS (Fase 4).
+- 2026-04-25 [PM] Borradores excluidos del tab "Todos" en Dashboard — tienen su propio tab "Borradores" al final del filtro. Los borradores no aparecen en el Hero.
+- 2026-04-25 [PM] Fechas tentativas como texto libre (`tentative_start_date: string`) + `start_date`/`end_date` pueden ser `""` en borradores. Todos los componentes que leen fechas deben ser defensivos.
 - 2026-04-19 [PM] Firebase en lugar de Supabase — free tier sin límite de proyectos (Supabase ya tiene 2 activos: IMSEL y CashWise)
 - 2026-04-19 [PM] Gemini 2.5 Flash para parse multimodal — ~5× más barato que Claude para PDF/imagen
 - 2026-04-19 [PM] Seed estático de aeropuertos (~1500 IATA) — zero dependencias en runtime, datos estables
@@ -34,6 +37,7 @@
 - 2026-04-24 [Frontend] `/dev` convertido en prototipo funcional in-memory: navegacion real, tabs, calendario 7 columnas, drawer de dia y modal IA; removidos marcos/canvas/clases de mockup; `next build` pasa
 - 2026-04-24 [Frontend] Calendario mobile de `/dev` ajustado a slots legibles: fecha dd/mm, bandera, codigo de ciudad, contador de estadia e items abreviados; `next build` pasa
 - 2026-04-24 [Frontend] Interaccion mobile de calendario corregida: tocar un dia abre bottom sheet desde abajo; desktop conserva panel lateral; `next build` pasa
+- 2026-04-25 [Frontend] Feature multi-ciudad mismo dia + Modo Borrador implementados en rama feat/draft-mode; `tsc --noEmit` y `next build` pasan
 
 ## Progreso por fase
 
@@ -84,6 +88,8 @@
 ### ⬜ Fase 5 — TestFlight (bloqueado por Fase 4)
 
 ## Handoffs pendientes
+- [x] [product-manager] → [frontend-engineer]: implementar Ticket "Modo Borrador Web" — ver `docs/draft-mode-plan.md` §4 — completado en rama feat/draft-mode
+- [ ] [product-manager] → [ios-dev]: implementar Ticket "Modo Borrador iOS" — ver `docs/draft-mode-plan.md` §5 (depende del ticket web)
 - [ ] [setup] → [backend-designer]: iniciar Firebase setup (Fase 1)
 - [ ] [backend-designer] → [security-reviewer]: auditar Security Rules antes de deploy
 - [ ] [backend-designer] → [frontend-engineer]: API contracts listos para Fase 2
@@ -94,6 +100,9 @@
 - [ ] [frontend-engineer] → [backend-designer]: definir estrategia para ciudades reutilizables sin duplicados
 
 ## Open questions para el usuario
+- [Modo Borrador] ¿Un borrador puede tener cero fechas (start_date = "")? El plan lo asume como sí. Confirmar antes de implementar.
+- [Modo Borrador] ¿Los borradores se excluyen del tab "Todos"? El plan dice sí — confirmar.
+- [Modo Borrador] ¿El botón "Confirmar viaje" solo en el detalle del viaje, o también en la card del Dashboard?
 - ¿Ya tenés proyecto en Firebase Console creado? (si sí, agregar URL al CLAUDE.md)
 - ¿Arrancamos wireframes de Claude Design antes o después de Firebase setup?
 

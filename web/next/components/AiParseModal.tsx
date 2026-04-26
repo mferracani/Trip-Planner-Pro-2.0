@@ -11,12 +11,12 @@ import { CITY_COLORS } from "@/lib/types";
 import { getFirebaseStorage } from "@/lib/firebase";
 import {
   ManualTypePicker,
-  ManualFlightForm,
   ManualHotelForm,
   ManualTransportForm,
   ManualCityForm,
   type ManualType,
 } from "./ManualItemForms";
+import { FlightForm } from "./forms/FlightForm";
 
 type Mode = "chat" | "file" | "manual";
 
@@ -457,7 +457,7 @@ function ManualMode({ tripId, onCreated }: { tripId: string; onCreated: () => vo
   }
 
   const back = () => setType(null);
-  if (type === "flight") return <ManualFlightForm tripId={tripId} onCreated={onCreated} onBack={back} />;
+  if (type === "flight") return <FlightForm tripId={tripId} onClose={back} onSaved={onCreated} />;
   if (type === "hotel") return <ManualHotelForm tripId={tripId} onCreated={onCreated} onBack={back} />;
   if (type === "city") return <ManualCityForm tripId={tripId} onCreated={onCreated} onBack={back} />;
   return <ManualTransportForm tripId={tripId} mode={type} onCreated={onCreated} onBack={back} />;
