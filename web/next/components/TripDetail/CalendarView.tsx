@@ -1,6 +1,8 @@
 "use client";
 
 import { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { Trip, City, Flight, Hotel, Transport, CITY_TO_COUNTRY, COUNTRY_COLORS } from "@/lib/types";
 import { useAuth } from "@/context/AuthContext";
 import { updateTrip, citySettingsRef } from "@/lib/firestore";
@@ -479,19 +481,22 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
       )}
 
       {/* Day detail sheet */}
-      {selectedDay && !inSelectionMode && (
-        <DayDetailSheet
-          dateStr={selectedDay}
-          cities={dateCitiesMap[selectedDay] ?? []}
-          flights={flights}
-          hotels={hotels}
-          transports={transports}
-          trip={trip}
-          allCities={enhancedCities}
-          onChanged={onChanged}
-          onClose={() => setSelectedDay(null)}
-        />
-      )}
+      <AnimatePresence>
+        {selectedDay && !inSelectionMode && (
+          <DayDetailSheet
+            key="day-detail"
+            dateStr={selectedDay}
+            cities={dateCitiesMap[selectedDay] ?? []}
+            flights={flights}
+            hotels={hotels}
+            transports={transports}
+            trip={trip}
+            allCities={enhancedCities}
+            onChanged={onChanged}
+            onClose={() => setSelectedDay(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Selection action bar */}
       {inSelectionMode && (
@@ -908,6 +913,18 @@ function dayLabelShort(dateStr: string): string {
 
 // ─── the sheet ───────────────────────────────────────────────────────────────
 
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isDesktop;
+}
+
 type AddingType = "city" | "flight" | "hotel" | "transport";
 
 function DayDetailSheet({
@@ -931,6 +948,9 @@ function DayDetailSheet({
   onChanged: () => void;
   onClose: () => void;
 }) {
+  const isDesktop = useIsDesktop();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [showPicker, setShowPicker] = useState(false);
   const [addingType, setAddingType] = useState<AddingType | null>(null);
   const [editingCity, setEditingCity] = useState<City | null>(null);
@@ -960,121 +980,149 @@ function DayDetailSheet({
 
   const totalCount = dayFlights.length + dayHotels.length + dayTransports.length;
 
-  return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-[12px]" onClick={onClose} />
-      <div
-        className="relative w-full max-w-lg bg-[#161616] rounded-t-[24px] px-5 pt-5 pb-10 animate-slide-up max-h-[85vh] overflow-y-auto"
-        style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
-      >
-        <div className="w-9 h-1 bg-[#333] rounded-full mx-auto mb-5" />
+  if (!mounted) return null;
 
-        <div className="flex items-start justify-between mb-5">
-          <div>
-            <h3 className="text-[20px] font-semibold text-white capitalize leading-tight">{label}</h3>
-            {cities.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                {cities.map((c) => {
-                  const sheetCode = detectCountryCode(c);
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => setEditingCity(c)}
-                      className="flex items-center gap-1.5 press-feedback"
-                    >
-                      {sheetCode ? (
-                        <span className="text-[15px] leading-none">{countryFlag(sheetCode)}</span>
-                      ) : (
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />
-                      )}
-                      <span
-                        className="text-[12px] font-semibold uppercase tracking-wide"
-                        style={{ color: c.color }}
-                      >
-                        {c.name}
-                      </span>
-                      <span className="text-[14px]" style={{ color: "#FFD16A" }}>✎</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-[#707070] hover:text-white transition-colors text-[24px] leading-none mt-0.5 press-feedback"
-          >
-            ×
-          </button>
+  return createPortal(
+    <div className="fixed inset-0 z-40">
+      {/* Backdrop */}
+      <motion.div
+        className="absolute inset-0 bg-black/70 backdrop-blur-[12px]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18 }}
+        onClick={onClose}
+      />
+
+      {/* Panel */}
+      <motion.div
+        className="
+          absolute flex flex-col bg-[#161616] overflow-hidden
+          bottom-0 left-0 right-0 max-h-[90vh] rounded-t-[24px]
+          md:inset-y-0 md:right-0 md:left-auto md:w-[460px] md:max-h-none
+          md:rounded-l-[20px] md:rounded-tr-none md:rounded-br-none
+          md:border-l md:border-[#262626]
+        "
+        initial={isDesktop ? { x: "100%" } : { y: "100%" }}
+        animate={isDesktop ? { x: 0 } : { y: 0 }}
+        exit={isDesktop ? { x: "100%" } : { y: "100%" }}
+        transition={{ type: "spring", damping: 28, stiffness: 300, mass: 0.8 }}
+        style={{ boxShadow: isDesktop ? "-32px 0 80px rgba(0,0,0,0.6)" : "inset 0 1px 0 rgba(255,255,255,0.06)" }}
+      >
+        {/* Drag handle — mobile only */}
+        <div className="md:hidden flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-[#333]" />
         </div>
 
-        {totalCount === 0 ? (
-          <div className="text-center py-12 px-6">
-            <div className="text-[42px] mb-2 opacity-60">🗓️</div>
-            <p className="text-[#707070] text-[14px]">Día libre.</p>
-            <p className="text-[#4D4D4D] text-[12px] mt-1">Sin vuelos, hoteles ni transportes.</p>
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {dayFlights.map((f, i) => (
-              <FlightCard key={f.id} flight={f} dateStr={dateStr} delay={i * 60} />
-            ))}
-            {dayTransports.map((t, i) => (
-              <TransportCard key={t.id} transport={t} delay={(dayFlights.length + i) * 60} />
-            ))}
-            {dayHotels.map((h, i) => (
-              <HotelCard
-                key={h.id}
-                hotel={h}
-                dateStr={dateStr}
-                delay={(dayFlights.length + dayTransports.length + i) * 60}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Add to day — type picker */}
-        {!showPicker ? (
-          <button
-            onClick={() => setShowPicker(true)}
-            className="w-full mt-5 rounded-[14px] py-3.5 text-[15px] font-semibold text-white press-feedback"
-            style={{
-              background: "linear-gradient(135deg, #BF5AF2, #9B3FD6)",
-              boxShadow: "0 4px 16px rgba(191,90,242,0.3)",
-            }}
-          >
-            ✨ Agregar al día
-          </button>
-        ) : (
-          <div className="mt-5 space-y-2">
-            <p className="text-center text-[12px] text-[#707070] mb-3">¿Qué querés agregar?</p>
-            <div className="grid grid-cols-2 gap-2">
-              {([
-                { type: "city" as AddingType, label: "Ciudad", emoji: "🏙️", color: "#FF6B6B" },
-                { type: "flight" as AddingType, label: "Vuelo", emoji: "✈️", color: "#4D96FF" },
-                { type: "hotel" as AddingType, label: "Hotel", emoji: "🏨", color: "#FFD93D" },
-                { type: "transport" as AddingType, label: "Transporte", emoji: "🚆", color: "#4ECDC4" },
-              ] as const).map(({ type, label, emoji, color }) => (
-                <button
-                  key={type}
-                  onClick={() => { setShowPicker(false); setAddingType(type); }}
-                  className="flex flex-col items-center gap-1.5 py-3.5 rounded-[14px] font-semibold text-[13px] press-feedback transition-all"
-                  style={{ background: `${color}18`, border: `1px solid ${color}40`, color }}
-                >
-                  <span className="text-[22px]">{emoji}</span>
-                  {label}
-                </button>
-              ))}
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-5 pb-10">
+          <div className="flex items-start justify-between mb-5 pt-4 md:pt-6">
+            <div>
+              <h3 className="text-[20px] font-semibold text-white capitalize leading-tight">{label}</h3>
+              {cities.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                  {cities.map((c) => {
+                    const sheetCode = detectCountryCode(c);
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => setEditingCity(c)}
+                        className="flex items-center gap-1.5 press-feedback"
+                      >
+                        {sheetCode ? (
+                          <span className="text-[15px] leading-none">{countryFlag(sheetCode)}</span>
+                        ) : (
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />
+                        )}
+                        <span
+                          className="text-[12px] font-semibold uppercase tracking-wide"
+                          style={{ color: c.color }}
+                        >
+                          {c.name}
+                        </span>
+                        <span className="text-[14px]" style={{ color: "#FFD16A" }}>✎</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <button
-              onClick={() => setShowPicker(false)}
-              className="w-full py-2.5 text-[13px] text-[#707070] hover:text-white transition-colors"
+              onClick={onClose}
+              className="text-[#707070] hover:text-white transition-colors text-[24px] leading-none mt-0.5 press-feedback"
             >
-              Cancelar
+              ×
             </button>
           </div>
-        )}
-      </div>
+
+          {totalCount === 0 ? (
+            <div className="text-center py-12 px-6">
+              <div className="text-[42px] mb-2 opacity-60">🗓️</div>
+              <p className="text-[#707070] text-[14px]">Día libre.</p>
+              <p className="text-[#4D4D4D] text-[12px] mt-1">Sin vuelos, hoteles ni transportes.</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {dayFlights.map((f, i) => (
+                <FlightCard key={f.id} flight={f} dateStr={dateStr} delay={i * 60} />
+              ))}
+              {dayTransports.map((t, i) => (
+                <TransportCard key={t.id} transport={t} delay={(dayFlights.length + i) * 60} />
+              ))}
+              {dayHotels.map((h, i) => (
+                <HotelCard
+                  key={h.id}
+                  hotel={h}
+                  dateStr={dateStr}
+                  delay={(dayFlights.length + dayTransports.length + i) * 60}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Add to day — type picker */}
+          {!showPicker ? (
+            <button
+              onClick={() => setShowPicker(true)}
+              className="w-full mt-5 rounded-[14px] py-3.5 text-[15px] font-semibold text-white press-feedback"
+              style={{
+                background: "linear-gradient(135deg, #BF5AF2, #9B3FD6)",
+                boxShadow: "0 4px 16px rgba(191,90,242,0.3)",
+              }}
+            >
+              ✨ Agregar al día
+            </button>
+          ) : (
+            <div className="mt-5 space-y-2">
+              <p className="text-center text-[12px] text-[#707070] mb-3">¿Qué querés agregar?</p>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { type: "city" as AddingType, label: "Ciudad", emoji: "🏙️", color: "#FF6B6B" },
+                  { type: "flight" as AddingType, label: "Vuelo", emoji: "✈️", color: "#4D96FF" },
+                  { type: "hotel" as AddingType, label: "Hotel", emoji: "🏨", color: "#FFD93D" },
+                  { type: "transport" as AddingType, label: "Transporte", emoji: "🚆", color: "#4ECDC4" },
+                ] as const).map(({ type, label, emoji, color }) => (
+                  <button
+                    key={type}
+                    onClick={() => { setShowPicker(false); setAddingType(type); }}
+                    className="flex flex-col items-center gap-1.5 py-3.5 rounded-[14px] font-semibold text-[13px] press-feedback transition-all"
+                    style={{ background: `${color}18`, border: `1px solid ${color}40`, color }}
+                  >
+                    <span className="text-[22px]">{emoji}</span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowPicker(false)}
+                className="w-full py-2.5 text-[13px] text-[#707070] hover:text-white transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+        </div>
+      </motion.div>
 
       {/* Forms — rendered via createPortal inside each component */}
       {editingCity && (
@@ -1124,7 +1172,8 @@ function DayDetailSheet({
           onSaved={handleSaved}
         />
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
 
