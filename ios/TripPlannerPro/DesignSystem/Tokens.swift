@@ -4,6 +4,8 @@ import SwiftUI
 // Any change here must be reflected in the web Tailwind classes and vice versa.
 
 enum Tokens {
+
+    // MARK: - Color
     enum Color {
         // MARK: Surfaces — matches web bg/card classes
 
@@ -21,6 +23,8 @@ enum Tokens {
         static let borderSoft = SwiftUI.Color(hex: 0x262626)
         /// Hairline divider. Web: border-[#1E1E1E]
         static let borderHair = SwiftUI.Color(hex: 0x1E1E1E)
+        /// Modal / sheet overlay
+        static let overlay = SwiftUI.Color.black.opacity(0.6)
 
         // MARK: Text — matches web text color classes
 
@@ -62,6 +66,9 @@ enum Tokens {
             SwiftUI.Color(hex: 0x6CAFE8), // azul costa
         ]
 
+        static let cityBgOpacity: Double     = 0.14
+        static let cityBorderOpacity: Double = 0.30
+
         enum Category {
             /// Flights. Web: bg-[#0A84FF]/15
             static let flight = SwiftUI.Color(hex: 0x0A84FF)
@@ -70,8 +77,18 @@ enum Tokens {
             /// Transit. Web: bg-[#BF5AF2]/15
             static let transit = SwiftUI.Color(hex: 0xBF5AF2)
         }
+
+        enum Status {
+            static let active    = SwiftUI.Color(hex: 0x30D158)
+            static let upcoming  = SwiftUI.Color(hex: 0x0A84FF)
+            static let past      = SwiftUI.Color(hex: 0x707070)
+            static let activeBg   = SwiftUI.Color(hex: 0x0D2818)
+            static let upcomingBg = SwiftUI.Color(hex: 0x0D1A2A)
+            static let pastBg     = SwiftUI.Color(hex: 0x1A1A1A)
+        }
     }
 
+    // MARK: - Spacing
     enum Spacing {
         static let xs: CGFloat = 4
         static let sm: CGFloat = 8
@@ -82,7 +99,9 @@ enum Tokens {
         static let xxl: CGFloat = 48
     }
 
+    // MARK: - Radius
     enum Radius {
+        static let xs: CGFloat = 4
         static let sm: CGFloat = 8
         static let md: CGFloat = 14
         static let lg: CGFloat = 20
@@ -90,15 +109,38 @@ enum Tokens {
         static let pill: CGFloat = 999
     }
 
+    // MARK: - Calendar layout
+    enum Calendar {
+        static let cellHeightMobile:      CGFloat = 92
+        static let cellHeightDesktop:     CGFloat = 120
+        static let cellRadius:            CGFloat = 10
+        static let cellGapMobile:         CGFloat = 6
+        static let cellGapDesktop:        CGFloat = 8
+        static let cellBorderWidth:       CGFloat = 1
+        static let cellActiveBorderWidth: CGFloat = 2
+        static let maxBadgesVisible:      Int     = 3
+    }
+
+    // MARK: - Motion
     enum Motion {
         static let fast: Double = 0.18
         static let base: Double = 0.24
         static let slow: Double = 0.42
+        static let springResponse: Double = 0.30
+        static let springDamping:  Double = 0.72
 
         /// Atlas signature spring — slight overshoot, never bouncy.
         static let spring = Animation.spring(response: 0.42, dampingFraction: 0.82)
         /// Snappy spring — for taps and toggles.
         static let snap = Animation.spring(response: 0.26, dampingFraction: 0.76)
+    }
+
+    // MARK: - Shadow
+    enum Shadow {
+        static let color:  SwiftUI.Color = .black.opacity(0.4)
+        static let radius: CGFloat = 24
+        static let x:      CGFloat = 0
+        static let y:      CGFloat = 8
     }
 
     // MARK: - Typography
@@ -147,11 +189,11 @@ enum Tokens {
     }
 }
 
-extension Color {
+extension SwiftUI.Color {
     init(hex: UInt32, opacity: Double = 1.0) {
         let r = Double((hex >> 16) & 0xFF) / 255
-        let g = Double((hex >> 8) & 0xFF) / 255
-        let b = Double(hex & 0xFF) / 255
+        let g = Double((hex >> 8)  & 0xFF) / 255
+        let b = Double(hex         & 0xFF) / 255
         self.init(.sRGB, red: r, green: g, blue: b, opacity: opacity)
     }
 }
