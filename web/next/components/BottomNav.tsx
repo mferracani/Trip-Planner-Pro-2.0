@@ -61,7 +61,7 @@ export function BottomNav({ active, onAdd, addIcon = "plus", onTabChange }: Prop
             icon={<Settings size={22} strokeWidth={2} />}
             active={active === "settings"}
             onClick={onTabChange ? () => onTabChange("settings") : undefined}
-            href={onTabChange ? undefined : "#"}
+            href={onTabChange ? undefined : "/settings"}
           />
         </div>
 

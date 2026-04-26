@@ -51,7 +51,7 @@ export function TopNav({ active, onAdd, addIcon = "plus", addLabel = "Nuevo viaj
           <NavItem href="/" active={active === "trips"} icon={<Briefcase size={16} strokeWidth={2.2} />} label="Viajes" />
           <NavItem href="/catalog" active={active === "catalog"} icon={<Library size={16} strokeWidth={2.2} />} label="Catálogo" />
           <DisabledNavItem icon={<Map size={16} strokeWidth={2.2} />} label="Mapa" />
-          <DisabledNavItem icon={<Settings size={16} strokeWidth={2.2} />} label="Ajustes" />
+          <NavItem href="/settings" active={active === "settings"} icon={<Settings size={16} strokeWidth={2.2} />} label="Ajustes" />
         </nav>
 
         {/* Right side: action + avatar */}

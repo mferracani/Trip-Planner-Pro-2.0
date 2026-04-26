@@ -101,8 +101,8 @@ struct AtlasTabBar: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color(hex: 0xB19CD9),
-                                Color(hex: 0x8C74BA)
+                                Tokens.Color.accentPurple,
+                                Tokens.Color.accentPurpleDeep
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -186,7 +186,7 @@ private struct AtlasFABButtonStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.9 : 1.0)
             .shadow(
-                color: Color(hex: 0x8C74BA).opacity(0.5),
+                color: Tokens.Color.accentPurpleDeep.opacity(0.5),
                 radius: configuration.isPressed ? 8 : 16,
                 x: 0,
                 y: configuration.isPressed ? 4 : 8

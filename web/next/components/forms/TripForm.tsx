@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -115,6 +115,36 @@ export function TripForm({ trip, onClose, onSaved }: Props) {
   const [coverUrl, setCoverUrl] = useState(trip.cover_url ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unsplashPhotos, setUnsplashPhotos] = useState<{ id: string; thumb: string; full: string }[]>([]);
+  const [unsplashLoading, setUnsplashLoading] = useState(false);
+
+  useEffect(() => {
+    const query = name.trim();
+    if (query.length < 3) { setUnsplashPhotos([]); return; }
+    const key = process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY;
+    if (!key) return;
+    const t = setTimeout(async () => {
+      setUnsplashLoading(true);
+      try {
+        const res = await fetch(
+          `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=6&orientation=landscape&client_id=${key}`
+        );
+        const data = await res.json();
+        setUnsplashPhotos(
+          (data.results ?? []).map((r: { id: string; urls: { small: string; regular: string } }) => ({
+            id: r.id,
+            thumb: r.urls.small,
+            full: r.urls.regular,
+          }))
+        );
+      } catch {
+        // silently ignore
+      } finally {
+        setUnsplashLoading(false);
+      }
+    }, 700);
+    return () => clearTimeout(t);
+  }, [name]);
 
   const canSubmit = !!(name.trim() && startDate && endDate && endDate >= startDate);
 
@@ -178,6 +208,42 @@ export function TripForm({ trip, onClose, onSaved }: Props) {
         <label className="block text-[12px] font-semibold text-[#A0A0A0] uppercase tracking-wide mb-2">
           Portada
         </label>
+
+        {/* Unsplash photo search */}
+        {process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY && (
+          <div className="mb-3">
+            {unsplashLoading ? (
+              <div className="flex items-center gap-2 text-[12px] text-[#4D4D4D] py-2">
+                <span className="animate-spin inline-block w-3 h-3 border border-[#333] border-t-[#707070] rounded-full" />
+                Buscando fotos…
+              </div>
+            ) : unsplashPhotos.length > 0 ? (
+              <div>
+                <p className="text-[11px] font-semibold text-[#707070] uppercase tracking-wide mb-1.5">
+                  Fotos · {name}
+                </p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {unsplashPhotos.map((photo) => (
+                    <button
+                      key={photo.id}
+                      type="button"
+                      onClick={() => setCoverUrl(photo.full)}
+                      className="relative overflow-hidden rounded-[8px] aspect-video transition-all"
+                      style={{
+                        border: coverUrl === photo.full ? "2px solid #FFFFFF" : "2px solid transparent",
+                        opacity: coverUrl === photo.full ? 1 : 0.6,
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={photo.thumb} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-[#3D3D3D] mt-1 text-right">Fotos: Unsplash</p>
+              </div>
+            ) : null}
+          </div>
+        )}
 
         <button
           type="button"

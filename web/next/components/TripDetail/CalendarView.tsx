@@ -355,6 +355,25 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
         );
       })()}
 
+      {/* Countdown banner — only for future trips */}
+      {!inSelectionMode && (() => {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const tripStart = new Date(trip.start_date + "T00:00:00");
+        const d = Math.ceil((tripStart.getTime() - today.getTime()) / 86400000);
+        if (d <= 0) return null;
+        return (
+          <div
+            className="mb-3 flex items-center gap-2.5 px-3 py-2 rounded-[10px] animate-fade-slide-up"
+            style={{ background: "rgba(10,132,255,0.07)", border: "1px solid rgba(10,132,255,0.22)" }}
+          >
+            <span className="text-[15px]">✈️</span>
+            <span className="text-[12px] font-semibold text-[#0A84FF] flex-1">
+              {d === 1 ? "Mañana empieza el viaje" : `Faltan ${d} días para que empiece el viaje`}
+            </span>
+          </div>
+        );
+      })()}
+
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 mb-1.5">
         {WEEKDAYS.map((day) => (

@@ -20,7 +20,6 @@
     }
   ],
   "storage": {
-    "bucket": "trip-planner-pro-2.firebasestorage.app",
     "rules": "storage.rules"
   },
   "emulators": {

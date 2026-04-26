@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { getTrips, updateTripStatus } from "@/lib/firestore";
@@ -13,6 +13,7 @@ import { TripCard } from "./TripCard";
 import { MapPin, CalendarDays, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { getTheme } from "@/lib/themes";
+import { createDemoTrip } from "@/lib/demo";
 
 type Filter = "all" | "future" | "active" | "past" | "draft";
 
@@ -86,6 +87,12 @@ export function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const [filter, setFilter] = useState<Filter>("all");
   const [createOpen, setCreateOpen] = useState(false);
+  const [loadingDemo, setLoadingDemo] = useState(false);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const { data: trips = [], isLoading, refetch } = useQuery({
     queryKey: ["trips", user?.uid],
@@ -95,6 +102,17 @@ export function Dashboard() {
 
   const displayName = user?.displayName || user?.email || "Mati";
   const { line1, line2 } = getContextualGreeting(displayName);
+
+  async function handleLoadDemo() {
+    if (!user || loadingDemo) return;
+    setLoadingDemo(true);
+    try {
+      await createDemoTrip(user.uid);
+      await refetch();
+    } finally {
+      setLoadingDemo(false);
+    }
+  }
 
   // Exclude drafts from hero
   const nonDraftTrips = trips.filter((t) => classifyTrip(t) !== "draft");
@@ -133,10 +151,12 @@ export function Dashboard() {
       <div className="md:hidden flex items-center justify-between px-6 pt-14 pb-6 animate-fade-slide-up stagger-0">
         <div>
           <p className="text-[#81786A] text-[20px] mb-1">
-            Buen día
+            {line1}
           </p>
           <h1 className="text-[38px] font-bold text-white leading-tight tracking-tight">
-            {activeTrip ? `Día ${getActiveDayNumber(activeTrip)} de tu viaje` : `${line1} ${line2}`}
+            {activeTrip
+              ? `Día ${getActiveDayNumber(activeTrip)} · ${activeTrip.name}`
+              : `${line2}`}
           </h1>
         </div>
         <button
@@ -156,7 +176,11 @@ export function Dashboard() {
               {new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
             </p>
             <h1 className="text-[34px] font-bold text-white leading-[1.1] tracking-tight">
-              {line1} <span className="text-[#FFD16A]">{line2}</span>
+              {activeTrip ? (
+                <>Día <span className="text-[#FFD16A]">{getActiveDayNumber(activeTrip)}</span> · {activeTrip.name}</>
+              ) : (
+                <>{line1} <span className="text-[#FFD16A]">{line2}</span></>
+              )}
             </h1>
           </div>
           <p className="text-[#4D4D4D] text-[13px] font-mono tabular-nums">
@@ -169,7 +193,7 @@ export function Dashboard() {
           {heroTrip ? (
             <HeroTripCard trip={heroTrip} status={classifyTrip(heroTrip) as "active" | "future" | "past"} />
           ) : (
-            <EmptyHeroCard onCreateTrip={() => setCreateOpen(true)} />
+            <EmptyHeroCard onCreateTrip={() => setCreateOpen(true)} onLoadDemo={handleLoadDemo} loadingDemo={loadingDemo} />
           )}
         </div>
 
@@ -350,17 +374,38 @@ function BannerPill({ icon, value, label }: { icon: React.ReactNode; value: stri
   );
 }
 
-function EmptyHeroCard({ onCreateTrip }: { onCreateTrip: () => void }) {
+function EmptyHeroCard({
+  onCreateTrip,
+  onLoadDemo,
+  loadingDemo,
+}: {
+  onCreateTrip: () => void;
+  onLoadDemo: () => void;
+  loadingDemo: boolean;
+}) {
   return (
-    <button
-      onClick={onCreateTrip}
-      className="w-full bg-[#171512] rounded-[20px] border border-dashed border-[#332E25] h-44 flex flex-col items-center justify-center gap-3 transition-all hover:border-[#71D3A6]/50 press-feedback"
-    >
+    <div className="w-full bg-[#171512] rounded-[20px] border border-dashed border-[#332E25] py-10 flex flex-col items-center justify-center gap-4">
       <span className="text-4xl">✈️</span>
       <div className="text-center">
-        <p className="text-white text-[17px] font-semibold">Tu primer viaje empieza acá</p>
-        <p className="text-[#707070] text-[13px] mt-1">Tocá para crear</p>
+        <p className="text-white text-[17px] font-semibold">Tu próximo viaje empieza acá</p>
+        <p className="text-[#707070] text-[13px] mt-1">Creá uno o explorá la app con un viaje de ejemplo</p>
       </div>
-    </button>
+      <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xs px-4">
+        <button
+          onClick={onCreateTrip}
+          className="flex-1 py-2.5 rounded-[12px] text-[14px] font-semibold text-white transition-colors"
+          style={{ background: "linear-gradient(135deg, #0A84FF, #0670D9)" }}
+        >
+          + Nuevo viaje
+        </button>
+        <button
+          onClick={onLoadDemo}
+          disabled={loadingDemo}
+          className="flex-1 py-2.5 rounded-[12px] text-[14px] font-semibold text-[#A0A0A0] border border-[#2A2A2A] hover:border-[#444] hover:text-white transition-colors disabled:opacity-50"
+        >
+          {loadingDemo ? "Cargando…" : "Ver demo"}
+        </button>
+      </div>
+    </div>
   );
 }

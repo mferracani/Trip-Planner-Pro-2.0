@@ -43,6 +43,8 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [parseElapsed, setParseElapsed] = useState<number | null>(null);
+  const [usedProvider, setUsedProvider] = useState<"claude" | "gemini" | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Rotate parse messages during loading
@@ -63,6 +65,7 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
     setParsing(true);
     setParseMessage(PARSE_MESSAGES[0]);
     setError(null);
+    const startMs = Date.now();
     try {
       const idToken = await user.getIdToken();
       let body: Record<string, unknown>;
@@ -91,6 +94,8 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
       }
       const data = await res.json();
       setParsedItems(data.items ?? []);
+      setParseElapsed((Date.now() - startMs) / 1000);
+      setUsedProvider(mode === "file" ? "gemini" : "claude");
     } catch (err) {
       setError(String(err));
     } finally {
@@ -256,6 +261,8 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
             items={parsedItems}
             onEdit={() => setParsedItems(null)}
             onRemove={(idx) => setParsedItems((prev) => prev ? prev.filter((_, i) => i !== idx) : prev)}
+            elapsed={parseElapsed}
+            provider={usedProvider}
           />
         ) : mode === "chat" ? (
           <ChatMode text={text} onChange={setText} />
@@ -463,7 +470,19 @@ function ManualMode({ tripId, onCreated }: { tripId: string; onCreated: () => vo
   return <ManualTransportForm tripId={tripId} mode={type} onCreated={onCreated} onBack={back} />;
 }
 
-function PreviewSection({ items, onEdit, onRemove }: { items: ParsedItem[]; onEdit: () => void; onRemove: (idx: number) => void }) {
+function PreviewSection({
+  items,
+  onEdit,
+  onRemove,
+  elapsed,
+  provider,
+}: {
+  items: ParsedItem[];
+  onEdit: () => void;
+  onRemove: (idx: number) => void;
+  elapsed?: number | null;
+  provider?: "claude" | "gemini" | null;
+}) {
   if (items.length === 0) {
     return (
       <div className="text-center py-12">
@@ -479,7 +498,7 @@ function PreviewSection({ items, onEdit, onRemove }: { items: ParsedItem[]; onEd
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-[20px] font-semibold text-white">
             {items.length} {items.length === 1 ? "item" : "items"} detectados
@@ -490,6 +509,17 @@ function PreviewSection({ items, onEdit, onRemove }: { items: ParsedItem[]; onEd
         </div>
         <button onClick={onEdit} className="text-[#0A84FF] text-[15px]">Editar</button>
       </div>
+      {elapsed !== null && elapsed !== undefined && (
+        <div
+          className="flex items-center gap-2 rounded-[10px] px-3 py-2 mb-4 text-[12px] font-semibold"
+          style={{ background: "rgba(191,90,242,0.10)", color: "#BF5AF2" }}
+        >
+          <span>✓</span>
+          <span>
+            Parseado en {elapsed.toFixed(1)}s con {provider === "gemini" ? "Gemini" : "Claude"}
+          </span>
+        </div>
+      )}
       <div className="space-y-3">
         {items.map((item, i) => (
           <ParsedItemCard key={i} item={item} onRemove={() => onRemove(i)} />
