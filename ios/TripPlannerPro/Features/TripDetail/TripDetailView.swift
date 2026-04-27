@@ -32,6 +32,8 @@ struct TripDetailView: View {
     @State private var draftStartDate: Date
     @State private var draftEndDate: Date
     @State private var isConfirmingDraft = false
+    @State private var showExport = false
+    @State private var exportURL: URL? = nil
 
     init(trip: Trip) {
         self.trip = trip
@@ -128,6 +130,48 @@ struct TripDetailView: View {
             viewModel.start()
         }
         .onDisappear { vm?.stop() }
+        .sheet(isPresented: $showExport) {
+            if let url = exportURL {
+                ShareSheet(items: [url])
+                    .ignoresSafeArea()
+            }
+        }
+    }
+
+    // MARK: - Export
+
+    private func exportTrip() {
+        guard let vm else { return }
+        Task { @MainActor in
+            struct TripExport: Encodable {
+                let trip: Trip
+                let cities: [TripCity]
+                let flights: [Flight]
+                let hotels: [Hotel]
+                let transports: [Transport]
+                let expenses: [Expense]
+            }
+            let payload = TripExport(
+                trip: vm.trip,
+                cities: vm.cities,
+                flights: vm.flights,
+                hotels: vm.hotels,
+                transports: vm.transports,
+                expenses: vm.expenses
+            )
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            encoder.dateEncodingStrategy = .iso8601
+            guard let data = try? encoder.encode(payload) else { return }
+            let safeName = vm.trip.name
+                .components(separatedBy: .whitespacesAndNewlines).joined(separator: "_")
+                .filter { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "-" }
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent("\(safeName).json")
+            try? data.write(to: url)
+            exportURL = url
+            showExport = true
+        }
     }
 
     // MARK: - Draft Banner
@@ -274,23 +318,43 @@ struct TripDetailView: View {
 
             Spacer()
 
-            Button {
-                showTripEdit = true
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(Tokens.Color.elevated)
-                        .overlay(
-                            Circle()
-                                .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
-                        )
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Tokens.Color.textSecondary)
+            HStack(spacing: 8) {
+                Button {
+                    exportTrip()
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Tokens.Color.elevated)
+                            .overlay(
+                                Circle()
+                                    .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
+                            )
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Tokens.Color.textSecondary)
+                    }
+                    .frame(width: 34, height: 34)
                 }
-                .frame(width: 34, height: 34)
+                .buttonStyle(.plain)
+
+                Button {
+                    showTripEdit = true
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Tokens.Color.elevated)
+                            .overlay(
+                                Circle()
+                                    .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
+                            )
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Tokens.Color.textSecondary)
+                    }
+                    .frame(width: 34, height: 34)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
         .padding(.top, 6)
@@ -527,3 +591,15 @@ struct TripDetailView: View {
     }
 
 // TripSummaryCard removed — replaced by compactHeroStrip above.
+
+// MARK: - ShareSheet
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}

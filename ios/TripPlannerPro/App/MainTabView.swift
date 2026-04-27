@@ -13,6 +13,7 @@ struct MainTabView: View {
     @State private var availableTrips: [Trip] = []
     @State private var tabBarVisible: Bool = true
     @State private var showCreateTrip = false
+    @State private var fabContext = FABContext()
 
     private var cacheManager: CacheManager { CacheManager(modelContext: modelContext) }
 
@@ -49,12 +50,19 @@ struct MainTabView: View {
                 AtlasTabBar(
                     selection: $selection,
                     tabs: AtlasTab.mainTabs,
-                    onFABTap: { showCreateTrip = true }
+                    onFABTap: {
+                        if let override = fabContext.overrideAction {
+                            override()
+                        } else {
+                            showCreateTrip = true
+                        }
+                    }
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .environment(firestoreClient)
+        .environment(fabContext)
         .onPreferenceChange(TabBarVisibilityKey.self) { visible in
             withAnimation(Tokens.Motion.spring) {
                 tabBarVisible = visible

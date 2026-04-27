@@ -66,11 +66,11 @@ No incluye: mover automaticamente vuelos/hoteles/transports.
 El PRD pide SwiftData para cache offline. Ya hay cache parcial; hay que validar que dashboard, detalle y catalogo sigan usables sin conexion despues de sincronizar.
 
 **Acceptance Criteria**
-- [ ] Dashboard carga viajes cacheados sin red.
-- [ ] Trip Detail carga vuelos/hoteles/transportes cacheados sin red.
-- [ ] Catalogo carga items cacheados sin red.
-- [ ] Se muestra indicador discreto si Firestore no esta disponible.
-- [ ] No se prometen escrituras offline con merge/conflict resolution en MVP.
+- [x] Dashboard carga viajes cacheados sin red.
+- [x] Trip Detail carga vuelos/hoteles/transportes cacheados sin red.
+- [ ] Catalogo carga items cacheados sin red. ← pendiente (CatalogView usa stream directo, items no son por trip)
+- [x] Se muestra indicador discreto si Firestore no esta disponible.
+- [x] No se prometen escrituras offline con merge/conflict resolution en MVP.
 
 **Scope explicito**  
 Incluye: lectura offline.  

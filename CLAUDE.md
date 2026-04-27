@@ -113,6 +113,13 @@ protocol AIProvider {
 
 ## Convenciones
 
+### Feature parity iOS ↔ web (regla permanente)
+**Toda funcionalidad implementada en una plataforma debe existir también en la otra.**
+- Antes de cerrar cualquier feature, verificar que esté en ambas plataformas.
+- Si no está en la otra, implementarla de inmediato o crear un ticket explícito.
+- El audit de gaps actuales vive en `.project/feature-parity.md` — actualizarlo cuando se cierre un gap.
+- Esto aplica a lógica, UI y acciones del usuario (no solo a pantallas).
+
 ### General
 - **Dark mode only** en toda la app (iOS y web). No hay modo claro.
 - **Idioma del código**: inglés (variables, funciones, comentarios técnicos). Strings de UI en español.

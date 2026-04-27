@@ -10,7 +10,7 @@ struct ItemsView: View {
     @State private var selected: SelectedItem?
 
     private var hasAny: Bool {
-        !vm.flights.isEmpty || !vm.hotels.isEmpty || !vm.transports.isEmpty || !vm.expenses.isEmpty
+        !vm.flights.isEmpty || !vm.hotels.isEmpty || !vm.transports.isEmpty || !vm.expenses.isEmpty || !vm.cities.isEmpty
     }
 
     var body: some View {
@@ -31,6 +31,9 @@ struct ItemsView: View {
                     let unlinkedExpenses = vm.expenses.filter { $0.linkedItemId == nil }
                     if !unlinkedExpenses.isEmpty {
                         ExpensesBlock(expenses: unlinkedExpenses) { selected = .expense($0) }
+                    }
+                    if !vm.cities.isEmpty {
+                        CitiesBlock(cities: vm.cities) { selected = .city($0) }
                     }
                 }
             }
@@ -380,6 +383,68 @@ private struct ExpenseCompactRow: View {
         f.locale = Locale(identifier: "es-AR")
         f.dateFormat = "dd MMM"
         return f.string(from: d)
+    }
+}
+
+// MARK: - CitiesBlock
+
+private struct CitiesBlock: View {
+    let cities: [TripCity]
+    let onTap: (TripCity) -> Void
+
+    private var sorted: [TripCity] {
+        cities.sorted { $0.name < $1.name }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            BlockHeader(
+                color: Tokens.Color.accentPurple,
+                label: "Ciudades · \(cities.count)",
+                totalUSD: 0
+            )
+
+            VStack(spacing: 0) {
+                ForEach(Array(sorted.enumerated()), id: \.element.id) { idx, city in
+                    Button { onTap(city) } label: { CityCompactRow(city: city) }
+                        .buttonStyle(RowButtonStyle())
+                    if idx < sorted.count - 1 { Hairline() }
+                }
+            }
+            .background(blockBackground)
+        }
+    }
+}
+
+private struct CityCompactRow: View {
+    let city: TripCity
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(city.swiftColor)
+                .frame(width: 7, height: 7)
+                .padding(.leading, 7)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(city.name)
+                    .font(Tokens.Typo.strongS)
+                    .foregroundStyle(Tokens.Color.textPrimary)
+                    .lineLimit(1)
+                if let country = city.country, !country.isEmpty {
+                    MonoLabel(text: country, color: Tokens.Color.textTertiary, size: .xs)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            Text("\(city.days.count)d")
+                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                .tracking(-0.2)
+                .foregroundStyle(Tokens.Color.textSecondary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
     }
 }
 

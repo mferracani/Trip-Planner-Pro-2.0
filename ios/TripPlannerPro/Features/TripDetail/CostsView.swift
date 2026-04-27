@@ -8,12 +8,14 @@ import SwiftUI
 
 struct CostsView: View {
     let vm: TripDetailViewModel
+    @Environment(FirestoreClient.self) private var client
     @State private var selectedCategory: CostCategory?
     @State private var selectedItem: SelectedItem?
     @State private var markAllPaidCategory: CostCategory?
     @State private var markAllPaidError: String?
     @State private var customRates: [String: String] = [:]
     @State private var editingRateCurrency: String? = nil
+    @State private var showAddExpense = false
 
     // Raw sums per bucket
     private var flightsUSD: Double { vm.flights.reduce(0) { $0 + ($1.priceUSD ?? 0) } }
@@ -130,6 +132,7 @@ struct CostsView: View {
                         fxRatesSection
                     }
                 }
+                addExpenseButton
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 20)
@@ -180,6 +183,35 @@ struct CostsView: View {
         } message: {
             Text(markAllPaidError ?? "")
         }
+        .sheet(isPresented: $showAddExpense) {
+            ManualFormSheet(trip: vm.trip, type: .expense, onClose: { showAddExpense = false })
+                .environment(client)
+        }
+    }
+
+    private var addExpenseButton: some View {
+        Button {
+            showAddExpense = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                Text("Agregar gasto")
+                    .font(Tokens.Typo.strongS)
+            }
+            .foregroundStyle(Tokens.Color.accentGreen)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                    .fill(Tokens.Color.accentGreen.opacity(0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                            .strokeBorder(Tokens.Color.accentGreen.opacity(0.25), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private var emptyState: some View {

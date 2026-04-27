@@ -216,6 +216,17 @@ extension View {
     }
 }
 
+// MARK: - FAB context
+
+/// Shared observable that lets any child view override the global FAB action.
+/// Inject via `.environment(fabContext)` in MainTabView.
+/// Child views read it with `@Environment(FABContext.self)` and set/clear
+/// `overrideAction` in `.onAppear` / `.onDisappear`.
+@Observable
+final class FABContext {
+    var overrideAction: (() -> Void)? = nil
+}
+
 // MARK: - Atlas tab set
 
 extension AtlasTab {

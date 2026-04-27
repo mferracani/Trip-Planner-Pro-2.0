@@ -4,6 +4,7 @@ import SwiftUI
 //
 // Drill-down de una categoría de costos (Vuelos / Hoteles / Transportes /
 // Otros). Muestra cada item con nombre + fecha + total + estado pagado.
+// Swipe trailing → "Pagado" marca paid_amount = total en Firestore.
 
 struct CategoryBreakdownSheet: View {
     let category: CostCategory
@@ -11,28 +12,49 @@ struct CategoryBreakdownSheet: View {
     let onSelectItem: (SelectedItem) -> Void
     let onClose: () -> Void
 
+    // Error toast
+    @State private var errorMessage: String?
+
     var body: some View {
         NavigationStack {
-            ZStack {
-                Tokens.Color.bgPrimary.ignoresSafeArea()
+            // List is the single scroll root — this lets .swipeActions work on
+            // every item row without nesting a List inside a ScrollView.
+            List {
+                // Header section — non-swipeable
+                Section {
+                    header
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 4, trailing: 20))
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        header
-                        Hairline()
-                        itemsList
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    .padding(.bottom, 40)
+                    Hairline()
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 20))
+                }
+
+                // Items section — each row gets swipe action
+                Section {
+                    itemRows
                 }
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(Tokens.Color.bgPrimary)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cerrar", action: onClose)
                         .foregroundStyle(Tokens.Color.textSecondary)
                 }
+            }
+            .alert("Error", isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            )) {
+                Button("OK") { errorMessage = nil }
+            } message: {
+                Text(errorMessage ?? "")
             }
         }
         .preferredColorScheme(.dark)
@@ -71,47 +93,133 @@ struct CategoryBreakdownSheet: View {
     }
 
     // MARK: - Items list
+    //
+    // Returns ForEach content for the Section inside the root List.
+    // Each item row gets a trailing swipe action when paid < total.
+    // Row modifiers (.listRowBackground, .listRowSeparator, .listRowInsets)
+    // must be applied on the item view itself — they are list-row context modifiers.
 
     @ViewBuilder
-    private var itemsList: some View {
+    private var itemRows: some View {
         switch category {
         case .flights:
-            VStack(spacing: 10) {
-                ForEach(vm.flights.sorted { $0.departureLocalTime < $1.departureLocalTime }) { f in
-                    Button { onSelectItem(.flight(f)) } label: {
-                        FlightBreakdownRow(flight: f)
+            ForEach(vm.flights.sorted { $0.departureLocalTime < $1.departureLocalTime }) { f in
+                flightRow(f)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        if needsPayment(paid: f.paidAmount, total: f.price) {
+                            markPaidButton { Task { await markFlightPaid(f) } }
+                        }
                     }
-                    .buttonStyle(RowButtonStyle())
-                }
             }
         case .hotels:
-            VStack(spacing: 10) {
-                ForEach(vm.hotels.sorted { $0.checkIn < $1.checkIn }) { h in
-                    Button { onSelectItem(.hotel(h)) } label: {
-                        HotelBreakdownRow(hotel: h)
+            ForEach(vm.hotels.sorted { $0.checkIn < $1.checkIn }) { h in
+                hotelRow(h)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        if needsPayment(paid: h.paidAmount, total: h.totalPrice) {
+                            markPaidButton { Task { await markHotelPaid(h) } }
+                        }
                     }
-                    .buttonStyle(RowButtonStyle())
-                }
             }
         case .transports:
-            VStack(spacing: 10) {
-                ForEach(vm.transports.sorted { $0.departureLocalTime < $1.departureLocalTime }) { t in
-                    Button { onSelectItem(.transport(t)) } label: {
-                        TransportBreakdownRow(transport: t)
+            ForEach(vm.transports.sorted { $0.departureLocalTime < $1.departureLocalTime }) { t in
+                transportRow(t)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        if needsPayment(paid: t.paidAmount, total: t.price) {
+                            markPaidButton { Task { await markTransportPaid(t) } }
+                        }
                     }
-                    .buttonStyle(RowButtonStyle())
-                }
             }
         case .expenses:
-            VStack(spacing: 10) {
-                ForEach(vm.expenses.sorted { $0.date > $1.date }) { e in
-                    Button { onSelectItem(.expense(e)) } label: {
-                        ExpenseBreakdownRow(expense: e)
+            ForEach(vm.expenses.sorted { $0.date > $1.date }) { e in
+                expenseRow(e)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        if needsPayment(paid: e.paidAmount, total: e.amount) {
+                            markPaidButton { Task { await markExpensePaid(e) } }
+                        }
                     }
-                    .buttonStyle(RowButtonStyle())
-                }
             }
         }
+    }
+
+    // MARK: Row builders
+    //
+    // .swipeActions attach to the List row (the outer view returned here).
+    // The Button inside gets the tap; swipe is handled by the row container.
+
+    private func flightRow(_ f: Flight) -> some View {
+        Button { onSelectItem(.flight(f)) } label: {
+            FlightBreakdownRow(flight: f)
+        }
+        .buttonStyle(RowButtonStyle())
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
+    }
+
+    private func hotelRow(_ h: Hotel) -> some View {
+        Button { onSelectItem(.hotel(h)) } label: {
+            HotelBreakdownRow(hotel: h)
+        }
+        .buttonStyle(RowButtonStyle())
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
+    }
+
+    private func transportRow(_ t: Transport) -> some View {
+        Button { onSelectItem(.transport(t)) } label: {
+            TransportBreakdownRow(transport: t)
+        }
+        .buttonStyle(RowButtonStyle())
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
+    }
+
+    private func expenseRow(_ e: Expense) -> some View {
+        Button { onSelectItem(.expense(e)) } label: {
+            ExpenseBreakdownRow(expense: e)
+        }
+        .buttonStyle(RowButtonStyle())
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
+    }
+
+    // MARK: - Swipe action button
+
+    private func markPaidButton(action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label("Pagado", systemImage: "checkmark.circle.fill")
+        }
+        .tint(Tokens.Color.accentGreen)
+    }
+
+    // MARK: - Mark as paid — delegate to ViewModel
+
+    private func needsPayment(paid: Double?, total: Double?) -> Bool {
+        guard let total, total > 0 else { return false }
+        return (paid ?? 0) < total
+    }
+
+    private func markFlightPaid(_ flight: Flight) async {
+        do { try await vm.markFlightPaid(flight) }
+        catch { errorMessage = "No se pudo marcar como pagado." }
+    }
+
+    private func markHotelPaid(_ hotel: Hotel) async {
+        do { try await vm.markHotelPaid(hotel) }
+        catch { errorMessage = "No se pudo marcar como pagado." }
+    }
+
+    private func markTransportPaid(_ transport: Transport) async {
+        do { try await vm.markTransportPaid(transport) }
+        catch { errorMessage = "No se pudo marcar como pagado." }
+    }
+
+    private func markExpensePaid(_ expense: Expense) async {
+        do { try await vm.markExpensePaid(expense) }
+        catch { errorMessage = "No se pudo marcar como pagado." }
     }
 
     // MARK: - Totals

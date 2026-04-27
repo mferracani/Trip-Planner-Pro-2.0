@@ -56,7 +56,7 @@ _Generado: 2026-04-27 | Auditoría manual del código fuente_
 | 40 | Tabla multi-moneda (Total / Pagado / Pendiente) | Si — tabla con columnas por moneda | Si — byCurrency breakdown | Diferencia de presentación: web es tabla editable in-line; iOS es breakdown visual por categoría | P2 |
 | 41 | **Edición inline de precio y pagado** | Si — click en celda para editar total/pagado | Si — tap categoría → CategoryBreakdownSheet → tap item → EditSheet con precio/pagado | Diferencia de UX: 2 taps vs 1 click. Funcionalidad equivalente. | — |
 | 42 | FX rate controls (lock/unlock tasa) | Si — RateControl con input + botón bloquear | Si — fxRatesSection en CostsView: tasa implícita por moneda, editable, total proyectado (implementado) | Ninguno | — |
-| 43 | Agregar gasto ad-hoc desde Costos | Si — inline form debajo de la tabla | Si — ExpensesBlock con ExpenseCompactRow; crear vía AIParseModal/ManualForms | Diferencia menor: en web se crea desde la tab Costos directamente | P3 |
+| 43 | Agregar gasto ad-hoc desde Costos | Si — inline form debajo de la tabla | Si — botón "+ Agregar gasto" siempre visible en CostsView → ManualFormSheet(.expense) | Ninguno | — |
 | 44 | "Marcar como pagado" quick-action en row | Si — botón hover Check por item | Si — swipe trailing en CategoryBreakdownSheet → "Pagado" con fullSwipe | Diferencia de UX: hover vs swipe. Funcionalidad equivalente. | — |
 | 45 | Breakdown por categoría con % visual | No en web (solo tabla) | Si — CostsView con breakdown por categoría + barras | Ventaja iOS | — |
 | 46 | Total / Pagado / Pendiente por categoría | No en web tab costos | Si | Ventaja iOS | — |
@@ -78,7 +78,7 @@ _Generado: 2026-04-27 | Auditoría manual del código fuente_
 | 59 | Cerrar sesión | Si | Si | Ninguno | — |
 | 60 | Copy UID | No | Si | Ventaja iOS (útil para debug) | — |
 | 61 | Version / GitHub link | Si | Si — sección "Sobre la app" en SettingsView con versión de bundle + link GitHub (implementado) | Ninguno | — |
-| 62 | **Export JSON** | No en ninguna plataforma | No | Ausente en ambas | P3 |
+| 62 | **Export JSON** | No en ninguna plataforma | Si — botón share en customNavBar → JSONEncoder → ShareSheet con UIActivityViewController | Ventaja iOS | — |
 
 ---
 
@@ -99,12 +99,7 @@ _Todos los gaps P2 relevantes están resueltos. #25 y #40 son diferencias de UX 
 
 ### P3 — Baja prioridad
 
-| ID | Gap | Plataforma afectada |
-|----|-----|---------------------|
-| 43 | Agregar gasto desde tab Costos directamente (iOS lo hace via modal — aceptable) | iOS |
-| 62 | Export JSON — ausente en ambas plataformas | Ambas |
-
-_Todos los demás P3 están resueltos._
+_Todos los gaps P3 están resueltos._
 
 ---
 
