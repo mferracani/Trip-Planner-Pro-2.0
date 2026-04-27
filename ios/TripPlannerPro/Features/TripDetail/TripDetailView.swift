@@ -87,6 +87,7 @@ struct TripDetailView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .toolbar(.hidden, for: .navigationBar)
+        .enableSwipeBack()
         .hideTabBar()
         .onAppear { fabContext.overrideAction = { showAddItem = true } }
         .onDisappear { fabContext.overrideAction = nil }
