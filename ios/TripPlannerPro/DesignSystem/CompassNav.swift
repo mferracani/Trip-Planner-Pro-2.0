@@ -49,7 +49,7 @@ struct AtlasTabBar: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: 58)
-        .padding(.bottom, 18)
+        .padding(.bottom, 4)
         .background(
             Rectangle()
                 .fill(Tokens.Color.surface)
