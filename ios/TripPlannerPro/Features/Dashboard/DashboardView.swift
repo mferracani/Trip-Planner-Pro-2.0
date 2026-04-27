@@ -848,7 +848,8 @@ private struct TripRowCard: View {
         let f = DateFormatter()
         f.locale = Locale(identifier: "es-AR")
         f.dateFormat = "d MMM yy"
-        return "\(f.string(from: trip.startDate)) – \(f.string(from: trip.endDate))"
+        let range = "\(f.string(from: trip.startDate)) – \(f.string(from: trip.endDate))"
+        return trip.status == .draft ? "~ \(range)" : range
     }
 
     private var amountText: String? {

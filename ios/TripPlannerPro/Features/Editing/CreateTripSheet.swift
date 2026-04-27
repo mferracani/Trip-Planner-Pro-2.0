@@ -131,7 +131,7 @@ struct CreateTripSheet: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 MonoLabel(
-                    text: isDraft ? "Fechas (opcional)" : "Fechas",
+                    text: isDraft ? "Fechas tentativas" : "Fechas",
                     color: Tokens.Color.textTertiary,
                     size: .xs
                 )
@@ -168,6 +168,7 @@ struct CreateTripSheet: View {
             startDate: startDate,
             endDate: endDate,
             statusStored: isDraft ? .draft : nil,
+            isTentativeDates: isDraft ? true : nil,
             createdAt: .now
         )
         Task {

@@ -223,6 +223,7 @@ private struct TransportsTab: View {
         ("bus", "Bus", "bus"),
         ("ferry", "Ferry", "ferry"),
         ("car", "Auto", "car"),
+        ("car_rental", "Alquiler", "car.circle"),
         ("other", "Otro", "questionmark.circle"),
     ]
 
@@ -589,6 +590,9 @@ private struct TransportCatalogCard: View {
         case "bus": return "bus"
         case "ferry": return "ferry"
         case "car": return "car"
+        case "car_rental": return "car.circle.fill"
+        case "taxi": return "car.fill"
+        case "subway": return "tram.fill.tunnel"
         default: return "tram"
         }
     }
@@ -599,8 +603,17 @@ private struct TransportCatalogCard: View {
         case "bus": return "Bus"
         case "ferry": return "Ferry"
         case "car": return "Auto"
+        case "car_rental": return "Alquiler de auto"
+        case "taxi": return "Taxi"
+        case "subway": return "Metro"
         default: return "Otro"
         }
+    }
+
+    private var iconColor: Color {
+        transport.type == "car_rental"
+            ? Tokens.Color.accentOrange
+            : Tokens.Color.Category.transit
     }
 
     var body: some View {
@@ -608,11 +621,11 @@ private struct TransportCatalogCard: View {
             // Icon
             ZStack {
                 Circle()
-                    .fill(Tokens.Color.Category.transit.opacity(0.15))
+                    .fill(iconColor.opacity(0.15))
                     .frame(width: 40, height: 40)
                 Image(systemName: typeIcon)
                     .font(.system(size: 16))
-                    .foregroundStyle(Tokens.Color.Category.transit)
+                    .foregroundStyle(iconColor)
             }
 
             // Main content

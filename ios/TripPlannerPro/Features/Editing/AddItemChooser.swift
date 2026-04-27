@@ -276,6 +276,9 @@ private struct AddItemRowButtonStyle: ButtonStyle {
 struct ManualFormSheet: View {
     let trip: Trip
     let type: ManualFormType
+    /// When `type == .transport`, pass a transport type string (e.g. "car_rental")
+    /// to pre-select that option in the form picker.
+    var initialTransportType: String? = nil
     let onClose: () -> Void
 
     var body: some View {
@@ -290,7 +293,10 @@ struct ManualFormSheet: View {
                     case .hotel:
                         ManualHotelForm(trip: trip)
                     case .transport:
-                        ManualTransportForm(trip: trip)
+                        ManualTransportForm(
+                            trip: trip,
+                            initialType: initialTransportType ?? "train"
+                        )
                     case .expense:
                         ManualExpenseForm(trip: trip)
                     }

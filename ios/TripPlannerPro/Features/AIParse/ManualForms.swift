@@ -586,6 +586,8 @@ struct ManualHotelForm: View {
 
 struct ManualTransportForm: View {
     let trip: Trip
+    /// Pass a type string (e.g. "car_rental") to pre-select the picker on open.
+    var initialType: String = "train"
 
     @Environment(FirestoreClient.self) private var client
 
@@ -600,7 +602,7 @@ struct ManualTransportForm: View {
         ("other", "Otro"),
     ]
 
-    @State private var type = "train"
+    @State private var type: String = "train"
     @State private var origin = ""
     @State private var destination = ""
     @State private var departureDate = Date()
@@ -696,6 +698,12 @@ struct ManualTransportForm: View {
                 SaveButton(isValid: isValid, isSaving: isSaving, action: save)
             }
             .padding(Tokens.Spacing.base)
+        }
+        .onAppear {
+            // Apply initialType only if state hasn't been modified from its default
+            if type == "train", initialType != "train" {
+                type = initialType
+            }
         }
     }
 

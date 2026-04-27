@@ -94,12 +94,17 @@ extension FirestoreClient {
     }
 
     /// Mirrors web `updateTripStatus`: persists "draft" or "planned" to Firestore.
+    /// When confirming (status != .draft), also clears `is_tentative_dates`.
     func updateTripStatus(tripID: String, status: TripStatus) async throws {
         let ref = try userCollection("trips").document(tripID)
-        try await ref.updateData([
+        var data: [String: Any] = [
             "status": status.rawValue,
             "updated_at": FieldValue.serverTimestamp()
-        ])
+        ]
+        if status != .draft {
+            data["is_tentative_dates"] = FieldValue.delete()
+        }
+        try await ref.updateData(data)
     }
 
     // MARK: Cities

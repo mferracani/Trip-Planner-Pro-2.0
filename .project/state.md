@@ -84,6 +84,7 @@
 - [x] Detalle desde Catálogo (pendiente build Xcode)
 - [x] Monedas con símbolos en Catálogo/Costos/Formularios (pendiente build Xcode)
 - [x] Build Debug iOS Simulator compila en Xcode 26.4.1
+- [x] Modo Borrador iOS — paridad completa con web (2026-04-27)
 - [x] Long-press + drag para seleccionar rango de días y asignar ciudad (Ticket 4)
 - [x] Settings
 - [ ] Tests (checklist QA creado; ejecucion Xcode pendiente)
@@ -91,7 +92,7 @@
 
 ## Handoffs pendientes
 - [x] [product-manager] → [frontend-engineer]: implementar Ticket "Modo Borrador Web" — ver `docs/draft-mode-plan.md` §4 — completado en rama feat/draft-mode
-- [ ] [product-manager] → [ios-dev]: implementar Ticket "Modo Borrador iOS" — ver `docs/draft-mode-plan.md` §5 (depende del ticket web)
+- [x] [product-manager] → [ios-dev]: implementar Ticket "Modo Borrador iOS" — ver `docs/draft-mode-plan.md` §5 (completado 2026-04-27)
 - [ ] [setup] → [backend-designer]: iniciar Firebase setup (Fase 1)
 - [ ] [backend-designer] → [security-reviewer]: auditar Security Rules antes de deploy
 - [ ] [backend-designer] → [frontend-engineer]: API contracts listos para Fase 2

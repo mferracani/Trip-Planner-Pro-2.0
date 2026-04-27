@@ -21,6 +21,8 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
     var citiesCount: Int?
     /// Persisted status — "draft" or "planned". When nil, status is inferred from dates.
     var statusStored: TripStatus?
+    /// True when the trip is a draft with tentative (estimated) dates.
+    var isTentativeDates: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -34,6 +36,7 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         case paidUSD = "paid_usd"
         case citiesCount = "cities_count"
         case statusStored = "status"
+        case isTentativeDates = "is_tentative_dates"
     }
 
     static let isoDateFormatter: DateFormatter = {
@@ -72,6 +75,7 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         endDate: Date,
         coverURL: String? = nil,
         statusStored: TripStatus? = nil,
+        isTentativeDates: Bool? = nil,
         createdAt: Date = .now,
         totalUSD: Double? = nil,
         paidUSD: Double? = nil,
@@ -83,6 +87,7 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         self.endDateString = Self.isoDateFormatter.string(from: endDate)
         self.coverURL = coverURL
         self.statusStored = statusStored
+        self.isTentativeDates = isTentativeDates
         self.createdAt = createdAt
         self.updatedAt = createdAt
         self.totalUSD = totalUSD
@@ -99,7 +104,15 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         cityOrder: [String],
         createdAt: Date
     ) {
-        self.init(id: id, name: name, startDate: startDate, endDate: endDate, statusStored: status == .draft ? .draft : nil, createdAt: createdAt)
+        self.init(
+            id: id,
+            name: name,
+            startDate: startDate,
+            endDate: endDate,
+            statusStored: status == .draft ? .draft : nil,
+            isTentativeDates: status == .draft ? true : nil,
+            createdAt: createdAt
+        )
     }
 }
 

@@ -567,8 +567,6 @@ struct TripDetailView: View {
         }
     }
 
-}
-
     private var offlineBanner: some View {
         HStack(spacing: 8) {
             Image(systemName: "wifi.slash")
@@ -592,6 +590,8 @@ struct TripDetailView: View {
                 )
         )
     }
+
+}
 
 // TripSummaryCard removed — replaced by compactHeroStrip above.
 
