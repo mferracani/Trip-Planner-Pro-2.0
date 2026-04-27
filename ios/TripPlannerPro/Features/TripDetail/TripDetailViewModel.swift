@@ -199,10 +199,17 @@ final class TripDetailViewModel {
         city(for: date)?.swiftColor
     }
 
-    /// Flights happening on this date — departure OR arrival matches.
+    /// Flights happening on this date — departure OR arrival matches (root-level or any leg).
     func flights(on date: Date) -> [Flight] {
         let key = Trip.isoDateFormatter.string(from: date)
-        return flights.filter { $0.departureDate == key || $0.arrivalDate == key }
+        return flights.filter { flight in
+            if flight.departureDate == key || flight.arrivalDate == key { return true }
+            guard let legs = flight.legs else { return false }
+            return legs.contains { leg in
+                String(leg.departureLocalTime.prefix(10)) == key ||
+                String(leg.arrivalLocalTime.prefix(10)) == key
+            }
+        }
     }
 
     /// Hotels occupying this date (between check_in inclusive and check_out exclusive).

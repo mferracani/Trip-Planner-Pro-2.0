@@ -105,9 +105,15 @@ private struct FlightCompactRow: View {
                 .frame(width: 22)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(flight.originIATA) → \(flight.destinationIATA)")
-                    .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(Tokens.Color.textPrimary)
+                if let inbound = flight.legs?.first(where: { $0.direction == "inbound" }) {
+                    Text("\(flight.originIATA) → \(flight.destinationIATA) ⇄ \(inbound.destinationIATA)")
+                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Tokens.Color.textPrimary)
+                } else {
+                    Text("\(flight.originIATA) → \(flight.destinationIATA)")
+                        .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Tokens.Color.textPrimary)
+                }
                 MonoLabel(
                     text: "\(shortDate(flight.departureDate)) · \(flight.airline) \(flight.flightNumber)",
                     color: Tokens.Color.textTertiary,

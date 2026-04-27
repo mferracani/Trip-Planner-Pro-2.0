@@ -445,6 +445,24 @@ private struct DayCell: View {
     private var cellFlights: [(id: String, label: String)] {
         guard let d = date else { return [] }
         return vm.flights(on: d).prefix(2).map { f in
+            // When the flight has legs, find which leg matches this calendar date
+            if let legs = f.legs, !legs.isEmpty {
+                if let leg = legs.first(where: {
+                    String($0.departureLocalTime.prefix(10)) == dateStr ||
+                    String($0.arrivalLocalTime.prefix(10)) == dateStr
+                }) {
+                    let legDepDate = String(leg.departureLocalTime.prefix(10))
+                    let legArrDate = String(leg.arrivalLocalTime.prefix(10))
+                    let isArr = legArrDate == dateStr && legDepDate != dateStr
+                    let timeStr = isArr
+                        ? String(leg.arrivalLocalTime.split(separator: "T").last?.prefix(5) ?? "")
+                        : String(leg.departureLocalTime.split(separator: "T").last?.prefix(5) ?? "")
+                    let dest = isArr ? leg.originIATA : leg.destinationIATA
+                    let label = timeStr.isEmpty ? dest : timeStr
+                    return (id: (f.id ?? "") + "_" + leg.direction + leg.departureLocalTime, label: label)
+                }
+            }
+            // Fallback to root-level (single-leg or legacy document)
             let isArr = f.arrivalDate == dateStr && f.arrivalDate != f.departureDate
             let time = isArr ? f.arrivalTime : f.departureTime
             let dest = f.destinationIATA
@@ -980,35 +998,76 @@ private struct FlightCard: View {
     let flight: Flight
     let date: Date
 
+    // MARK: - Leg resolution
+
+    /// The leg (outbound or inbound) whose departure/arrival matches `date`.
+    /// Returns nil when the flight has no legs (legacy single-leg document).
+    private var activeLeg: FlightLeg? {
+        guard let legs = flight.legs, !legs.isEmpty else { return nil }
+        let key = Trip.isoDateFormatter.string(from: date)
+        return legs.first {
+            String($0.departureLocalTime.prefix(10)) == key ||
+            String($0.arrivalLocalTime.prefix(10)) == key
+        }
+    }
+
     private var isArrivalLeg: Bool {
         let key = Trip.isoDateFormatter.string(from: date)
+        if let leg = activeLeg {
+            return String(leg.arrivalLocalTime.prefix(10)) == key &&
+                   String(leg.departureLocalTime.prefix(10)) != key
+        }
         return key == flight.arrivalDate && flight.arrivalDate != flight.departureDate
     }
+
+    // MARK: - Display helpers (prefer activeLeg, fall back to root-level fields)
+
+    private var displayOrigin: String { activeLeg?.originIATA ?? flight.originIATA }
+    private var displayDest: String { activeLeg?.destinationIATA ?? flight.destinationIATA }
+    private var displayDepTime: String {
+        guard let leg = activeLeg else { return flight.departureTime }
+        return leg.departureLocalTime.contains("T")
+            ? String(leg.departureLocalTime.split(separator: "T").last?.prefix(5) ?? "")
+            : ""
+    }
+    private var displayArrTime: String {
+        guard let leg = activeLeg else { return flight.arrivalTime }
+        return leg.arrivalLocalTime.contains("T")
+            ? String(leg.arrivalLocalTime.split(separator: "T").last?.prefix(5) ?? "")
+            : ""
+    }
+    private var displayDuration: Int? { activeLeg?.durationMinutes ?? flight.durationMinutes }
+    private var displayAirline: String { activeLeg?.airline ?? flight.airline }
+    private var displayFlightNumber: String { activeLeg?.flightNumber ?? flight.flightNumber }
+    private var displaySeat: String? { activeLeg?.seat ?? flight.seat }
+    private var displayCabinClass: String? { activeLeg?.cabinClass ?? flight.cabinClass }
+
+    // MARK: - Body
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text("\(flight.originIATA) → \(flight.destinationIATA)")
+                Text("\(displayOrigin) → \(displayDest)")
                     .font(.system(size: 20, weight: .bold, design: .monospaced))
                     .tracking(-0.4)
                     .foregroundStyle(Tokens.Color.textPrimary)
                 Spacer()
                 MonoLabel(
-                    text: "\(flight.airline) \(flight.flightNumber)",
+                    text: "\(displayAirline) \(displayFlightNumber)",
                     color: Tokens.Color.textSecondary,
                     size: .xs
                 )
             }
 
             HStack(spacing: 24) {
-                timeBlock(label: "Salida", time: flight.departureTime, active: !isArrivalLeg)
+                timeBlock(label: "Salida", time: displayDepTime, active: !isArrivalLeg)
                 Image(systemName: "arrow.right")
                     .font(.system(size: 12))
                     .foregroundStyle(Tokens.Color.textTertiary)
                     .padding(.top, 6)
-                timeBlock(label: "Llegada", time: flight.arrivalTime, active: isArrivalLeg)
+                timeBlock(label: "Llegada", time: displayArrTime, active: isArrivalLeg)
                 Spacer()
-                if let mins = flight.durationMinutes, mins > 0 {
+                if let mins = displayDuration, mins > 0 {
                     VStack(alignment: .trailing, spacing: 3) {
                         Text(durationText(mins))
                             .font(.system(size: 14, weight: .semibold, design: .monospaced))
@@ -1018,13 +1077,13 @@ private struct FlightCard: View {
                 }
             }
 
-            if flight.seat != nil || flight.cabinClass != nil || flight.priceUSD != nil {
+            if displaySeat != nil || displayCabinClass != nil || flight.priceUSD != nil {
                 Hairline()
                 HStack(spacing: 20) {
-                    if let seat = flight.seat, !seat.isEmpty {
+                    if let seat = displaySeat, !seat.isEmpty {
                         metaBlock(label: "Asiento", value: seat)
                     }
-                    if let cabin = flight.cabinClass, !cabin.isEmpty {
+                    if let cabin = displayCabinClass, !cabin.isEmpty {
                         metaBlock(label: "Clase", value: cabin)
                     }
                     Spacer()
