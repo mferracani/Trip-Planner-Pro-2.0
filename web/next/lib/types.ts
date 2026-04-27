@@ -88,7 +88,7 @@ export interface Hotel {
 export interface Transport {
   id: string;
   trip_id: string;
-  type: "train" | "bus" | "ferry" | "car" | "taxi" | "subway" | "other";
+  type: "train" | "bus" | "ferry" | "car" | "car_rental" | "taxi" | "subway" | "other";
   origin: string;
   destination: string;
   departure_local_time: string;
@@ -172,7 +172,7 @@ export interface ParsedHotel {
 export interface ParsedTransport {
   type: "transport";
   confidence: number;
-  mode: "train" | "bus" | "ferry" | "car" | "other" | null;
+  mode: "train" | "bus" | "ferry" | "car" | "car_rental" | "other" | null;
   origin: string | null;
   destination: string | null;
   departure_local_time: string | null;
