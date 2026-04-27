@@ -55,6 +55,13 @@ private struct DayBlock: View {
     private var transports: [Transport] { vm.transports(on: date) }
     private var expenses: [Expense] { vm.expenses(on: date).filter { $0.linkedItemId == nil } }
 
+    private func flagEmoji(for city: TripCity) -> String? {
+        guard let cc = city.countryCode?.uppercased(), cc.count == 2 else { return nil }
+        return cc.unicodeScalars.compactMap {
+            UnicodeScalar(127_397 + Int($0.value))
+        }.reduce("") { $0 + String($1) }
+    }
+
     private var hasAnything: Bool {
         !flights.isEmpty || !hotels.isEmpty || !transports.isEmpty || !expenses.isEmpty
     }
@@ -84,7 +91,11 @@ private struct DayBlock: View {
                 HStack(spacing: 8) {
                     if let city {
                         HStack(spacing: 7) {
-                            Circle().fill(city.swiftColor).frame(width: 6, height: 6)
+                            if let flag = flagEmoji(for: city) {
+                                Text(flag).font(.system(size: 10))
+                            } else {
+                                Circle().fill(city.swiftColor).frame(width: 6, height: 6)
+                            }
                             Text(city.name)
                                 .font(Tokens.Typo.strongS)
                                 .foregroundStyle(city.swiftColor)
@@ -226,13 +237,14 @@ private struct TransportRow: View {
 
     private var transportSymbol: String {
         switch transport.type.lowercased() {
-        case "train":  return "tram.fill"
-        case "bus":    return "bus.fill"
-        case "ferry":  return "ferry.fill"
-        case "car":    return "car.fill"
-        case "taxi":   return "car.fill"
-        case "subway": return "tram.tunnel.fill"
-        default:       return "tram.fill"
+        case "train":      return "tram.fill"
+        case "bus":        return "bus.fill"
+        case "ferry":      return "ferry.fill"
+        case "car":        return "car.fill"
+        case "car_rental": return "car.circle.fill"
+        case "taxi":       return "car.fill"
+        case "subway":     return "tram.tunnel.fill"
+        default:           return "tram.fill"
         }
     }
 }
