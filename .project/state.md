@@ -85,7 +85,7 @@
 - [x] Monedas con símbolos en Catálogo/Costos/Formularios (pendiente build Xcode)
 - [x] Build Debug iOS Simulator compila en Xcode 26.4.1
 - [x] Long-press + drag para seleccionar rango de días y asignar ciudad (Ticket 4)
-- [ ] Settings
+- [x] Settings
 - [ ] Tests (checklist QA creado; ejecucion Xcode pendiente)
 ### ⬜ Fase 5 — TestFlight (bloqueado por Fase 4)
 

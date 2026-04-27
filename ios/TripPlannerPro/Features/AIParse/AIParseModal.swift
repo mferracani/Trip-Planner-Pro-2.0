@@ -36,6 +36,7 @@ struct AIParseModal: View {
     @Environment(FirestoreClient.self) private var client
     @Environment(\.dismiss) private var dismiss
 
+    @AppStorage("aiProvider") private var storedProvider: String = AIProvider.claude.rawValue
     @State private var mode: ParseMode = .chat
     @State private var inputText = ""
     @State private var provider: AIProvider = .claude
@@ -79,6 +80,10 @@ struct AIParseModal: View {
             .onAppear {
                 if !prefillText.isEmpty && inputText.isEmpty {
                     inputText = prefillText
+                }
+                // Respect the user's saved AI provider preference from Settings
+                if let saved = AIProvider(rawValue: storedProvider) {
+                    provider = saved
                 }
             }
             .toolbar {
