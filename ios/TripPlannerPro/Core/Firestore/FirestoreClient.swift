@@ -77,6 +77,18 @@ final class FirestoreClient {
         return streamCollection(ref)
     }
 
+    // One-shot fetch of all cities across all user trips — used to populate city catalog.
+    func fetchAllCitiesOnce() async throws -> [TripCity] {
+        let tripsSnap = try await userCollection("trips").getDocuments()
+        var all: [TripCity] = []
+        for tripDoc in tripsSnap.documents {
+            let citiesSnap = try await tripDoc.reference.collection("cities").getDocuments()
+            let cities = citiesSnap.documents.compactMap { try? $0.data(as: TripCity.self) }
+            all.append(contentsOf: cities)
+        }
+        return all.sorted { $0.name < $1.name }
+    }
+
     // MARK: - Catalog (all items across trips)
 
     func allItemsStream() throws -> AsyncThrowingStream<CatalogItems, Error> {

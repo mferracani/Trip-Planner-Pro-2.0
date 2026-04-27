@@ -34,6 +34,7 @@ struct TripDetailView: View {
     @State private var isConfirmingDraft = false
     @State private var showExport = false
     @State private var exportURL: URL? = nil
+    @State private var allTripsCities: [TripCity] = []
 
     init(trip: Trip) {
         self.trip = trip
@@ -128,6 +129,11 @@ struct TripDetailView: View {
             )
             vm = viewModel
             viewModel.start()
+            Task {
+                if let cities = try? await client.fetchAllCitiesOnce() {
+                    allTripsCities = cities
+                }
+            }
         }
         .onDisappear { vm?.stop() }
         .sheet(isPresented: $showExport) {
@@ -554,7 +560,7 @@ struct TripDetailView: View {
     private func tabContent(_ vm: TripDetailViewModel) -> some View {
         switch selectedTab {
         case .calendar:
-            CalendarView(vm: vm, allUserCities: vm.cities)
+            CalendarView(vm: vm, allUserCities: allTripsCities)
         case .list:
             ListView(vm: vm)
         case .items:

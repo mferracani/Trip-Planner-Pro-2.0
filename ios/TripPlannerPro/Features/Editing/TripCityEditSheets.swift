@@ -321,8 +321,11 @@ struct CityEditSheet: View {
 
 struct CreateCitySheet: View {
     let tripID: String
-    /// All unique cities across the user's other trips — shown as quick-fill catalog.
+    /// Cities already in this trip — used to prevent duplicate names on save.
     var existingCities: [TripCity] = []
+    /// All cities across all user trips — shown as quick-fill catalog.
+    /// Falls back to `existingCities` when empty.
+    var catalogCities: [TripCity] = []
     let onClose: () -> Void
 
     @Environment(FirestoreClient.self) private var client
@@ -334,10 +337,11 @@ struct CreateCitySheet: View {
     @State private var saving = false
     @State private var error: String?
 
-    /// Unique cities from other trips, normalised by lowercased name to avoid duplicates.
-    private var uniqueExistingCities: [TripCity] {
+    /// Deduplicated city list for the quick-fill chips.
+    private var catalogItems: [TripCity] {
         var seen = Set<String>()
-        return existingCities.filter { city in
+        let pool = catalogCities.isEmpty ? existingCities : catalogCities
+        return pool.filter { city in
             let key = city.name.lowercased()
             guard !seen.contains(key) else { return false }
             seen.insert(key)
@@ -362,11 +366,11 @@ struct CreateCitySheet: View {
         ) {
             VStack(spacing: 12) {
                 // Catalog of existing cities (quick-fill)
-                if !uniqueExistingCities.isEmpty {
-                    EditField(label: "Ciudades en este viaje") {
+                if !catalogItems.isEmpty {
+                    EditField(label: catalogCities.isEmpty ? "Ciudades en este viaje" : "Mis ciudades") {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
-                                ForEach(uniqueExistingCities) { existing in
+                                ForEach(catalogItems) { existing in
                                     Button {
                                         name = existing.name
                                         country = existing.country ?? ""

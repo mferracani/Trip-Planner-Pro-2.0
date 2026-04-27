@@ -219,7 +219,8 @@ struct CalendarView: View {
         .sheet(isPresented: $showCreateCity) {
             CreateCitySheet(
                 tripID: vm.trip.id ?? "",
-                existingCities: allUserCities,
+                existingCities: vm.cities,
+                catalogCities: allUserCities,
                 onClose: { showCreateCity = false }
             )
             .environment(client)

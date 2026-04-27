@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { createCity, updateCity, deleteCity, getCitySettings, upsertCitySetting } from "@/lib/firestore";
+import { createCity, updateCity, deleteCity, getCitySettings, upsertCitySetting, getAllCities } from "@/lib/firestore";
 import { CITY_COLORS, type City, type CitySetting } from "@/lib/types";
 import { COMMON_TIMEZONES } from "@/lib/datetime";
 import { FormSheet } from "./FormSheet";
@@ -59,7 +59,21 @@ export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, ini
 
   useEffect(() => {
     if (!user || existing) return;
-    getCitySettings(user.uid).then(setCitySettings);
+    Promise.all([getCitySettings(user.uid), getAllCities(user.uid)]).then(
+      ([settings, tripCities]) => {
+        const seen = new Map(settings.map((s) => [s.normalized_name, s]));
+        const merged: CitySetting[] = [...settings];
+        for (const c of tripCities) {
+          const key = normalizeCity(c.name);
+          if (!seen.has(key)) {
+            seen.set(key, { normalized_name: key, name: c.name, color: c.color, country_code: c.country_code });
+            merged.push({ normalized_name: key, name: c.name, color: c.color, country_code: c.country_code });
+          }
+        }
+        merged.sort((a, b) => a.name.localeCompare(b.name));
+        setCitySettings(merged);
+      }
+    );
   }, [user, existing]);
 
   const filteredSettings = citySettings
