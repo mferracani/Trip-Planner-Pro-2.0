@@ -1408,10 +1408,10 @@ function TransportCard({ transport: t, delay }: { transport: Transport; delay: n
   const depTime = extractTime(t.departure_local_time);
   const arrTime = extractTime(t.arrival_local_time);
   const typeEmoji: Record<Transport["type"], string> = {
-    train: "🚆", bus: "🚌", ferry: "⛴️", car: "🚗", taxi: "🚕", subway: "🚇", other: "🚐",
+    train: "🚆", bus: "🚌", ferry: "⛴️", car: "🚗", car_rental: "🚙", taxi: "🚕", subway: "🚇", other: "🚐",
   };
   const typeLabel: Record<Transport["type"], string> = {
-    train: "Tren", bus: "Bus", ferry: "Ferry", car: "Auto / rental", taxi: "Taxi", subway: "Metro", other: "Transporte",
+    train: "Tren", bus: "Bus", ferry: "Ferry", car: "Auto", car_rental: "Alquiler de auto", taxi: "Taxi", subway: "Metro", other: "Transporte",
   };
 
   return (
