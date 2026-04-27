@@ -37,7 +37,10 @@ function buildDayGroups(trip: Trip, cities: City[], flights: Flight[], hotels: H
     .map((date) => ({
       date,
       city: dateCityMap[date],
-      flights: flights.filter((f) => f.departure_local_time?.startsWith(date)),
+      flights: flights.filter((f) => {
+        if (f.departure_local_time?.startsWith(date)) return true;
+        return f.legs?.some((l) => l.departure_local_time?.startsWith(date)) ?? false;
+      }),
       hotels: hotels.filter((h) => h.check_in <= date && h.check_out > date),
       transports: transports.filter((t) => t.departure_local_time?.startsWith(date)),
     }))
@@ -80,7 +83,7 @@ export function ListView({ trip, cities, flights, hotels, transports }: Props) {
 
             <div className="space-y-2">
               {group.flights.map((f) => (
-                <FlightRow key={f.id} flight={f} />
+                <FlightRow key={f.id} flight={f} date={group.date} />
               ))}
               {group.hotels.map((h) => (
                 <HotelRow key={h.id} hotel={h} />
@@ -128,8 +131,47 @@ function LegLine({ leg }: { leg: FlightLeg }) {
   );
 }
 
-function FlightRow({ flight }: { flight: Flight }) {
+function FlightRow({ flight, date }: { flight: Flight; date: string }) {
   if (flight.legs && flight.legs.length > 0) {
+    // Find legs that depart on this specific date
+    const dayLegs = flight.legs.filter((l) => l.departure_local_time?.startsWith(date));
+
+    // If we have legs for this date, show only those (avoids repeating the full card on both ends)
+    if (dayLegs.length > 0) {
+      return (
+        <div className="bg-[#1A1A1A] border border-[#333] rounded-[14px] px-4 py-3 flex items-start gap-3">
+          <div className="w-10 h-10 rounded-full bg-[#0A84FF]/15 flex items-center justify-center text-xl shrink-0">
+            ✈️
+          </div>
+          <div className="flex-1 min-w-0 space-y-1">
+            {dayLegs.map((leg, i) => {
+              const dep = fmtLegTime(leg.departure_local_time);
+              const arr = fmtLegTime(leg.arrival_local_time);
+              const arrDate = leg.arrival_local_time?.split("T")[0];
+              const isReturn = leg.direction === "inbound";
+              const nextDay = arrDate && arrDate !== date;
+              return (
+                <div key={i}>
+                  <p className="text-[15px] font-semibold text-white">
+                    {isReturn && <span className="mr-1 opacity-60">↩</span>}
+                    {leg.origin_iata} → {leg.destination_iata}
+                  </p>
+                  <p className="text-[13px] text-[#A0A0A0]">
+                    {leg.flight_number}
+                    {dep ? ` · ${dep}` : ""}
+                    {arr ? ` → ${arr}` : ""}
+                    {nextDay ? ` (+1)` : ""}
+                    {leg.duration_minutes > 0 ? ` · ${fmtDuration(leg.duration_minutes)}` : ""}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // Fallback: show full card with all legs (root departure day)
     const outbound = flight.legs.filter((l) => l.direction === "outbound");
     const inbound = flight.legs.filter((l) => l.direction === "inbound");
 
@@ -178,7 +220,7 @@ function FlightRow({ flight }: { flight: Flight }) {
               {inbound.map((leg, i) => {
                 const dep = fmtLegTime(leg.departure_local_time);
                 const arr = fmtLegTime(leg.arrival_local_time);
-                const date = fmtLegDate(leg.departure_local_time);
+                const legDate = fmtLegDate(leg.departure_local_time);
                 return (
                   <div key={i}>
                     <p className="text-[14px] font-semibold text-[#A0A0A0]">
@@ -187,7 +229,7 @@ function FlightRow({ flight }: { flight: Flight }) {
                     </p>
                     <p className="text-[13px] text-[#707070]">
                       {leg.flight_number}
-                      {date ? ` · ${date}` : ""}
+                      {legDate ? ` · ${legDate}` : ""}
                       {dep ? ` · ${dep}` : ""}
                       {arr ? ` → ${arr}` : ""}
                       {leg.duration_minutes > 0 ? ` · ${fmtDuration(leg.duration_minutes)}` : ""}

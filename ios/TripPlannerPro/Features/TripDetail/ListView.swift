@@ -152,21 +152,43 @@ private struct FlightRow: View {
     let flight: Flight
     let date: Date
 
+    private var activeLeg: FlightLeg? {
+        guard let legs = flight.legs, !legs.isEmpty else { return nil }
+        let key = Trip.isoDateFormatter.string(from: date)
+        return legs.first {
+            String($0.departureLocalTime.prefix(10)) == key ||
+            String($0.arrivalLocalTime.prefix(10)) == key
+        }
+    }
+
     private var isArrivalLeg: Bool {
         let key = Trip.isoDateFormatter.string(from: date)
+        if let leg = activeLeg {
+            return String(leg.arrivalLocalTime.prefix(10)) == key &&
+                   String(leg.departureLocalTime.prefix(10)) != key
+        }
         return key == flight.arrivalDate && flight.arrivalDate != flight.departureDate
     }
 
     private var time: String {
-        isArrivalLeg ? flight.arrivalTime : flight.departureTime
+        if let leg = activeLeg {
+            let t = isArrivalLeg ? leg.arrivalLocalTime : leg.departureLocalTime
+            return String(t.split(separator: "T").last?.prefix(5) ?? "")
+        }
+        return isArrivalLeg ? flight.arrivalTime : flight.departureTime
     }
+
+    private var origin: String { activeLeg?.originIATA ?? flight.originIATA }
+    private var destination: String { activeLeg?.destinationIATA ?? flight.destinationIATA }
+    private var airline: String { activeLeg?.airline ?? flight.airline }
+    private var flightNumber: String { activeLeg?.flightNumber ?? flight.flightNumber }
 
     var body: some View {
         ItemRowShell(
             icon: "airplane",
             tint: Tokens.Color.Category.flight,
-            title: "\(flight.originIATA) → \(flight.destinationIATA)",
-            subtitle: "\(flight.airline) \(flight.flightNumber)",
+            title: "\(origin) → \(destination)",
+            subtitle: "\(airline) \(flightNumber)",
             trailingMono: time,
             trailingSecondary: flight.priceUSD.map { "$\(Int($0.rounded())) USD" }
         )
