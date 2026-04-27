@@ -16,7 +16,7 @@ _Generado: 2026-04-27 | Auditoría manual del código fuente_
 | 6 | Stats del hero — vuelos / ciudades / días | Si — BannerPills solo desktop | Si — StatIconRow con iconos | Web no tiene esa info en mobile, iOS sí | Ventaja iOS |
 | 7 | Progress ring en hero | No — web usa barra linear de pago | Si — ProgressRing circular mostrando avance temporal | Web tiene anillo distinto (pago %) en TripDetail desktop | Diferencia intencional |
 | 8 | Total USD en hero | Si | Si | Ninguno | — |
-| 9 | **Empty state con botón "Ver demo"** | Si — dos botones: "Nuevo viaje" + "Ver demo" | No — solo decoración visual (airplane icon), sin botón "Ver demo" | iOS sin demo | P3 |
+| 9 | **Empty state con botón "Ver demo"** | Si — dos botones: "Nuevo viaje" + "Ver demo" | Si — botón "Ver demo" en emptyState → createDemoTrip() (Madrid+Barcelona, 2 vuelos, 1 hotel) | Ninguno | — |
 | 10 | Filtros de viajes (tabs) | Si — Todos / Futuros / En curso / Pasados / Borradores | Si — mismos 5 filtros como pills | Ninguno | — |
 | 11 | Grid de viajes 2 columnas en desktop | Si — `md:grid-cols-2` | N/A (nativo iOS, sin equivalente) | — | — |
 | 12 | "Confirmar viaje" inline en lista | Si — botón dorado debajo de cada draft card | Si — DraftConfirmButton en TripsListSection | Ninguno | — |
@@ -43,7 +43,7 @@ _Generado: 2026-04-27 | Auditoría manual del código fuente_
 | 30 | Badges de vuelos / hoteles / transportes en celda | Si | Si | Ninguno | — |
 | 31 | Long press para asignar ciudad a día | Si — LONG_PRESS_MS = 380ms con portal | Si — LongPressGesture + DragGesture → CityRangeAssignSheet (range multi-day, haptics) | Ninguno | — |
 | 32 | Editar item desde calendario | Si — abre FlightForm/HotelForm/TransportForm inline | Si — abre SelectedItem sheet | Ninguno | — |
-| 33 | City flag / country code en celdas | Si — detectCountryCode + countryFlag | No encontrado | **Gap**: iOS CalendarView no muestra bandera de país en la celda | P3 |
+| 33 | City flag / country code en celdas | Si — detectCountryCode + countryFlag | Si — flagEmoji(for:) en DayCell, usado en singleCityBlock y splitCityBlock | Ninguno | — |
 | **LISTA (ListView)** |
 | 34 | Vista cronológica de todos los items | Si | Si | Ninguno | — |
 | **ITEMS VIEW** |
@@ -69,7 +69,7 @@ _Generado: 2026-04-27 | Auditoría manual del código fuente_
 | **CATÁLOGO (cross-trip)** |
 | 52 | Tab Vuelos / Hoteles / Transportes / Ciudades | Si — 4 tabs | Si — CatalogView con tabs | Ninguno | — |
 | 53 | Búsqueda full-text | Si | Si | Ninguno | — |
-| 54 | Filtro por tipo de transporte | Si — TransportFilter pills | No verificado | Verificar | P3 |
+| 54 | Filtro por tipo de transporte | Si — TransportFilter pills | Si — TransportFilterChip pills en TransportsTab de CatalogView (tren/bus/ferry/auto/otro) | Ninguno | — |
 | 55 | **Ciudades en Catálogo con configuración global** | Si — CitiesCatalog con color/country_code por ciudad editable globalmente | Si — tab "Ciudades" en CatalogView con CityCatalogCard + CityEditSheet (implementado) | Ninguno | — |
 | **SETTINGS** |
 | 56 | AI provider (Claude / Gemini) | Si — toggle pill | Si — Picker con menu | Ninguno | — |
@@ -77,7 +77,7 @@ _Generado: 2026-04-27 | Auditoría manual del código fuente_
 | 58 | Perfil (avatar + email) | Si | Si | Ninguno | — |
 | 59 | Cerrar sesión | Si | Si | Ninguno | — |
 | 60 | Copy UID | No | Si | Ventaja iOS (útil para debug) | — |
-| 61 | Version / GitHub link | Si | No | Diferencia menor | P3 |
+| 61 | Version / GitHub link | Si | Si — sección "Sobre la app" en SettingsView con versión de bundle + link GitHub (implementado) | Ninguno | — |
 | 62 | **Export JSON** | No en ninguna plataforma | No | Ausente en ambas | P3 |
 
 ---
@@ -101,12 +101,10 @@ _Todos los gaps P2 relevantes están resueltos. #25 y #40 son diferencias de UX 
 
 | ID | Gap | Plataforma afectada |
 |----|-----|---------------------|
-| 9 | Empty state sin botón "Ver demo" | iOS |
-| 33 | Bandera de país en celda del calendario | iOS |
-| 43 | Agregar gasto desde tab Costos directamente (iOS lo hace via modal) | iOS |
-| 54 | Filtro por tipo de transporte en Catálogo | iOS |
-| 61 | Version y link a GitHub en Settings | iOS |
+| 43 | Agregar gasto desde tab Costos directamente (iOS lo hace via modal — aceptable) | iOS |
 | 62 | Export JSON — ausente en ambas plataformas | Ambas |
+
+_Todos los demás P3 están resueltos._
 
 ---
 

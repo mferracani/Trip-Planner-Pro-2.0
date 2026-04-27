@@ -14,6 +14,7 @@ struct SettingsView: View {
                     aiProviderSection
                     currencySection
                     sessionSection
+                    appInfoSection
                 }
                 .scrollContentBackground(.hidden)
             }
@@ -88,6 +89,25 @@ struct SettingsView: View {
     private var currencySection: some View {
         Section("Moneda") {
             CurrencyPicker()
+        }
+    }
+
+    // MARK: - App info section
+
+    private var appInfoSection: some View {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return Section("Sobre la app") {
+            LabeledContent("Versión", value: "\(version) (\(build))")
+                .foregroundStyle(Tokens.Color.textSecondary)
+            Button {
+                if let url = URL(string: "https://github.com/matiasferracani") {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                Label("GitHub", systemImage: "arrow.up.right.square")
+                    .foregroundStyle(Tokens.Color.accentBlue)
+            }
         }
     }
 
