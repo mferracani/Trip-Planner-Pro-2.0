@@ -244,7 +244,7 @@ function HotelRow({ hotel }: { hotel: Hotel }) {
 function TransportRow({ transport }: { transport: Transport }) {
   const dep = transport.departure_local_time?.split("T")[1]?.slice(0, 5) ?? "";
   const depDate = transport.departure_local_time?.split("T")[0] ?? "";
-  const emoji = { train: "🚆", bus: "🚌", ferry: "⛴️", car: "🚗", taxi: "🚕", subway: "🚇", other: "🚐" }[transport.type] ?? "🚐";
+  const emoji = { train: "🚆", bus: "🚌", ferry: "⛴️", car: "🚗", car_rental: "🚙", taxi: "🚕", subway: "🚇", other: "🚐" }[transport.type] ?? "🚐";
   return (
     <>
       <div className="w-10 h-10 rounded-full bg-[#BF5AF2]/15 flex items-center justify-center text-xl flex-shrink-0">{emoji}</div>

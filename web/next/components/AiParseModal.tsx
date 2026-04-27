@@ -182,7 +182,7 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
           const depUtc = toTs(t.departure_utc);
           await createTransport(user.uid, tripId, {
             trip_id: tripId,
-            type: (t.mode as "train" | "bus" | "ferry" | "car" | "other") ?? "other",
+            type: (t.mode as "train" | "bus" | "ferry" | "car" | "car_rental" | "other") ?? "other",
             origin: t.origin ?? "",
             destination: t.destination ?? "",
             departure_local_time: t.departure_local_time ?? "",
