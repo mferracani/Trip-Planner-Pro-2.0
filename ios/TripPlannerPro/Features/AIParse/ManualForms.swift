@@ -13,12 +13,14 @@ struct ManualItemsView: View {
         case flight = "Vuelo"
         case hotel = "Hotel"
         case transport = "Traslado"
+        case city = "Ciudad"
 
         var icon: String {
             switch self {
             case .flight: return "airplane"
             case .hotel: return "bed.double"
             case .transport: return "tram"
+            case .city: return "mappin"
             }
         }
 
@@ -27,6 +29,7 @@ struct ManualItemsView: View {
             case .flight: return Tokens.Color.Category.flight
             case .hotel: return Tokens.Color.Category.hotel
             case .transport: return Tokens.Color.Category.transit
+            case .city: return Tokens.Color.accentGreen
             }
         }
     }
@@ -82,6 +85,8 @@ struct ManualItemsView: View {
                 ManualHotelForm(trip: trip)
             case .transport:
                 ManualTransportForm(trip: trip)
+            case .city:
+                ManualCityForm(trip: trip)
             }
         }
     }
@@ -104,12 +109,21 @@ struct ManualFlightForm: View {
     @State private var arrivalDate = Date()
     @State private var arrivalTime = ""
     @State private var bookingRef = ""
+    @State private var seat = ""
+    @State private var cabinClass = "economy"
     @State private var price = ""
     @State private var currency = "USD"
 
     @State private var isSaving = false
     @State private var saveError: String?
     @State private var showSuccess = false
+
+    private let cabinClassOptions: [(value: String, label: String)] = [
+        ("economy", "Economy"),
+        ("premium_economy", "Premium Economy"),
+        ("business", "Business"),
+        ("first", "Primera"),
+    ]
 
     private var isValid: Bool {
         !originIATA.trimmingCharacters(in: .whitespaces).isEmpty &&
@@ -175,6 +189,46 @@ struct ManualFlightForm: View {
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.characters)
 
+                FormField(label: "Asiento (opcional)", placeholder: "14A", text: $seat)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.characters)
+
+                // Cabin class picker
+                FormSection(title: "Clase") {
+                    VStack(spacing: 0) {
+                        ForEach(cabinClassOptions, id: \.value) { option in
+                            Button {
+                                withAnimation(.easeInOut(duration: Tokens.Motion.fast)) {
+                                    cabinClass = option.value
+                                }
+                            } label: {
+                                HStack {
+                                    Text(option.label)
+                                        .font(.system(size: 14))
+                                        .foregroundStyle(Tokens.Color.textPrimary)
+                                    Spacer()
+                                    if cabinClass == option.value {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundStyle(Tokens.Color.Category.flight)
+                                    }
+                                }
+                                .padding(.vertical, Tokens.Spacing.sm)
+                                .padding(.horizontal, Tokens.Spacing.md)
+                            }
+                            .buttonStyle(.plain)
+                            if option.value != cabinClassOptions.last?.value {
+                                Divider().background(Tokens.Color.border)
+                                    .padding(.leading, Tokens.Spacing.md)
+                            }
+                        }
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                            .fill(Tokens.Color.elevated)
+                    )
+                }
+
                 PriceRow(price: $price, currency: $currency)
 
                 SaveButton(isValid: isValid, isSaving: isSaving, action: save)
@@ -207,6 +261,8 @@ struct ManualFlightForm: View {
                     arrivalLocalTime: arrISO,
                     arrivalUTC: arrUTC,
                     durationMinutes: durationMin,
+                    cabinClass: cabinClass,
+                    seat: seat.isEmpty ? nil : seat.uppercased(),
                     bookingRef: bookingRef.isEmpty ? nil : bookingRef.uppercased(),
                     price: Double(price.replacingOccurrences(of: ",", with: ".")),
                     currency: price.isEmpty ? nil : currency
@@ -230,7 +286,7 @@ struct ManualFlightForm: View {
     private func resetForm() {
         airline = ""; flightNumber = ""; originIATA = ""; destIATA = ""
         departureDate = Date(); departureTime = ""; arrivalDate = Date(); arrivalTime = ""
-        bookingRef = ""; price = ""; currency = "USD"
+        bookingRef = ""; seat = ""; cabinClass = "economy"; price = ""; currency = "USD"
     }
 }
 
@@ -244,8 +300,9 @@ struct ManualHotelForm: View {
     @State private var name = ""
     @State private var checkIn = Date()
     @State private var checkOut = Date().addingTimeInterval(86400)
+    @State private var roomType = ""
     @State private var bookingRef = ""
-    @State private var price = ""
+    @State private var pricePerNight = ""
     @State private var currency = "USD"
 
     @State private var isSaving = false
@@ -278,11 +335,14 @@ struct ManualHotelForm: View {
                     DatePickerRow(label: "Fecha", selection: $checkOut)
                 }
 
+                FormField(label: "Tipo de habitación (opcional)", placeholder: "Doble superior", text: $roomType)
+                    .autocorrectionDisabled()
+
                 FormField(label: "Ref. de reserva (opcional)", placeholder: "ABC123", text: $bookingRef)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.characters)
 
-                PriceRow(price: $price, currency: $currency)
+                PriceRow(price: $pricePerNight, currency: $currency, label: "Precio por noche (opcional)")
 
                 SaveButton(isValid: isValid, isSaving: isSaving, action: save)
             }
@@ -299,22 +359,27 @@ struct ManualHotelForm: View {
             do {
                 let checkInISO = dateOnlyISO(checkIn)
                 let checkOutISO = dateOnlyISO(checkOut)
+                let ppn = Double(pricePerNight.replacingOccurrences(of: ",", with: "."))
+                let nights = Calendar.current.dateComponents([.day], from: checkIn, to: checkOut).day ?? 0
+                let total: Double? = ppn.map { $0 * Double(max(1, nights)) }
 
                 let hotel = Hotel(
                     tripId: tripID,
                     name: name.trimmingCharacters(in: .whitespaces),
                     checkIn: checkInISO,
                     checkOut: checkOutISO,
+                    roomType: roomType.isEmpty ? nil : roomType.trimmingCharacters(in: .whitespaces),
                     bookingRef: bookingRef.isEmpty ? nil : bookingRef.uppercased(),
-                    totalPrice: Double(price.replacingOccurrences(of: ",", with: ".")),
-                    currency: price.isEmpty ? nil : currency
+                    pricePerNight: ppn,
+                    totalPrice: total,
+                    currency: pricePerNight.isEmpty ? nil : currency
                 )
 
                 try client.saveManualHotel(hotel, tripID: tripID)
 
                 isSaving = false
                 withAnimation { showSuccess = true }
-                name = ""; bookingRef = ""; price = ""; currency = "USD"
+                name = ""; roomType = ""; bookingRef = ""; pricePerNight = ""; currency = "USD"
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                     withAnimation { showSuccess = false }
                 }
@@ -338,6 +403,8 @@ struct ManualTransportForm: View {
         ("bus", "Bus"),
         ("ferry", "Ferry"),
         ("car", "Auto / rental"),
+        ("taxi", "Taxi"),
+        ("subway", "Metro / Subte"),
         ("other", "Otro"),
     ]
 
@@ -449,8 +516,6 @@ struct ManualTransportForm: View {
             do {
                 let depISO = isoString(date: departureDate, time: departureTime)
                 let depUTC = parseLocalApproxUTC(date: departureDate, time: departureTime)
-                let desc = "\(origin.trimmingCharacters(in: .whitespaces)) → \(destination.trimmingCharacters(in: .whitespaces))"
-
                 let transport = Transport(
                     tripId: tripID,
                     type: type,
@@ -468,6 +533,202 @@ struct ManualTransportForm: View {
                 isSaving = false
                 withAnimation { showSuccess = true }
                 origin = ""; destination = ""; departureTime = ""; bookingRef = ""; price = ""; currency = "USD"
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    withAnimation { showSuccess = false }
+                }
+            } catch {
+                isSaving = false
+                saveError = error.localizedDescription
+            }
+        }
+    }
+}
+
+// MARK: - ManualExpenseForm
+
+struct ManualExpenseForm: View {
+    let trip: Trip
+
+    @Environment(FirestoreClient.self) private var client
+
+    private let categories: [(value: String, label: String, icon: String)] = [
+        ("food", "Comida / Restaurante", "fork.knife"),
+        ("activity", "Actividad / Tour", "ticket"),
+        ("shopping", "Compras", "bag"),
+        ("transport", "Transporte local", "tram"),
+        ("other", "Otro", "ellipsis.circle"),
+    ]
+
+    @State private var title = ""
+    @State private var amount = ""
+    @State private var currency = "USD"
+    @State private var category = "other"
+    @State private var date = Date()
+    @State private var notes = ""
+
+    @State private var isSaving = false
+    @State private var saveError: String?
+    @State private var showSuccess = false
+
+    private var isValid: Bool {
+        !title.trimmingCharacters(in: .whitespaces).isEmpty &&
+        Double(amount.replacingOccurrences(of: ",", with: ".")) != nil
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: Tokens.Spacing.md) {
+                if showSuccess { SavedBanner() }
+                if let error = saveError { ErrorBanner(message: error) }
+
+                FormField(label: "Descripción", placeholder: "Cena en Madrid", text: $title)
+
+                PriceRow(price: $amount, currency: $currency)
+
+                DatePickerRow(label: "Fecha", selection: $date)
+
+                FormSection(title: "Categoría") {
+                    VStack(spacing: 0) {
+                        ForEach(categories, id: \.value) { opt in
+                            Button {
+                                withAnimation(.easeInOut(duration: Tokens.Motion.fast)) { category = opt.value }
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: opt.icon)
+                                        .font(.system(size: 14))
+                                        .foregroundStyle(Tokens.Color.accentGreen)
+                                        .frame(width: 20)
+                                    Text(opt.label)
+                                        .font(.system(size: 14))
+                                        .foregroundStyle(Tokens.Color.textPrimary)
+                                    Spacer()
+                                    if category == opt.value {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundStyle(Tokens.Color.accentGreen)
+                                    }
+                                }
+                                .padding(.vertical, Tokens.Spacing.sm)
+                                .padding(.horizontal, Tokens.Spacing.md)
+                            }
+                            .buttonStyle(.plain)
+                            if opt.value != categories.last?.value {
+                                Divider().background(Tokens.Color.border)
+                                    .padding(.leading, Tokens.Spacing.md)
+                            }
+                        }
+                    }
+                    .background(RoundedRectangle(cornerRadius: Tokens.Radius.md).fill(Tokens.Color.elevated))
+                }
+
+                SaveButton(isValid: isValid, isSaving: isSaving, action: save)
+            }
+            .padding(Tokens.Spacing.base)
+        }
+    }
+
+    private func save() {
+        guard let tripID = trip.id, isValid else { return }
+        isSaving = true
+        saveError = nil
+        let dateStr = dateOnlyISO(date)
+        let expense = Expense(
+            tripId: tripID,
+            title: title.trimmingCharacters(in: .whitespaces),
+            amount: Double(amount.replacingOccurrences(of: ",", with: ".")) ?? 0,
+            currency: currency,
+            date: dateStr,
+            category: category,
+            notes: notes.isEmpty ? nil : notes
+        )
+        Task {
+            do {
+                try client.saveManualExpense(expense, tripID: tripID)
+                isSaving = false
+                withAnimation { showSuccess = true }
+                title = ""; amount = ""; currency = "USD"; category = "other"; notes = ""
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    withAnimation { showSuccess = false }
+                }
+            } catch {
+                isSaving = false
+                saveError = error.localizedDescription
+            }
+        }
+    }
+}
+
+// MARK: - ManualCityForm
+
+struct ManualCityForm: View {
+    let trip: Trip
+
+    @Environment(FirestoreClient.self) private var client
+
+    @State private var name = ""
+    @State private var country = ""
+    @State private var countryCode = ""
+
+    @State private var isSaving = false
+    @State private var saveError: String?
+    @State private var showSuccess = false
+
+    private var isValid: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: Tokens.Spacing.md) {
+                if showSuccess {
+                    SavedBanner()
+                }
+
+                if let error = saveError {
+                    ErrorBanner(message: error)
+                }
+
+                FormField(label: "Nombre de la ciudad", placeholder: "Madrid", text: $name)
+                    .autocorrectionDisabled()
+
+                FormField(label: "País (opcional)", placeholder: "España", text: $country)
+                    .autocorrectionDisabled()
+
+                FormField(label: "Código país (opcional)", placeholder: "ES", text: $countryCode)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.characters)
+
+                SaveButton(isValid: isValid, isSaving: isSaving, action: save)
+            }
+            .padding(Tokens.Spacing.base)
+        }
+    }
+
+    private func save() {
+        guard let tripID = trip.id, isValid else { return }
+        isSaving = true
+        saveError = nil
+
+        Task {
+            do {
+                let city = TripCity(
+                    id: nil,
+                    tripId: tripID,
+                    name: name.trimmingCharacters(in: .whitespaces),
+                    country: country.isEmpty ? nil : country.trimmingCharacters(in: .whitespaces),
+                    countryCode: countryCode.isEmpty ? nil : countryCode.trimmingCharacters(in: .whitespaces),
+                    color: nil,
+                    days: [],
+                    lat: nil,
+                    lng: nil,
+                    timezone: nil
+                )
+
+                try await client.createCity(city, tripID: tripID)
+
+                isSaving = false
+                withAnimation { showSuccess = true }
+                name = ""; country = ""; countryCode = ""
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                     withAnimation { showSuccess = false }
                 }
@@ -558,12 +819,13 @@ private struct DatePickerRow: View {
 private struct PriceRow: View {
     @Binding var price: String
     @Binding var currency: String
+    var label: String = "Precio (opcional)"
 
     private let currencies = ["USD", "EUR", "ARS", "GBP", "BRL", "CLP", "MXN", "COP"]
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
-            Text("Precio (opcional)")
+            Text(label)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Tokens.Color.textSecondary)
 
@@ -703,7 +965,6 @@ private struct ErrorBanner: View {
 // MARK: - Date helpers
 
 private func isoString(date: Date, time: String) -> String {
-    let calendar = Calendar.current
     let dateStr = dateOnlyISO(date)
     let timeStr = time.trimmingCharacters(in: .whitespaces)
     return "\(dateStr)T\(timeStr)"

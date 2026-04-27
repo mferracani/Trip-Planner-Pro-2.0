@@ -6,12 +6,14 @@ private enum CatalogTab: String, CaseIterable {
     case flights = "Vuelos"
     case hotels = "Hoteles"
     case transports = "Traslados"
+    case cities = "Ciudades"
 
     var icon: String {
         switch self {
         case .flights: return "airplane"
         case .hotels: return "bed.double"
         case .transports: return "tram"
+        case .cities: return "mappin.and.ellipse"
         }
     }
 
@@ -20,6 +22,7 @@ private enum CatalogTab: String, CaseIterable {
         case .flights: return Tokens.Color.Category.flight
         case .hotels: return Tokens.Color.Category.hotel
         case .transports: return Tokens.Color.Category.transit
+        case .cities: return Tokens.Color.accentGreen
         }
     }
 }
@@ -74,6 +77,8 @@ struct CatalogView: View {
                 HotelsTab(entries: items.hotels)
             case .transports:
                 TransportsTab(entries: items.transports)
+            case .cities:
+                CitiesTab(entries: items.cities)
             }
         }
     }
@@ -282,6 +287,132 @@ private struct TransportsTab: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - CitiesTab
+
+private struct CitiesTab: View {
+    let entries: [(trip: Trip, city: TripCity)]
+    @State private var search = ""
+    @State private var selectedCity: TripCity? = nil
+    @State private var selectedTripID: String = ""
+
+    private var filtered: [(trip: Trip, city: TripCity)] {
+        guard !search.trimmingCharacters(in: .whitespaces).isEmpty else { return entries }
+        let q = search.lowercased()
+        return entries.filter { entry in
+            [entry.city.name, entry.city.country, entry.trip.name]
+                .compactMap { $0 }
+                .contains { $0.lowercased().contains(q) }
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            SearchBar(text: $search, placeholder: "Ciudad, país, viaje...")
+                .padding(.horizontal, Tokens.Spacing.base)
+                .padding(.vertical, Tokens.Spacing.sm)
+
+            if filtered.isEmpty {
+                EmptyCatalogState(tab: .cities, hasSearch: !search.isEmpty)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: Tokens.Spacing.sm) {
+                        ForEach(filtered, id: \.city.id) { entry in
+                            CityCatalogCard(trip: entry.trip, city: entry.city) {
+                                selectedCity = entry.city
+                                selectedTripID = entry.trip.id ?? ""
+                            }
+                        }
+                    }
+                    .padding(.horizontal, Tokens.Spacing.base)
+                    .padding(.vertical, Tokens.Spacing.sm)
+                }
+            }
+        }
+        .sheet(item: $selectedCity) { city in
+            CityEditSheet(city: city, tripID: selectedTripID, onClose: { selectedCity = nil })
+                .presentationBackground(Tokens.Color.bgPrimary)
+        }
+    }
+}
+
+// MARK: - CityCatalogCard
+
+private struct CityCatalogCard: View {
+    let trip: Trip
+    let city: TripCity
+    let onEdit: () -> Void
+
+    var body: some View {
+        Button(action: onEdit) {
+            HStack(alignment: .center, spacing: Tokens.Spacing.md) {
+                Circle()
+                    .fill(city.swiftColor)
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Text(String(city.name.prefix(1)).uppercased())
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(.white)
+                    )
+
+                VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
+                    Text(trip.name)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Tokens.Color.textTertiary)
+                        .textCase(.uppercase)
+                        .tracking(0.5)
+
+                    HStack(spacing: Tokens.Spacing.xs) {
+                        Text(city.name)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Tokens.Color.textPrimary)
+                        if let flag = countryFlag {
+                            Text(flag)
+                                .font(.system(size: 14))
+                        }
+                    }
+
+                    if let country = city.country {
+                        Text(country)
+                            .font(.system(size: 12))
+                            .foregroundStyle(Tokens.Color.textTertiary)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                if !city.days.isEmpty {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("\(city.days.count)")
+                            .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(Tokens.Color.textPrimary)
+                        Text("días")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Tokens.Color.textTertiary)
+                    }
+                }
+
+                Image(systemName: "pencil")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Tokens.Color.textTertiary)
+            }
+            .padding(Tokens.Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                    .fill(Tokens.Color.surface)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var countryFlag: String? {
+        guard let code = city.countryCode, code.count == 2 else { return nil }
+        let base: UInt32 = 127397
+        return code.uppercased().unicodeScalars.compactMap {
+            UnicodeScalar(base + $0.value)
+        }.map { String($0) }.joined()
     }
 }
 
