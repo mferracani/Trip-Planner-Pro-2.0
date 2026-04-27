@@ -7,9 +7,9 @@ struct TripPlannerProApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     private let modelContainer: ModelContainer = {
-        let schema = Schema([CachedTrip.self])
-        // Use a versioned store name so schema changes don't brick the app.
-        let config = ModelConfiguration("TripPlannerCache_v2", schema: schema)
+        let schema = Schema([CachedTrip.self, CachedTripItems.self])
+        // Versioned store name — bump when schema changes to avoid migration errors.
+        let config = ModelConfiguration("TripPlannerCache_v3", schema: schema)
         do {
             return try ModelContainer(for: schema, configurations: config)
         } catch {
