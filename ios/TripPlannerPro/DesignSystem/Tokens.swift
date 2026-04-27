@@ -52,18 +52,28 @@ enum Tokens {
         static let accentPurpleDeep = SwiftUI.Color(hex: 0x9B3FD6)
         /// Highlight / greeting accent. Web: text-[#FFD16A]
         static let accentGold = SwiftUI.Color(hex: 0xFFD16A)
+        /// Sky blue — upcoming trip status indicator. Web: text-[#4D96FF]
+        static let signalSky  = SwiftUI.Color(hex: 0x4D96FF)
 
         // MARK: City palette — matches web CITY_COLORS array (types.ts)
 
         static let cityPalette: [SwiftUI.Color] = [
-            SwiftUI.Color(hex: 0x71D3A6), // menta viaje
-            SwiftUI.Color(hex: 0x74ACDF), // cielo
-            SwiftUI.Color(hex: 0xFFD16A), // sol
-            SwiftUI.Color(hex: 0xF29E7D), // coral cálido
-            SwiftUI.Color(hex: 0xA891E8), // lavanda IA
-            SwiftUI.Color(hex: 0xE98A9A), // rosa atardecer
-            SwiftUI.Color(hex: 0x6BCB77), // verde fresco
-            SwiftUI.Color(hex: 0x6CAFE8), // azul costa
+            SwiftUI.Color(hex: 0x71D3A6),
+            SwiftUI.Color(hex: 0x74ACDF),
+            SwiftUI.Color(hex: 0xFFD16A),
+            SwiftUI.Color(hex: 0xF29E7D),
+            SwiftUI.Color(hex: 0xA891E8),
+            SwiftUI.Color(hex: 0xE98A9A),
+            SwiftUI.Color(hex: 0x6BCB77),
+            SwiftUI.Color(hex: 0x6CAFE8),
+            SwiftUI.Color(hex: 0xFF6B6B),
+            SwiftUI.Color(hex: 0x4ECDC4),
+            SwiftUI.Color(hex: 0xFFAA00),
+            SwiftUI.Color(hex: 0x00D4FF),
+            SwiftUI.Color(hex: 0xAADF00),
+            SwiftUI.Color(hex: 0xE040FB),
+            SwiftUI.Color(hex: 0xFF6422),
+            SwiftUI.Color(hex: 0xFB7185),
         ]
 
         static let cityBgOpacity: Double     = 0.14

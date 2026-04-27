@@ -490,7 +490,7 @@ struct TripDetailView: View {
     private func tabContent(_ vm: TripDetailViewModel) -> some View {
         switch selectedTab {
         case .calendar:
-            CalendarView(vm: vm)
+            CalendarView(vm: vm, allUserCities: vm.cities)
         case .list:
             ListView(vm: vm)
         case .items:
