@@ -10,7 +10,6 @@ import { BottomNav } from "../BottomNav";
 import { TopNav } from "../TopNav";
 import { CalendarView } from "./CalendarView";
 import { ListView } from "./ListView";
-import { ItemsView } from "./ItemsView";
 import { CostView } from "./CostView";
 import { AiParseModal } from "../AiParseModal";
 import { TripForm } from "../forms/TripForm";
@@ -19,9 +18,9 @@ import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, MapPin, MoreHorizon
 import { getTheme } from "@/lib/themes";
 import { Trip } from "@/lib/types";
 
-type Tab = "calendar" | "list" | "items" | "costos";
-const TABS: Tab[] = ["calendar", "list", "items", "costos"];
-const TAB_LABELS: Record<Tab, string> = { calendar: "Calendario", list: "Lista", items: "Items", costos: "Costos" };
+type Tab = "calendar" | "list" | "costos";
+const TABS: Tab[] = ["calendar", "list", "costos"];
+const TAB_LABELS: Record<Tab, string> = { calendar: "Calendario", list: "Lista", costos: "Costos" };
 
 interface Props {
   tripId: string;
@@ -328,15 +327,7 @@ export function TripDetailPage({ tripId }: Props) {
               flights={flights}
               hotels={hotels}
               transports={transports}
-            />
-          )}
-          {tab === "items" && (
-            <ItemsView
-              trip={trip}
-              cities={cities}
-              flights={flights}
-              hotels={hotels}
-              transports={transports}
+              expenses={expenses}
               onChanged={refetchAll}
             />
           )}

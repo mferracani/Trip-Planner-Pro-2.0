@@ -4,14 +4,12 @@ import SwiftUI
 enum TripTab: String, CaseIterable {
     case calendar = "Calendario"
     case list = "Lista"
-    case items = "Items"
     case costs = "Costos"
 
     var icon: String {
         switch self {
         case .calendar: "calendar"
         case .list: "list.bullet"
-        case .items: "square.grid.2x2"
         case .costs: "dollarsign.circle"
         }
     }
@@ -563,8 +561,6 @@ struct TripDetailView: View {
             CalendarView(vm: vm, allUserCities: allTripsCities)
         case .list:
             ListView(vm: vm)
-        case .items:
-            ItemsView(vm: vm)
         case .costs:
             CostsView(vm: vm)
         }
