@@ -163,12 +163,13 @@ final class DashboardViewModel {
         return max(0, hero.daysUntilStart)
     }
 
-    /// Progress metric for the hero ring:
-    /// - If a trip is active → % of trip time elapsed
-    /// - If a next trip exists → inverse of days-until (clamped), so the ring
-    ///   fills as the trip approaches
-    /// - Otherwise → % of year elapsed
+    /// Progress metric for the hero ring.
+    /// Payment progress (paid_usd / total_usd) takes priority when a budget is set.
+    /// Falls back to temporal progress (days elapsed or countdown) when no budget exists.
     var heroProgress: Double {
+        if let hero = heroTrip, let total = hero.totalUSD, total > 0 {
+            return min(1, (hero.paidUSD ?? 0) / total)
+        }
         if let active = activeTrip {
             let total = max(1, Calendar.current.dateComponents([.day], from: active.startDate, to: active.endDate).day ?? 0)
             let elapsed = max(0, Calendar.current.dateComponents([.day], from: active.startDate, to: Date()).day ?? 0)
@@ -176,7 +177,6 @@ final class DashboardViewModel {
         }
         if let next = upcomingTrip {
             let days = max(0, next.daysUntilStart)
-            // 0 days → 1.0 (about to start); 90+ days → 0.1
             let p = max(0.05, 1 - Double(days) / 90.0)
             return min(1, p)
         }

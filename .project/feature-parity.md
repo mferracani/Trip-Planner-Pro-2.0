@@ -13,9 +13,9 @@ _Generado: 2026-04-27 | Auditoría manual del código fuente_
 | 3 | Stats header "X viajes · Y ciudades" | Si — solo desktop, alineado a la derecha | Si — bajo el nombre, en monotype | Ninguno | — |
 | 4 | Hero card — viaje activo / próximo | Si — banner horizontal con left border accent | Si — TripHeroCard grande con gradiente y cover | Diferencia de layout (intencional, adaptada a mobile) | — |
 | 5 | **Countdown granular en hero card** | Si — "En X días" (texto plano, sin niveles) | Si — 5 niveles implementados: horas/minutos cuando es hoy, "mañana", días, etc. | **Web es el que falta niveles**, iOS ya lo tiene mejor | — |
-| 6 | Stats del hero — vuelos / ciudades / días | Si — BannerPills solo desktop | Si — StatIconRow con iconos | Web no tiene esa info en mobile, iOS sí | Ventaja iOS |
-| 7 | Progress ring en hero | No — web usa barra linear de pago | Si — ProgressRing circular mostrando avance temporal | Web tiene anillo distinto (pago %) en TripDetail desktop | Diferencia intencional |
-| 8 | Total USD en hero | Si | Si | Ninguno | — |
+| 6 | Stats del hero — ciudades / días / countdown | Si — BannerPills solo desktop (vuelos/ciudades/días del viaje) | Si — StatIconRow con iconos, datos del viaje específico (post-fix 2026-04-27) | Ninguno | — |
+| 7 | Progress ring en hero | No — web no tiene ring en Dashboard | Si — ProgressRing temporal: avance % si activo, cuenta regresiva si próximo. Label contextual "Avance"/"Próximo" | Diferencia intencional iOS | — |
+| 8 | Total USD en hero | Si — presupuesto del viaje específico | Si — presupuesto del viaje específico (post-fix 2026-04-27) | Ninguno | — |
 | 9 | **Empty state con botón "Ver demo"** | Si — dos botones: "Nuevo viaje" + "Ver demo" | Si — botón "Ver demo" en emptyState → createDemoTrip() (Madrid+Barcelona, 2 vuelos, 1 hotel) | Ninguno | — |
 | 10 | Filtros de viajes (tabs) | Si — Todos / Futuros / En curso / Pasados / Borradores | Si — mismos 5 filtros como pills | Ninguno | — |
 | 11 | Grid de viajes 2 columnas en desktop | Si — `md:grid-cols-2` | N/A (nativo iOS, sin equivalente) | — | — |

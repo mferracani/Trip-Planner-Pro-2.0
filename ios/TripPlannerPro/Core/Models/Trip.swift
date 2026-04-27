@@ -17,6 +17,7 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
     var createdAt: Date
     var updatedAt: Date?
     var totalUSD: Double?
+    var paidUSD: Double?
     var citiesCount: Int?
     /// Persisted status — "draft" or "planned". When nil, status is inferred from dates.
     var statusStored: TripStatus?
@@ -30,6 +31,7 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case totalUSD = "total_usd"
+        case paidUSD = "paid_usd"
         case citiesCount = "cities_count"
         case statusStored = "status"
     }
@@ -72,6 +74,7 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         statusStored: TripStatus? = nil,
         createdAt: Date = .now,
         totalUSD: Double? = nil,
+        paidUSD: Double? = nil,
         citiesCount: Int? = nil
     ) {
         self._id = .init(wrappedValue: id)
@@ -83,6 +86,7 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         self.createdAt = createdAt
         self.updatedAt = createdAt
         self.totalUSD = totalUSD
+        self.paidUSD = paidUSD
         self.citiesCount = citiesCount
     }
 

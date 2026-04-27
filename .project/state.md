@@ -100,6 +100,10 @@
 - [x] [frontend-engineer] → [frontend-engineer]: implementar Ticket 9 iOS — detalle desde Catalogo
 - [x] [frontend-engineer] → [frontend-engineer]: implementar Ticket 8 iOS — monedas con simbolos
 - [ ] [frontend-engineer] → [backend-designer]: definir estrategia para ciudades reutilizables sin duplicados
+- [ ] [product-manager] → [ios-dev]: implementar gap #63 — agregar selector IDA/VUELTA y estructura `legs[]` a ManualFlightForm iOS (ticket en .project/state.md)
+
+## Decisiones PM — 2026-04-27 (gap flight leg type)
+- [PM] Gap P1 identificado y documentado en feature-parity.md (ítem #63): ManualFlightForm iOS no tiene secciones IDA/VUELTA ni estructura `legs[]`. Web FlightForm sí las tiene via `FlightLeg.direction`. Es inconsistencia de schema Firestore entre plataformas — un vuelo cargado desde iOS no tendrá campo `legs`, lo que rompería la renderización en web. Ticket ejecutable escrito. Handoff a @ios-dev.
 
 ## Política de feature parity (establecida 2026-04-27)
 iOS y desktop deben mantener las mismas funcionalidades. Antes de cerrar un feature en una plataforma, marcarlo pendiente en la otra. El feature-parity audit completo está en `.project/feature-parity.md`.

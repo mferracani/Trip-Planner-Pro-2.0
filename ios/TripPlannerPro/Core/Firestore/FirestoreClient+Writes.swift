@@ -142,20 +142,25 @@ extension FirestoreClient {
 
         let (f, h, t, e, c) = try await (flightsSnap, hotelsSnap, transportsSnap, expensesSnap, citiesSnap)
 
-        let flightsTotal = f.documents.compactMap { try? $0.data(as: Flight.self) }
-            .reduce(0.0) { $0 + ($1.priceUSD ?? 0) }
-        let hotelsTotal = h.documents.compactMap { try? $0.data(as: Hotel.self) }
-            .reduce(0.0) { $0 + ($1.totalPriceUSD ?? 0) }
-        let transportsTotal = t.documents.compactMap { try? $0.data(as: Transport.self) }
-            .reduce(0.0) { $0 + ($1.priceUSD ?? 0) }
-        let expensesTotal = e.documents.compactMap { try? $0.data(as: Expense.self) }
-            .reduce(0.0) { $0 + ($1.amountUSD ?? 0) }
+        let flights   = f.documents.compactMap { try? $0.data(as: Flight.self) }
+        let hotels    = h.documents.compactMap { try? $0.data(as: Hotel.self) }
+        let transports = t.documents.compactMap { try? $0.data(as: Transport.self) }
+        let expenses  = e.documents.compactMap { try? $0.data(as: Expense.self) }
 
-        let total = flightsTotal + hotelsTotal + transportsTotal + expensesTotal
+        let total = flights.reduce(0.0)   { $0 + ($1.priceUSD ?? 0) }
+                  + hotels.reduce(0.0)    { $0 + ($1.totalPriceUSD ?? 0) }
+                  + transports.reduce(0.0){ $0 + ($1.priceUSD ?? 0) }
+                  + expenses.reduce(0.0)  { $0 + ($1.amountUSD ?? 0) }
+
+        let paid  = flights.reduce(0.0)   { $0 + ($1.paidAmount ?? 0) }
+                  + hotels.reduce(0.0)    { $0 + ($1.paidAmount ?? 0) }
+                  + transports.reduce(0.0){ $0 + ($1.paidAmount ?? 0) }
+                  + expenses.reduce(0.0)  { $0 + ($1.paidAmount ?? 0) }
 
         let tripRef = try userCollection("trips").document(tripID)
         try await tripRef.updateData([
             "total_usd": Int(total.rounded()),
+            "paid_usd":  Int(paid.rounded()),
             "cities_count": c.documents.count,
             "updated_at": FieldValue.serverTimestamp()
         ])

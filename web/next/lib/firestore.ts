@@ -279,8 +279,14 @@ export async function recalcTripAggregates(uid: string, tripId: string) {
     hotels.reduce((s, h) => s + (h.total_price_usd ?? 0), 0) +
     transports.reduce((s, t) => s + (t.price_usd ?? 0), 0) +
     expenses.reduce((s, e) => s + (e.amount_usd ?? 0), 0);
+  const paid =
+    flights.reduce((s, f) => s + (f.paid_amount ?? 0), 0) +
+    hotels.reduce((s, h) => s + (h.paid_amount ?? 0), 0) +
+    transports.reduce((s, t) => s + (t.paid_amount ?? 0), 0) +
+    expenses.reduce((s, e) => s + (e.paid_amount ?? 0), 0);
   await updateTrip(uid, tripId, {
     total_usd: Math.round(total),
+    paid_usd: Math.round(paid),
     cities_count: cities.length,
   } as Partial<Trip>);
 }

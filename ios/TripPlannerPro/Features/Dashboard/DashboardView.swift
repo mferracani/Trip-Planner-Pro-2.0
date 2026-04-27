@@ -463,9 +463,19 @@ private struct NextTripCard: View {
 
     // MARK: Stats
 
+    private var heroTripDays: Int {
+        guard let t = vm.heroTrip else { return 0 }
+        return max(1, (Calendar.current.dateComponents([.day], from: t.startDate, to: t.endDate).day ?? 0) + 1)
+    }
+
+    private var progressLabel: String {
+        if let total = vm.heroTrip?.totalUSD, total > 0 { return "Pagado" }
+        return isActive ? "Avance" : "Próximo"
+    }
+
     private var statsSection: some View {
         HStack(alignment: .center, spacing: 20) {
-            // Progress ring
+            // Progress ring — temporal: trip elapsed % (active) or countdown (upcoming)
             ZStack {
                 ProgressRing(
                     progress: vm.heroProgress,
@@ -477,7 +487,7 @@ private struct NextTripCard: View {
                     Text("\(Int(vm.heroProgress * 100))%")
                         .font(.system(size: 16, weight: .bold, design: .monospaced))
                         .foregroundStyle(Tokens.Color.textPrimary)
-                    Text("Progreso")
+                    Text(progressLabel)
                         .font(.system(size: 9, weight: .medium))
                         .tracking(0.4)
                         .foregroundStyle(Tokens.Color.textTertiary)
@@ -486,19 +496,19 @@ private struct NextTripCard: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 StatIconRow(
-                    icon: "paperplane.fill",
-                    value: "\(vm.statTripsThisYear)",
-                    label: "Viajes este año"
-                )
-                StatIconRow(
                     icon: "mappin.and.ellipse",
-                    value: "\(vm.statCitiesVisited)",
+                    value: "\(vm.heroTrip?.citiesCount ?? 0)",
                     label: "Ciudades"
                 )
                 StatIconRow(
                     icon: "calendar",
-                    value: "\(vm.statDaysTraveling)",
-                    label: "Días viajando"
+                    value: "\(heroTripDays)",
+                    label: "Días"
+                )
+                StatIconRow(
+                    icon: "clock.fill",
+                    value: isActive ? "Día \(vm.heroTrip?.currentDayNumber ?? 1)" : "En \(vm.daysUntilHero) días",
+                    label: isActive ? "Día actual" : "Cuenta reg."
                 )
             }
 
@@ -508,7 +518,7 @@ private struct NextTripCard: View {
         .padding(.vertical, 20)
     }
 
-    // MARK: Total spent
+    // MARK: Trip budget row
 
     private var totalSpentRow: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -522,7 +532,7 @@ private struct NextTripCard: View {
                         .tracking(-0.6)
                         .foregroundStyle(Tokens.Color.accentBlue)
                 }
-                Text("Total gastado")
+                Text("Presupuesto del viaje")
                     .font(Tokens.Typo.bodyS)
                     .foregroundStyle(Tokens.Color.textTertiary)
             }
@@ -533,7 +543,7 @@ private struct NextTripCard: View {
     }
 
     private var formattedTotal: String {
-        let total = vm.statTotalSpentUSD
+        let total = Int((vm.heroTrip?.totalUSD ?? 0).rounded())
         if total == 0 { return "—" }
         return total.formatted(.number.grouping(.automatic))
     }
