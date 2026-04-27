@@ -234,8 +234,8 @@ function InlineLegForm({
       arrival_utc: arrUtc ?? Timestamp.now(),
       duration_minutes:
         depUtc && arrUtc ? minutesBetween(depUtc, arrUtc) : 0,
-      cabin_class: values.cabin_class || undefined,
-      seat: values.seat.trim() || undefined,
+      ...(values.cabin_class ? { cabin_class: values.cabin_class } : {}),
+      ...(values.seat.trim() ? { seat: values.seat.trim() } : {}),
     };
 
     onAdd(leg);

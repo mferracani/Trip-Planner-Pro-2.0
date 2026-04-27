@@ -92,6 +92,166 @@ struct ManualItemsView: View {
     }
 }
 
+// MARK: - LegFormState
+
+private struct LegFormState: Identifiable {
+    let id = UUID()
+    var airline = ""
+    var flightNumber = ""
+    var originIATA = ""
+    var destIATA = ""
+    var departureDate = Date()
+    var departureTime = ""
+    var arrivalDate = Date()
+    var arrivalTime = ""
+    var cabinClass = "economy"
+    var seat = ""
+
+    var isValid: Bool {
+        !originIATA.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !destIATA.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !departureTime.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !arrivalTime.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    func toFlightLeg(direction: String) -> FlightLeg {
+        let depISO = isoString(date: departureDate, time: departureTime)
+        let arrISO = isoString(date: arrivalDate, time: arrivalTime)
+        let depUTC = parseLocalApproxUTC(date: departureDate, time: departureTime)
+        let arrUTC = parseLocalApproxUTC(date: arrivalDate, time: arrivalTime)
+        let duration = max(0, Int(arrUTC.timeIntervalSince(depUTC) / 60))
+        return FlightLeg(
+            direction: direction,
+            airline: airline.trimmingCharacters(in: .whitespaces),
+            flightNumber: flightNumber.trimmingCharacters(in: .whitespaces).uppercased(),
+            originIATA: originIATA.trimmingCharacters(in: .whitespaces).uppercased(),
+            destinationIATA: destIATA.trimmingCharacters(in: .whitespaces).uppercased(),
+            departureLocalTime: depISO,
+            departureUTC: depUTC,
+            arrivalLocalTime: arrISO,
+            arrivalUTC: arrUTC,
+            durationMinutes: duration,
+            cabinClass: cabinClass,
+            seat: seat.isEmpty ? nil : seat.uppercased()
+        )
+    }
+}
+
+// MARK: - LegCard
+
+private struct LegCard: View {
+    @Binding var leg: LegFormState
+    let color: Color
+    let showDelete: Bool
+    let onDelete: () -> Void
+
+    private let cabinOptions = [
+        ("economy", "Economy"),
+        ("premium_economy", "Premium Economy"),
+        ("business", "Business"),
+        ("first", "Primera"),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Tokens.Spacing.sm) {
+            if showDelete {
+                HStack {
+                    Spacer()
+                    Button(action: onDelete) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(Tokens.Color.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.bottom, -Tokens.Spacing.xs)
+            }
+
+            HStack(spacing: Tokens.Spacing.sm) {
+                FormField(label: "Origen IATA", placeholder: "EZE", text: $leg.originIATA)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.characters)
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Tokens.Color.textTertiary)
+                    .padding(.top, Tokens.Spacing.lg)
+                FormField(label: "Destino IATA", placeholder: "MAD", text: $leg.destIATA)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.characters)
+            }
+
+            HStack(spacing: Tokens.Spacing.sm) {
+                FormField(label: "Aerolínea", placeholder: "Iberia", text: $leg.airline)
+                    .autocorrectionDisabled()
+                FormField(label: "N° vuelo", placeholder: "IB6844", text: $leg.flightNumber)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.characters)
+            }
+
+            FormSection(title: "Salida") {
+                VStack(spacing: Tokens.Spacing.sm) {
+                    DatePickerRow(label: "Fecha", selection: $leg.departureDate)
+                    FormField(label: "Hora local (HH:mm)", placeholder: "21:35", text: $leg.departureTime)
+                        .keyboardType(.numbersAndPunctuation)
+                }
+            }
+
+            FormSection(title: "Llegada") {
+                VStack(spacing: Tokens.Spacing.sm) {
+                    DatePickerRow(label: "Fecha", selection: $leg.arrivalDate)
+                    FormField(label: "Hora local (HH:mm)", placeholder: "13:05", text: $leg.arrivalTime)
+                        .keyboardType(.numbersAndPunctuation)
+                }
+            }
+
+            FormField(label: "Asiento (opcional)", placeholder: "14A", text: $leg.seat)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.characters)
+
+            FormSection(title: "Clase") {
+                VStack(spacing: 0) {
+                    ForEach(cabinOptions, id: \.0) { option in
+                        Button {
+                            withAnimation(.easeInOut(duration: Tokens.Motion.fast)) {
+                                leg.cabinClass = option.0
+                            }
+                        } label: {
+                            HStack {
+                                Text(option.1)
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(Tokens.Color.textPrimary)
+                                Spacer()
+                                if leg.cabinClass == option.0 {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(color)
+                                }
+                            }
+                            .padding(.vertical, Tokens.Spacing.sm)
+                            .padding(.horizontal, Tokens.Spacing.md)
+                        }
+                        .buttonStyle(.plain)
+                        if option.0 != cabinOptions.last?.0 {
+                            Divider().background(Tokens.Color.border)
+                                .padding(.leading, Tokens.Spacing.md)
+                        }
+                    }
+                }
+                .background(RoundedRectangle(cornerRadius: Tokens.Radius.md).fill(Tokens.Color.elevated))
+            }
+        }
+        .padding(Tokens.Spacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                .fill(Tokens.Color.elevated.opacity(0.4))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                        .strokeBorder(color.opacity(0.22), lineWidth: 1)
+                )
+        )
+    }
+}
+
 // MARK: - ManualFlightForm
 
 struct ManualFlightForm: View {
@@ -100,17 +260,9 @@ struct ManualFlightForm: View {
     @Environment(FirestoreClient.self) private var client
     @Environment(\.dismiss) private var dismiss
 
-    @State private var airline = ""
-    @State private var flightNumber = ""
-    @State private var originIATA = ""
-    @State private var destIATA = ""
-    @State private var departureDate = Date()
-    @State private var departureTime = ""
-    @State private var arrivalDate = Date()
-    @State private var arrivalTime = ""
+    @State private var outboundLegs: [LegFormState] = [LegFormState()]
+    @State private var inboundLegs: [LegFormState] = []
     @State private var bookingRef = ""
-    @State private var seat = ""
-    @State private var cabinClass = "economy"
     @State private var price = ""
     @State private var currency = "USD"
 
@@ -118,116 +270,22 @@ struct ManualFlightForm: View {
     @State private var saveError: String?
     @State private var showSuccess = false
 
-    private let cabinClassOptions: [(value: String, label: String)] = [
-        ("economy", "Economy"),
-        ("premium_economy", "Premium Economy"),
-        ("business", "Business"),
-        ("first", "Primera"),
-    ]
-
     private var isValid: Bool {
-        !originIATA.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !destIATA.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !departureTime.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !arrivalTime.trimmingCharacters(in: .whitespaces).isEmpty
+        outboundLegs.contains { $0.isValid }
     }
 
     var body: some View {
         ScrollView {
             VStack(spacing: Tokens.Spacing.md) {
-                if showSuccess {
-                    SavedBanner()
-                }
+                if showSuccess { SavedBanner() }
+                if let error = saveError { ErrorBanner(message: error) }
 
-                if let error = saveError {
-                    ErrorBanner(message: error)
-                }
+                outboundSection
+                inboundSection
 
-                // Row: Origin → Dest
-                HStack(spacing: Tokens.Spacing.sm) {
-                    FormField(label: "Origen IATA", placeholder: "EZE", text: $originIATA)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.characters)
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Tokens.Color.textTertiary)
-                        .padding(.top, Tokens.Spacing.lg)
-                    FormField(label: "Destino IATA", placeholder: "MAD", text: $destIATA)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.characters)
-                }
-
-                // Row: Airline + Flight number
-                HStack(spacing: Tokens.Spacing.sm) {
-                    FormField(label: "Aerolínea", placeholder: "Iberia", text: $airline)
-                        .autocorrectionDisabled()
-                    FormField(label: "N° vuelo", placeholder: "IB6844", text: $flightNumber)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.characters)
-                }
-
-                // Departure
-                FormSection(title: "Salida") {
-                    VStack(spacing: Tokens.Spacing.sm) {
-                        DatePickerRow(label: "Fecha", selection: $departureDate)
-                        FormField(label: "Hora local (HH:mm)", placeholder: "21:35", text: $departureTime)
-                            .keyboardType(.numbersAndPunctuation)
-                    }
-                }
-
-                // Arrival
-                FormSection(title: "Llegada") {
-                    VStack(spacing: Tokens.Spacing.sm) {
-                        DatePickerRow(label: "Fecha", selection: $arrivalDate)
-                        FormField(label: "Hora local (HH:mm)", placeholder: "13:05", text: $arrivalTime)
-                            .keyboardType(.numbersAndPunctuation)
-                    }
-                }
-
-                // Optional fields
                 FormField(label: "Ref. de reserva (opcional)", placeholder: "ABC123", text: $bookingRef)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.characters)
-
-                FormField(label: "Asiento (opcional)", placeholder: "14A", text: $seat)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.characters)
-
-                // Cabin class picker
-                FormSection(title: "Clase") {
-                    VStack(spacing: 0) {
-                        ForEach(cabinClassOptions, id: \.value) { option in
-                            Button {
-                                withAnimation(.easeInOut(duration: Tokens.Motion.fast)) {
-                                    cabinClass = option.value
-                                }
-                            } label: {
-                                HStack {
-                                    Text(option.label)
-                                        .font(.system(size: 14))
-                                        .foregroundStyle(Tokens.Color.textPrimary)
-                                    Spacer()
-                                    if cabinClass == option.value {
-                                        Image(systemName: "checkmark")
-                                            .font(.system(size: 13, weight: .semibold))
-                                            .foregroundStyle(Tokens.Color.Category.flight)
-                                    }
-                                }
-                                .padding(.vertical, Tokens.Spacing.sm)
-                                .padding(.horizontal, Tokens.Spacing.md)
-                            }
-                            .buttonStyle(.plain)
-                            if option.value != cabinClassOptions.last?.value {
-                                Divider().background(Tokens.Color.border)
-                                    .padding(.leading, Tokens.Spacing.md)
-                            }
-                        }
-                    }
-                    .background(
-                        RoundedRectangle(cornerRadius: Tokens.Radius.md)
-                            .fill(Tokens.Color.elevated)
-                    )
-                }
 
                 PriceRow(price: $price, currency: $currency)
 
@@ -237,6 +295,129 @@ struct ManualFlightForm: View {
         }
     }
 
+    // MARK: IDA section
+
+    @ViewBuilder
+    private var outboundSection: some View {
+        VStack(alignment: .leading, spacing: Tokens.Spacing.sm) {
+            HStack {
+                Image(systemName: "airplane")
+                    .font(.system(size: 11))
+                Text("IDA")
+                    .font(.system(size: 12, weight: .semibold))
+                    .tracking(0.8)
+                Spacer()
+            }
+            .foregroundStyle(Tokens.Color.Category.flight)
+
+            ForEach($outboundLegs) { $leg in
+                LegCard(
+                    leg: $leg,
+                    color: Tokens.Color.Category.flight,
+                    showDelete: outboundLegs.count > 1,
+                    onDelete: { withAnimation { outboundLegs.removeAll { $0.id == leg.id } } }
+                )
+            }
+
+            Button {
+                withAnimation { outboundLegs.append(LegFormState()) }
+            } label: {
+                addLegLabel("Agregar escala de ida", color: Tokens.Color.Category.flight)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: VUELTA section
+
+    @ViewBuilder
+    private var inboundSection: some View {
+        if inboundLegs.isEmpty {
+            Button {
+                withAnimation { inboundLegs.append(LegFormState()) }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 14))
+                    Text("Agregar vuelta de regreso")
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .foregroundStyle(Tokens.Color.accentBlue)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                        .fill(Tokens.Color.accentBlue.opacity(0.08))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                                .strokeBorder(Tokens.Color.accentBlue.opacity(0.25), lineWidth: 1)
+                        )
+                )
+            }
+            .buttonStyle(.plain)
+        } else {
+            VStack(alignment: .leading, spacing: Tokens.Spacing.sm) {
+                HStack {
+                    Image(systemName: "airplane")
+                        .font(.system(size: 11))
+                        .rotationEffect(.degrees(180))
+                    Text("VUELTA")
+                        .font(.system(size: 12, weight: .semibold))
+                        .tracking(0.8)
+                    Spacer()
+                    Button {
+                        withAnimation { inboundLegs = [] }
+                    } label: {
+                        Text("Eliminar")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(Tokens.Color.accentRed.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .foregroundStyle(Tokens.Color.accentBlue)
+
+                ForEach($inboundLegs) { $leg in
+                    LegCard(
+                        leg: $leg,
+                        color: Tokens.Color.accentBlue,
+                        showDelete: inboundLegs.count > 1,
+                        onDelete: { withAnimation { inboundLegs.removeAll { $0.id == leg.id } } }
+                    )
+                }
+
+                Button {
+                    withAnimation { inboundLegs.append(LegFormState()) }
+                } label: {
+                    addLegLabel("Agregar escala de vuelta", color: Tokens.Color.accentBlue)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func addLegLabel(_ text: String, color: Color) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "plus.circle")
+                .font(.system(size: 13))
+            Text(text)
+                .font(.system(size: 13, weight: .medium))
+        }
+        .foregroundStyle(color.opacity(0.8))
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                .fill(color.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                        .strokeBorder(color.opacity(0.2), lineWidth: 1)
+                )
+        )
+    }
+
+    // MARK: Save
+
     private func save() {
         guard let tripID = trip.id, isValid else { return }
         isSaving = true
@@ -244,28 +425,36 @@ struct ManualFlightForm: View {
 
         Task {
             do {
-                let depISO = isoString(date: departureDate, time: departureTime)
-                let arrISO = isoString(date: arrivalDate, time: arrivalTime)
-                let depUTC = parseLocalApproxUTC(date: departureDate, time: departureTime)
-                let arrUTC = parseLocalApproxUTC(date: arrivalDate, time: arrivalTime)
-                let durationMin = max(0, Int(arrUTC.timeIntervalSince(depUTC) / 60))
+                let outLegs = outboundLegs.filter(\.isValid).map { $0.toFlightLeg(direction: "outbound") }
+                let inLegs = inboundLegs.filter(\.isValid).map { $0.toFlightLeg(direction: "inbound") }
+                let allLegs = outLegs + inLegs
+
+                let firstOut = outboundLegs.first(where: \.isValid)!
+                let lastOut = outboundLegs.filter(\.isValid).last!
+
+                let depISO = isoString(date: firstOut.departureDate, time: firstOut.departureTime)
+                let depUTC = parseLocalApproxUTC(date: firstOut.departureDate, time: firstOut.departureTime)
+                let arrISO = isoString(date: lastOut.arrivalDate, time: lastOut.arrivalTime)
+                let arrUTC = parseLocalApproxUTC(date: lastOut.arrivalDate, time: lastOut.arrivalTime)
+                let duration = max(0, Int(arrUTC.timeIntervalSince(depUTC) / 60))
 
                 let flight = Flight(
                     tripId: tripID,
-                    airline: airline.trimmingCharacters(in: .whitespaces),
-                    flightNumber: flightNumber.trimmingCharacters(in: .whitespaces).uppercased(),
-                    originIATA: originIATA.trimmingCharacters(in: .whitespaces).uppercased(),
-                    destinationIATA: destIATA.trimmingCharacters(in: .whitespaces).uppercased(),
+                    airline: firstOut.airline.trimmingCharacters(in: .whitespaces),
+                    flightNumber: firstOut.flightNumber.trimmingCharacters(in: .whitespaces).uppercased(),
+                    originIATA: firstOut.originIATA.trimmingCharacters(in: .whitespaces).uppercased(),
+                    destinationIATA: lastOut.destIATA.trimmingCharacters(in: .whitespaces).uppercased(),
                     departureLocalTime: depISO,
                     departureUTC: depUTC,
                     arrivalLocalTime: arrISO,
                     arrivalUTC: arrUTC,
-                    durationMinutes: durationMin,
-                    cabinClass: cabinClass,
-                    seat: seat.isEmpty ? nil : seat.uppercased(),
+                    durationMinutes: duration,
+                    cabinClass: firstOut.cabinClass,
+                    seat: firstOut.seat.isEmpty ? nil : firstOut.seat.uppercased(),
                     bookingRef: bookingRef.isEmpty ? nil : bookingRef.uppercased(),
                     price: Double(price.replacingOccurrences(of: ",", with: ".")),
-                    currency: price.isEmpty ? nil : currency
+                    currency: price.isEmpty ? nil : currency,
+                    legs: allLegs
                 )
 
                 try client.saveManualFlight(flight, tripID: tripID)
@@ -284,9 +473,11 @@ struct ManualFlightForm: View {
     }
 
     private func resetForm() {
-        airline = ""; flightNumber = ""; originIATA = ""; destIATA = ""
-        departureDate = Date(); departureTime = ""; arrivalDate = Date(); arrivalTime = ""
-        bookingRef = ""; seat = ""; cabinClass = "economy"; price = ""; currency = "USD"
+        outboundLegs = [LegFormState()]
+        inboundLegs = []
+        bookingRef = ""
+        price = ""
+        currency = "USD"
     }
 }
 

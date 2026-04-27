@@ -142,9 +142,47 @@ struct TripCity: Identifiable, Codable, Sendable {
     }
 }
 
+// MARK: - FlightLeg
+
+struct FlightLeg: Codable, Sendable, Identifiable {
+    var id: UUID = UUID()
+    var direction: String          // "outbound" | "inbound"
+    var airline: String
+    var flightNumber: String
+    var originIATA: String
+    var destinationIATA: String
+    var departureLocalTime: String
+    var departureTimezone: String?
+    var departureUTC: Date?
+    var arrivalLocalTime: String
+    var arrivalTimezone: String?
+    var arrivalUTC: Date?
+    var durationMinutes: Int?
+    var cabinClass: String?
+    var seat: String?
+
+    enum CodingKeys: String, CodingKey {
+        case direction
+        case airline
+        case flightNumber = "flight_number"
+        case originIATA = "origin_iata"
+        case destinationIATA = "destination_iata"
+        case departureLocalTime = "departure_local_time"
+        case departureTimezone = "departure_timezone"
+        case departureUTC = "departure_utc"
+        case arrivalLocalTime = "arrival_local_time"
+        case arrivalTimezone = "arrival_timezone"
+        case arrivalUTC = "arrival_utc"
+        case durationMinutes = "duration_minutes"
+        case cabinClass = "cabin_class"
+        case seat
+    }
+}
+
 // MARK: - Flight
 //
 // Matches web schema exactly: flat fields, snake_case, Timestamps for UTC.
+// Root-level fields are derived from the first outbound leg for backward compatibility.
 struct Flight: Identifiable, Codable, Sendable {
     @DocumentID var id: String?
     var tripId: String?
@@ -166,6 +204,7 @@ struct Flight: Identifiable, Codable, Sendable {
     var currency: String?
     var priceUSD: Double?
     var paidAmount: Double?
+    var legs: [FlightLeg]?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -188,6 +227,7 @@ struct Flight: Identifiable, Codable, Sendable {
         case currency
         case priceUSD = "price_usd"
         case paidAmount = "paid_amount"
+        case legs
     }
 
     /// "YYYY-MM-DD" of departure — extracted from departure_local_time.

@@ -30,13 +30,20 @@ const expenseRef = (uid: string, tripId: string, id: string) => doc(getFirebaseD
 export const citySettingsRef = (uid: string) => collection(getFirebaseDb(), "users", uid, "city_settings");
 const citySettingRef = (uid: string, normalizedName: string) => doc(getFirebaseDb(), "users", uid, "city_settings", normalizedName);
 
-// Firestore rejects undefined values; strip them before writing.
-function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (v !== undefined) out[k] = v;
+// Firestore rejects undefined values; strip them recursively before writing.
+// Shallow strip is not enough — nested objects (e.g. legs[].cabin_class) also cause errors.
+function stripUndefined<T>(obj: T): T {
+  if (Array.isArray(obj)) {
+    return obj.map(stripUndefined) as unknown as T;
   }
-  return out as T;
+  if (obj !== null && typeof obj === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      if (v !== undefined) out[k] = stripUndefined(v);
+    }
+    return out as T;
+  }
+  return obj;
 }
 
 // Trips

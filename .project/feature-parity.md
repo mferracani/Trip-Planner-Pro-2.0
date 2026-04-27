@@ -66,6 +66,8 @@ _Generado: 2026-04-27 | Auditoría manual del código fuente_
 | 49 | Preview con confidence scores (verde/naranja/rojo) | Si | Si — ConfidenceBadge con 3 niveles en ParsedItemCard (verde ≥85%, naranja ≥60%, rojo) | Ninguno | — |
 | 50 | Editar item antes de confirmar | Si | Si — ParsedItemEditSheet accesible vía ícono pencil en cada ParsedItemCard | Ninguno | — |
 | 51 | Manual type picker (Vuelo / Hotel / Traslado / Ciudad) | Si — 6 tipos | Si — 4 tipos: Vuelo / Hotel / Traslado / Ciudad (implementado) | Ninguno | — |
+| **FORMULARIO DE VUELO** |
+| 63 | **Tramos IDA / VUELTA en formulario manual de vuelo** | Si — FlightForm web tiene dos secciones explícitas "IDA" y "VUELTA" (LegSection outbound/inbound), con `FlightLeg.direction` guardado en Firestore bajo campo `legs[]` | **No** — ManualFlightForm iOS tiene un único formulario flat (origin → dest, sin diferenciación de tramo). No existe el concepto de `direction` ni secciones IDA/VUELTA | **Gap P1 confirmado** — iOS no guarda `direction` ni estructura `legs[]`. Inconsistencia de schema entre plataformas. | P1 |
 | **CATÁLOGO (cross-trip)** |
 | 52 | Tab Vuelos / Hoteles / Transportes / Ciudades | Si — 4 tabs | Si — CatalogView con tabs | Ninguno | — |
 | 53 | Búsqueda full-text | Si | Si | Ninguno | — |
@@ -79,6 +81,7 @@ _Generado: 2026-04-27 | Auditoría manual del código fuente_
 | 60 | Copy UID | No | Si | Ventaja iOS (útil para debug) | — |
 | 61 | Version / GitHub link | Si | Si — sección "Sobre la app" en SettingsView con versión de bundle + link GitHub (implementado) | Ninguno | — |
 | 62 | **Export JSON** | No en ninguna plataforma | Si — botón share en customNavBar → JSONEncoder → ShareSheet con UIActivityViewController | Ventaja iOS | — |
+| 63 | **ManualFlightForm multi-tramo (IDA / VUELTA / escalas)** | Si — FlightForm.tsx con legs[] array, direction outbound/inbound, secciones IDA/VUELTA, "+ escala" | Si — ManualFlightForm refactorizado con LegFormState, LegCard, secciones IDA/VUELTA. Flight.legs guardado en Firestore | Ninguno (cerrado) | — |
 
 ---
 
@@ -86,7 +89,9 @@ _Generado: 2026-04-27 | Auditoría manual del código fuente_
 
 ### P1 — Alta prioridad
 
-_Todos los gaps P1 están resueltos._
+| ID | Gap | Plataforma afectada |
+|----|-----|---------------------|
+| 63 | ManualFlightForm iOS no tiene secciones IDA / VUELTA ni guarda `legs[]` con `direction`. Web FlightForm sí lo hace via `LegSection outbound/inbound`. Inconsistencia de schema Firestore entre plataformas. | iOS |
 
 ### P2 — Media prioridad
 
