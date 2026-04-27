@@ -49,6 +49,7 @@ setGlobalOptions({
 // Secrets (stored in Firebase Secret Manager — never exposed to client)
 const CLAUDE_API_KEY = defineSecret("CLAUDE_API_KEY");
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+const FX_RATES_API_KEY = defineSecret("FX_RATES_API_KEY");
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -555,27 +556,31 @@ export const updateFxRates = onSchedule(
     schedule: "0 0 * * *",
     timeZone: "UTC",
     memory: "256MiB",
+    secrets: [FX_RATES_API_KEY],
   },
   async () => {
     const today = DateTime.now().toUTC().toFormat("yyyy-MM-dd");
 
     try {
-      // Using open.er-api.com — free tier, no API key required
+      const apiKey = FX_RATES_API_KEY.value();
+      // exchangerate-api.com v6 — key in URL path
+      const url = `https://v6.exchangerate-api.com/v6/${apiKey}/latest/USD`;
+
       const response = await axios.get<{
         result: string;
-        rates: Record<string, number>;
+        conversion_rates: Record<string, number>;
         base_code: string;
-      }>("https://open.er-api.com/v6/latest/USD", { timeout: 10000 });
+      }>(url, { timeout: 10000 });
 
       if (response.data.result !== "success") {
         throw new Error(`FX API returned non-success result: ${response.data.result}`);
       }
 
-      const rates = response.data.rates;
+      const rates = response.data.conversion_rates;
 
       await db.collection("fx_rates").doc(today).set({
         rates,
-        source: "open.er-api.com",
+        source: "exchangerate-api.com",
         updated_at: FieldValue.serverTimestamp(),
       });
 
