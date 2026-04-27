@@ -86,7 +86,7 @@ final class FirestoreClient {
                 do {
                     for try await trips in tripsStream {
                         // Build Firestore refs on MainActor before spawning tasks
-                        typealias TripRefs = (trip: Trip, flights: CollectionReference, hotels: CollectionReference, transports: CollectionReference)
+                        typealias TripRefs = (trip: Trip, flights: CollectionReference, hotels: CollectionReference, transports: CollectionReference, cities: CollectionReference)
                         var tripRefs: [TripRefs] = []
                         for trip in trips {
                             guard let tripID = trip.id else { continue }
@@ -96,7 +96,8 @@ final class FirestoreClient {
                                 trip: trip,
                                 flights: base.collection("flights"),
                                 hotels: base.collection("hotels"),
-                                transports: base.collection("transports")
+                                transports: base.collection("transports"),
+                                cities: base.collection("cities")
                             ))
                         }
 
@@ -104,7 +105,8 @@ final class FirestoreClient {
                         typealias TripBatch = (
                             flights: [(trip: Trip, flight: Flight)],
                             hotels: [(trip: Trip, hotel: Hotel)],
-                            transports: [(trip: Trip, transport: Transport)]
+                            transports: [(trip: Trip, transport: Transport)],
+                            cities: [(trip: Trip, city: TripCity)]
                         )
 
                         let batches: [TripBatch] = await withTaskGroup(of: TripBatch.self) { group in
@@ -113,11 +115,13 @@ final class FirestoreClient {
                                 let fRef = refs.flights
                                 let hRef = refs.hotels
                                 let tRef = refs.transports
+                                let cRef = refs.cities
 
                                 group.addTask {
                                     async let fDocs = (try? fRef.getDocuments())?.documents ?? []
                                     async let hDocs = (try? hRef.getDocuments())?.documents ?? []
                                     async let tDocs = (try? tRef.getDocuments())?.documents ?? []
+                                    async let cDocs = (try? cRef.getDocuments())?.documents ?? []
 
                                     let flights = await fDocs.compactMap { try? $0.data(as: Flight.self) }
                                         .map { (trip: trip, flight: $0) }
@@ -125,8 +129,10 @@ final class FirestoreClient {
                                         .map { (trip: trip, hotel: $0) }
                                     let transports = await tDocs.compactMap { try? $0.data(as: Transport.self) }
                                         .map { (trip: trip, transport: $0) }
+                                    let cities = await cDocs.compactMap { try? $0.data(as: TripCity.self) }
+                                        .map { (trip: trip, city: $0) }
 
-                                    return (flights: flights, hotels: hotels, transports: transports)
+                                    return (flights: flights, hotels: hotels, transports: transports, cities: cities)
                                 }
                             }
 
@@ -141,11 +147,14 @@ final class FirestoreClient {
                             .sorted { $0.hotel.checkIn < $1.hotel.checkIn }
                         let allTransports = batches.flatMap(\.transports)
                             .sorted { $0.transport.departureLocalTime < $1.transport.departureLocalTime }
+                        let allCities = batches.flatMap(\.cities)
+                            .sorted { $0.city.name < $1.city.name }
 
                         continuation.yield(CatalogItems(
                             flights: allFlights,
                             hotels: allHotels,
-                            transports: allTransports
+                            transports: allTransports,
+                            cities: allCities
                         ))
                     }
                     continuation.finish()
@@ -180,8 +189,9 @@ struct CatalogItems: Sendable {
     var flights: [(trip: Trip, flight: Flight)]
     var hotels: [(trip: Trip, hotel: Hotel)]
     var transports: [(trip: Trip, transport: Transport)]
+    var cities: [(trip: Trip, city: TripCity)]
 
-    static let empty = CatalogItems(flights: [], hotels: [], transports: [])
+    static let empty = CatalogItems(flights: [], hotels: [], transports: [], cities: [])
 }
 
 enum FirestoreError: Error {

@@ -12,7 +12,9 @@ struct SettingsView: View {
                 List {
                     accountSection
                     aiProviderSection
+                    currencySection
                     sessionSection
+                    appInfoSection
                 }
                 .scrollContentBackground(.hidden)
             }
@@ -82,6 +84,33 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Currency section
+
+    private var currencySection: some View {
+        Section("Moneda") {
+            CurrencyPicker()
+        }
+    }
+
+    // MARK: - App info section
+
+    private var appInfoSection: some View {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return Section("Sobre la app") {
+            LabeledContent("Versión", value: "\(version) (\(build))")
+                .foregroundStyle(Tokens.Color.textSecondary)
+            Button {
+                if let url = URL(string: "https://github.com/matiasferracani") {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                Label("GitHub", systemImage: "arrow.up.right.square")
+                    .foregroundStyle(Tokens.Color.accentBlue)
+            }
+        }
+    }
+
     // MARK: - Session section
 
     private var sessionSection: some View {
@@ -109,6 +138,50 @@ struct SettingsView: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(Tokens.Color.accentBlue)
         }
+    }
+}
+
+// MARK: - Currency Picker
+
+private struct CurrencyPicker: View {
+    @AppStorage("preferredCurrency") private var selected: String = "USD"
+
+    private let options = ["USD", "EUR", "ARS", "BRL"]
+
+    var body: some View {
+        HStack(spacing: Tokens.Spacing.sm) {
+            ForEach(options, id: \.self) { code in
+                let isActive = selected == code
+                Button {
+                    selected = code
+                } label: {
+                    Text(code)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(isActive ? Tokens.Color.accentBlue : Tokens.Color.textTertiary)
+                        .padding(.horizontal, Tokens.Spacing.md)
+                        .padding(.vertical, Tokens.Spacing.xs)
+                        .background(
+                            isActive
+                                ? Tokens.Color.accentBlue.opacity(0.15)
+                                : Tokens.Color.elevated
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.sm))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Tokens.Radius.sm)
+                                .stroke(
+                                    isActive
+                                        ? Tokens.Color.accentBlue.opacity(0.4)
+                                        : Tokens.Color.border,
+                                    lineWidth: 1
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
+                .animation(.easeInOut(duration: 0.15), value: selected)
+            }
+            Spacer()
+        }
+        .padding(.vertical, Tokens.Spacing.xs)
     }
 }
 

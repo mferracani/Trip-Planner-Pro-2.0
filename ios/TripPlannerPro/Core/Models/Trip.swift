@@ -3,7 +3,7 @@ import Foundation
 import SwiftUI
 
 enum TripStatus: String, Codable, Sendable {
-    case planned, active, past
+    case draft, planned, active, past
 }
 
 // MARK: - Trip
@@ -18,6 +18,8 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
     var updatedAt: Date?
     var totalUSD: Double?
     var citiesCount: Int?
+    /// Persisted status — "draft" or "planned". When nil, status is inferred from dates.
+    var statusStored: TripStatus?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -29,6 +31,7 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         case updatedAt = "updated_at"
         case totalUSD = "total_usd"
         case citiesCount = "cities_count"
+        case statusStored = "status"
     }
 
     static let isoDateFormatter: DateFormatter = {
@@ -42,7 +45,14 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
     var startDate: Date { Self.isoDateFormatter.date(from: startDateString) ?? createdAt }
     var endDate: Date { Self.isoDateFormatter.date(from: endDateString) ?? startDate }
 
-    var status: TripStatus { status_computed }
+    /// Returns the effective status:
+    /// - If `statusStored == .draft`, always returns `.draft`.
+    /// - Otherwise, infers from current date vs trip dates.
+    var status: TripStatus {
+        if statusStored == .draft { return .draft }
+        return status_computed
+    }
+
     var status_computed: TripStatus {
         let now = Date()
         if now < startDate { return .planned }
@@ -59,6 +69,7 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         startDate: Date,
         endDate: Date,
         coverURL: String? = nil,
+        statusStored: TripStatus? = nil,
         createdAt: Date = .now,
         totalUSD: Double? = nil,
         citiesCount: Int? = nil
@@ -68,6 +79,7 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         self.startDateString = Self.isoDateFormatter.string(from: startDate)
         self.endDateString = Self.isoDateFormatter.string(from: endDate)
         self.coverURL = coverURL
+        self.statusStored = statusStored
         self.createdAt = createdAt
         self.updatedAt = createdAt
         self.totalUSD = totalUSD
@@ -83,7 +95,7 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         cityOrder: [String],
         createdAt: Date
     ) {
-        self.init(id: id, name: name, startDate: startDate, endDate: endDate, createdAt: createdAt)
+        self.init(id: id, name: name, startDate: startDate, endDate: endDate, statusStored: status == .draft ? .draft : nil, createdAt: createdAt)
     }
 }
 

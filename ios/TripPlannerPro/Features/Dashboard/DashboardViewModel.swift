@@ -16,6 +16,7 @@ final class DashboardViewModel {
         case upcoming = "Próximos"
         case active = "En curso"
         case past = "Pasados"
+        case draft = "Borradores"
 
         var id: String { rawValue }
     }
@@ -88,27 +89,33 @@ final class DashboardViewModel {
 
     // MARK: - Trips segmentation
 
+    /// Confirmed trips only (excludes drafts).
+    var confirmedTrips: [Trip] { trips.filter { $0.status != .draft } }
+
+    var draftTrips: [Trip] { trips.filter { $0.status == .draft } }
+
     var upcomingTrip: Trip? {
-        trips.filter { $0.status_computed == .planned }.min(by: { $0.startDate < $1.startDate })
+        confirmedTrips.filter { $0.status_computed == .planned }.min(by: { $0.startDate < $1.startDate })
     }
 
     var activeTrip: Trip? {
-        trips.first(where: { $0.status_computed == .active })
+        confirmedTrips.first(where: { $0.status_computed == .active })
     }
 
-    /// Used for the hero card — active trip wins, else the next planned trip.
+    /// Used for the hero card — active trip wins, else the next planned trip (drafts excluded).
     var heroTrip: Trip? { activeTrip ?? upcomingTrip }
 
-    var plannedTrips: [Trip] { trips.filter { $0.status_computed == .planned } }
-    var activeTrips: [Trip] { trips.filter { $0.status_computed == .active } }
-    var pastTrips: [Trip] { trips.filter { $0.status_computed == .past } }
+    var plannedTrips: [Trip] { confirmedTrips.filter { $0.status_computed == .planned } }
+    var activeTrips: [Trip] { confirmedTrips.filter { $0.status_computed == .active } }
+    var pastTrips: [Trip] { confirmedTrips.filter { $0.status_computed == .past } }
 
     var filteredTrips: [Trip] {
         switch filter {
-        case .all:      return trips.sorted { $0.startDate > $1.startDate }
+        case .all:      return confirmedTrips.sorted { $0.startDate > $1.startDate }
         case .upcoming: return plannedTrips.sorted { $0.startDate < $1.startDate }
         case .active:   return activeTrips
         case .past:     return pastTrips.sorted { $0.startDate > $1.startDate }
+        case .draft:    return draftTrips.sorted { $0.startDate < $1.startDate }
         }
     }
 
@@ -124,6 +131,11 @@ final class DashboardViewModel {
     }
 
     var statTripsThisYear: Int { tripsThisYear.count }
+
+    /// All cities across ALL trips this year (includes planned, for header subtitle).
+    var statYearCities: Int {
+        tripsThisYear.reduce(0) { $0 + ($1.citiesCount ?? 0) }
+    }
 
     var statCitiesVisited: Int {
         // Sum unique cityOrder counts across past + active trips this year.

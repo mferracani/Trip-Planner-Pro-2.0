@@ -34,7 +34,7 @@
       "collectionGroup": "hotels",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "check_in_datetime", "order": "ASCENDING" }
+        { "fieldPath": "check_in", "order": "ASCENDING" }
       ]
     },
     {
@@ -42,7 +42,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "parse_job_id", "order": "ASCENDING" },
-        { "fieldPath": "check_in_datetime", "order": "ASCENDING" }
+        { "fieldPath": "check_in", "order": "ASCENDING" }
       ]
     },
     {
@@ -73,6 +73,21 @@
       "fields": [
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "expenses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "cities",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "trip_id", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" }
       ]
     }
   ],

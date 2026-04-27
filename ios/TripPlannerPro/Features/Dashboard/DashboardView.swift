@@ -7,6 +7,8 @@ struct DashboardView: View {
     @Environment(FirestoreClient.self) private var client
     @State private var vm: DashboardViewModel?
     @State private var now = Date()
+    @State private var isCreatingDemo = false
+    @State private var demoError: String?
 
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
@@ -39,8 +41,7 @@ struct DashboardView: View {
         .preferredColorScheme(.dark)
     }
 
-    /// Warm ambient glow behind the hero card — not a defined radial gradient,
-    /// more a subtle atmosphere.
+    /// Warm ambient glow behind the hero card.
     private var backgroundHaze: some View {
         ZStack {
             RadialGradient(
@@ -98,7 +99,7 @@ struct DashboardView: View {
 
     private func header(_ vm: DashboardViewModel) -> some View {
         HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(greetingTime)
                     .font(Tokens.Typo.bodyS)
                     .foregroundStyle(Tokens.Color.textTertiary)
@@ -108,6 +109,15 @@ struct DashboardView: View {
                     .foregroundStyle(Tokens.Color.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
+                // Annual summary line — mirrors web desktop "X viajes · Y ciudades"
+                if !vm.trips.isEmpty {
+                    let tripCount = vm.statTripsThisYear
+                    let cityCount = vm.statYearCities
+                    Text("\(tripCount) viaje\(tripCount == 1 ? "" : "s") · \(cityCount) ciudad\(cityCount == 1 ? "" : "es")")
+                        .font(Tokens.Typo.monoS)
+                        .foregroundStyle(Tokens.Color.textQuaternary)
+                        .padding(.top, 2)
+                }
             }
 
             Spacer(minLength: 8)
@@ -214,16 +224,55 @@ struct DashboardView: View {
                     .font(Tokens.Typo.bodyM)
                     .foregroundStyle(Tokens.Color.textSecondary)
             }
+
+            Button {
+                Task { await createDemo() }
+            } label: {
+                HStack(spacing: 8) {
+                    if isCreatingDemo {
+                        ProgressView().tint(.black).scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    Text(isCreatingDemo ? "Creando demo..." : "Ver demo")
+                        .font(.system(size: 15, weight: .semibold))
+                }
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                        .fill(Tokens.Color.cityPalette[1])
+                )
+            }
+            .disabled(isCreatingDemo)
+            .buttonStyle(.plain)
+
+            if let err = demoError {
+                Text(err)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Tokens.Color.accentRed)
+            }
         }
+    }
+
+    private func createDemo() async {
+        isCreatingDemo = true
+        demoError = nil
+        do {
+            try await client.createDemoTrip()
+        } catch {
+            demoError = "No se pudo crear el demo."
+        }
+        isCreatingDemo = false
     }
 }
 
 // MARK: - NextTripCard
 //
-// The signature hero. A single rounded card that contains:
-//  1. Photo-style cover with "NEXT TRIP" label + title + countdown
-//  2. Stats zone: progress ring + 3 icon stat rows
-//  3. Total spent footer
+// Hero card. Cover uses the TripTheme gradient when available (mirrors web HeroTripCard).
+// Stats section: progress ring + 3 icon rows.
 
 private struct NextTripCard: View {
     let vm: DashboardViewModel
@@ -231,7 +280,13 @@ private struct NextTripCard: View {
 
     private var trip: Trip? { vm.heroTrip }
 
-    private var cityColor: Color {
+    /// Theme resolved from the trip's coverURL. Nil if no theme matches.
+    private var theme: TripTheme? {
+        TripTheme.getTheme(coverUrl: trip?.coverURL)
+    }
+
+    /// Fallback gradient color derived from the trip name hash.
+    private var fallbackColor: Color {
         guard let trip else { return Tokens.Color.cityPalette[1] }
         return Tokens.Color.cityPalette[abs(trip.name.hashValue) % Tokens.Color.cityPalette.count]
     }
@@ -248,7 +303,17 @@ private struct NextTripCard: View {
             return "Día \(trip.currentDayNumber)"
         }
         let days = trip.daysUntilStart
-        if days == 0 { return "Empieza hoy" }
+        if days == 0 {
+            let startOfDay = Calendar.current.startOfDay(for: trip.startDate)
+            if now >= startOfDay {
+                return "Empieza hoy"
+            }
+            let diff = startOfDay.timeIntervalSince(now)
+            let h = Int(diff / 3600)
+            let m = Int(diff.truncatingRemainder(dividingBy: 3600) / 60)
+            if h > 0 { return "Faltan \(h)h \(m)m" }
+            return "Faltan \(m)m"
+        }
         if days == 1 { return "En 1 día" }
         return "En \(days) días"
     }
@@ -290,27 +355,32 @@ private struct NextTripCard: View {
     @ViewBuilder
     private func coverSection(_ trip: Trip) -> some View {
         ZStack(alignment: .topLeading) {
-            // Gradient "photo"
+            // Theme gradient or name-hash fallback
+            if let theme {
+                theme.gradientBackground
+                    .frame(height: 180)
+            } else {
+                LinearGradient(
+                    colors: [
+                        fallbackColor.opacity(0.95),
+                        fallbackColor.opacity(0.75),
+                        Tokens.Color.surface
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .frame(height: 180)
+            }
+
+            // Vignette bottom for text legibility
             LinearGradient(
-                colors: [
-                    cityColor.opacity(0.95),
-                    cityColor.opacity(0.75),
-                    Tokens.Color.surface
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                colors: [.clear, .black.opacity(0.45)],
+                startPoint: .top,
+                endPoint: .bottom
             )
             .frame(height: 180)
 
-            // Decorative silhouette
-            Image(systemName: "airplane")
-                .font(.system(size: 160, weight: .ultraLight))
-                .foregroundStyle(.white.opacity(0.08))
-                .rotationEffect(.degrees(-20))
-                .offset(x: 120, y: -10)
-                .clipped()
-
-            // Subtle noise bands
+            // Noise overlay
             LinearGradient(
                 colors: [
                     .white.opacity(0.05), .clear,
@@ -322,20 +392,10 @@ private struct NextTripCard: View {
             .frame(height: 180)
             .blendMode(.overlay)
 
-            // Vignette bottom for text legibility
-            LinearGradient(
-                colors: [.clear, .black.opacity(0.35)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 180)
-
             // Content overlay
             VStack(alignment: .leading, spacing: 0) {
-                Text(contextLabel)
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-                    .tracking(Tokens.Track.labelWidest)
-                    .foregroundStyle(Tokens.Color.accentBlue)
+                // Status badge top-left
+                HeroStatusBadge(isActive: isActive)
                     .padding(.top, 16)
 
                 Spacer()
@@ -366,22 +426,37 @@ private struct NextTripCard: View {
             .padding(.horizontal, 18)
             .frame(height: 180, alignment: .bottomLeading)
 
-            // Corner chevron indicator
-            VStack {
-                HStack {
-                    Spacer()
-                    ZStack {
-                        Circle()
-                            .fill(.black.opacity(0.35))
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(.white)
+            // Theme emoji — top right corner (only when theme exists)
+            if let theme {
+                VStack {
+                    HStack {
+                        Spacer()
+                        Text(theme.emoji)
+                            .font(.system(size: 28))
+                            .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 2)
                     }
-                    .frame(width: 32, height: 32)
+                    Spacer()
                 }
-                Spacer()
+                .padding(.top, 14)
+                .padding(.trailing, 16)
+            } else {
+                // Fallback: chevron arrow indicator
+                VStack {
+                    HStack {
+                        Spacer()
+                        ZStack {
+                            Circle()
+                                .fill(.black.opacity(0.35))
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: 32, height: 32)
+                    }
+                    Spacer()
+                }
+                .padding(14)
             }
-            .padding(14)
         }
         .frame(height: 180)
     }
@@ -523,6 +598,7 @@ struct ProgressRing: View {
 
 private struct TripsListSection: View {
     @Bindable var vm: DashboardViewModel
+    @Environment(FirestoreClient.self) private var client
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -562,10 +638,17 @@ private struct TripsListSection: View {
             } else {
                 VStack(spacing: 10) {
                     ForEach(Array(vm.filteredTrips.enumerated()), id: \.element.id) { idx, trip in
-                        NavigationLink(value: trip) {
-                            TripRowCard(trip: trip, index: idx)
+                        VStack(spacing: 6) {
+                            NavigationLink(value: trip) {
+                                TripRowCard(trip: trip, index: idx)
+                            }
+                            .buttonStyle(.plain)
+
+                            // Confirm button for draft trips
+                            if trip.status == .draft {
+                                DraftConfirmButton(trip: trip, client: client)
+                            }
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -573,18 +656,71 @@ private struct TripsListSection: View {
     }
 }
 
+// MARK: - DraftConfirmButton
+
+private struct DraftConfirmButton: View {
+    let trip: Trip
+    let client: FirestoreClient
+
+    @State private var isConfirming = false
+
+    var body: some View {
+        Button {
+            guard let tripID = trip.id else { return }
+            isConfirming = true
+            Task {
+                try? await client.updateTripStatus(tripID: tripID, status: .planned)
+                isConfirming = false
+            }
+        } label: {
+            HStack(spacing: 6) {
+                if isConfirming {
+                    ProgressView()
+                        .tint(.black)
+                        .scaleEffect(0.75)
+                } else {
+                    Text("Confirmar")
+                        .font(.system(size: 12, weight: .semibold))
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+            }
+            .foregroundStyle(.black)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 7)
+            .background(Capsule().fill(Tokens.Color.accentGold))
+        }
+        .buttonStyle(.plain)
+        .disabled(isConfirming)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .padding(.trailing, 4)
+    }
+}
+
 // MARK: - TripRowCard
+//
+// Mirrors web TripCard.tsx:
+// - Rounded-square thumbnail with theme gradient + emoji (or fallback gradient + airplane)
+// - Trip name + date range
+// - Status badge pill
+// - USD amount (monospaced)
 
 private struct TripRowCard: View {
     let trip: Trip
     let index: Int
 
-    private var color: Color {
+    private var theme: TripTheme? {
+        TripTheme.getTheme(coverUrl: trip.coverURL)
+    }
+
+    /// Name-hash based fallback color (same logic as before).
+    private var fallbackColor: Color {
         Tokens.Color.cityPalette[(index + 1) % Tokens.Color.cityPalette.count]
     }
 
-    private var statusText: String {
-        switch trip.status_computed {
+    private var statusLabel: String {
+        switch trip.status {
+        case .draft: return "BORRADOR"
         case .active: return "EN CURSO"
         case .planned: return "FUTURO"
         case .past: return "PASADO"
@@ -592,65 +728,66 @@ private struct TripRowCard: View {
     }
 
     private var statusColor: Color {
-        switch trip.status_computed {
+        switch trip.status {
+        case .draft: return Tokens.Color.accentGold
         case .active: return Tokens.Color.accentGreen
-        case .planned: return Tokens.Color.signalSky
+        case .planned: return Tokens.Color.accentBlue
         case .past: return Tokens.Color.textTertiary
         }
     }
 
     var body: some View {
         HStack(spacing: 14) {
-            // Circular icon with gradient fill
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [color.opacity(0.85), color.opacity(0.55)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                Image(systemName: "paperplane.fill")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .rotationEffect(.degrees(-35))
-            }
-            .frame(width: 44, height: 44)
+            // Themed thumbnail — 56×56 rounded square
+            tripThumbnail
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(trip.name)
-                    .font(Tokens.Typo.strongM)
-                    .foregroundStyle(Tokens.Color.textPrimary)
-                    .lineLimit(1)
+                HStack(alignment: .center, spacing: 6) {
+                    Text(trip.name)
+                        .font(Tokens.Typo.strongM)
+                        .foregroundStyle(Tokens.Color.textPrimary)
+                        .lineLimit(1)
+
+                    // Status pill — inline next to name (mirrors web TripCard)
+                    Text(statusLabel)
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .tracking(Tokens.Track.labelWider)
+                        .foregroundStyle(statusColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(statusColor.opacity(0.12)))
+                        .fixedSize()
+                }
+
                 Text(dateRangeText)
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundStyle(Tokens.Color.textTertiary)
+
+                if let amount = amountText {
+                    Text(amount)
+                        .font(Tokens.Typo.monoS)
+                        .foregroundStyle(Tokens.Color.textTertiary)
+                }
             }
 
             Spacer(minLength: 8)
 
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(amountText)
-                    .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(Tokens.Color.textPrimary)
-                Text(statusText)
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .tracking(Tokens.Track.labelWider)
-                    .foregroundStyle(statusColor)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(statusColor.opacity(0.12))
-                    )
-            }
+            // Chevron
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Tokens.Color.textQuaternary)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 13)
         .background(
             RoundedRectangle(cornerRadius: Tokens.Radius.lg)
-                .fill(Tokens.Color.surface)
+                .fill(
+                    LinearGradient(
+                        colors: [Tokens.Color.surface, Tokens.Color.bgPrimary.opacity(0.5)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
                 .overlay(
                     RoundedRectangle(cornerRadius: Tokens.Radius.lg)
                         .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
@@ -659,6 +796,44 @@ private struct TripRowCard: View {
         .contentShape(RoundedRectangle(cornerRadius: Tokens.Radius.lg))
     }
 
+    // MARK: Thumbnail
+
+    @ViewBuilder
+    private var tripThumbnail: some View {
+        ZStack {
+            // Background
+            if let theme {
+                theme.gradientBackground
+            } else {
+                LinearGradient(
+                    colors: [fallbackColor.opacity(0.85), fallbackColor.opacity(0.45)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+
+            // Icon / emoji
+            if let theme {
+                Text(theme.emoji)
+                    .font(.system(size: 24))
+                    .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+            } else {
+                Image(systemName: "paperplane.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .rotationEffect(.degrees(-35))
+            }
+        }
+        .frame(width: 56, height: 56)
+        .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.sm + 2))
+        .overlay(
+            RoundedRectangle(cornerRadius: Tokens.Radius.sm + 2)
+                .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)
+        )
+    }
+
+    // MARK: Helpers
+
     private var dateRangeText: String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "es-AR")
@@ -666,12 +841,34 @@ private struct TripRowCard: View {
         return "\(f.string(from: trip.startDate)) – \(f.string(from: trip.endDate))"
     }
 
-    private var amountText: String {
-        if let total = trip.totalUSD, total > 0 {
-            return "USD \(Int(total.rounded()).formatted(.number.grouping(.automatic)))"
-        }
-        let days = (Calendar.current.dateComponents([.day], from: trip.startDate, to: trip.endDate).day ?? 0) + 1
-        return "\(days)d"
+    private var amountText: String? {
+        guard let total = trip.totalUSD, total > 0 else { return nil }
+        return "USD \(Int(total.rounded()).formatted(.number.grouping(.automatic)))"
+    }
+}
+
+// MARK: - HeroStatusBadge
+//
+// Green pill for "En curso", gold pill for "Próximo".
+
+private struct HeroStatusBadge: View {
+    let isActive: Bool
+
+    var body: some View {
+        let label: String = isActive ? "EN CURSO" : "PRÓXIMO"
+        let fg: Color     = isActive ? Tokens.Color.accentGreen : Tokens.Color.accentGold
+        let bg: Color     = fg.opacity(0.18)
+
+        Text(label)
+            .font(.system(size: 9, weight: .black, design: .monospaced))
+            .tracking(Tokens.Track.labelWider)
+            .foregroundStyle(fg)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(
+                Capsule().fill(bg)
+                    .overlay(Capsule().strokeBorder(fg.opacity(0.3), lineWidth: 0.5))
+            )
     }
 }
 

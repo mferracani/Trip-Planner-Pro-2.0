@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-// Local SwiftData cache — Trip only. Detailed item caches are deferred.
+// MARK: - CachedTrip
 
 @Model
 final class CachedTrip {
@@ -40,5 +40,32 @@ final class CachedTrip {
             endDate: endDate,
             createdAt: updatedAt
         )
+    }
+}
+
+// MARK: - CachedTripItems
+//
+// One row per trip — stores all item subcollections as JSON blobs.
+// Using blobs instead of individual columns keeps the schema stable as
+// item models evolve; the cost is full-replacement on each write.
+
+@Model
+final class CachedTripItems {
+    @Attribute(.unique) var tripID: String
+    var flightsData: Data
+    var hotelsData: Data
+    var transportsData: Data
+    var expensesData: Data
+    var citiesData: Data
+    var cachedAt: Date
+
+    init(tripID: String) {
+        self.tripID = tripID
+        self.flightsData = Data()
+        self.hotelsData = Data()
+        self.transportsData = Data()
+        self.expensesData = Data()
+        self.citiesData = Data()
+        self.cachedAt = Date()
     }
 }

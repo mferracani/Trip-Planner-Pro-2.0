@@ -334,8 +334,17 @@ export const parseWithAI = onRequest(
     invoker: "public",
   },
   async (req, res) => {
-    // CORS headers
-    res.set("Access-Control-Allow-Origin", "*");
+    // CORS — restrict to known app origins; Firebase ID token in Authorization header
+    // prevents credential abuse but explicit origin allowlist is defense-in-depth.
+    const ALLOWED_ORIGINS = [
+      "https://trip-planner-pro-2.vercel.app",
+      "http://localhost:3000",
+    ];
+    const requestOrigin = req.headers.origin ?? "";
+    const allowedOrigin = ALLOWED_ORIGINS.includes(requestOrigin)
+      ? requestOrigin
+      : ALLOWED_ORIGINS[0];
+    res.set("Access-Control-Allow-Origin", allowedOrigin);
     res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
@@ -371,6 +380,11 @@ export const parseWithAI = onRequest(
       res.status(400).json({ error: 'Missing required field "input"' });
       return;
     }
+    const MAX_INPUT_LENGTH = 50_000;
+    if (input.length > MAX_INPUT_LENGTH) {
+      res.status(400).json({ error: `"input" exceeds maximum length of ${MAX_INPUT_LENGTH} characters` });
+      return;
+    }
     if (inputType !== "text" && inputType !== "attachment") {
       res.status(400).json({ error: '"inputType" must be "text" or "attachment"' });
       return;
@@ -378,6 +392,16 @@ export const parseWithAI = onRequest(
     if (!tripId || typeof tripId !== "string") {
       res.status(400).json({ error: 'Missing required field "tripId"' });
       return;
+    }
+    // CRITICO-1: Validate attachmentRef belongs to the authenticated user.
+    // bucket.file() uses admin credentials and bypasses Storage Security Rules.
+    if (attachmentRef) {
+      const expectedPrefix = `users/${userId}/parse_attachments/`;
+      if (!attachmentRef.startsWith(expectedPrefix)) {
+        logger.warn("Rejected attachmentRef outside caller's path", { userId, attachmentRef });
+        res.status(403).json({ error: "attachmentRef path not allowed" });
+        return;
+      }
     }
 
     const selectedProvider: ParseProvider = provider === "gemini" ? "gemini" : "claude";

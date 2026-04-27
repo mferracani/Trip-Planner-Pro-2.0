@@ -24,15 +24,20 @@ service cloud.firestore {
     // add the second UID after first login.
     match /households/main {
       allow read: if request.auth != null;
-      allow write: if request.auth != null
-                   && request.auth.uid in resource.data.memberUids;
+      // Allow creating the doc on first login (bootstrap); allow updating only if already a member.
+      allow create: if request.auth != null;
+      allow update: if request.auth != null
+                    && request.auth.uid in resource.data.memberUids;
+      allow delete: if false;
     }
 
-    // Helper function: returns true if the requester belongs to the household that
-    // owns userId's data. The get() call is cached by Firestore per request.
+    // Helper: true if the requester is a member of the household.
+    // Guards against null when households/main hasn't been created yet.
     function isHouseholdMember() {
+      let doc = get(/databases/$(database)/documents/households/main);
       return request.auth != null
-          && request.auth.uid in get(/databases/$(database)/documents/households/main).data.memberUids;
+          && doc != null
+          && request.auth.uid in doc.data.memberUids;
     }
 
     // User profile document (top-level)
@@ -46,6 +51,15 @@ service cloud.firestore {
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null
                          && (request.auth.uid == userId || isHouseholdMember());
+    }
+
+    // Explicit collectionGroup rule for cities (needed for cross-trip suggestion queries).
+    // The path always lives under users/{userId}/trips/{tripId}/cities/{cityId},
+    // so ownership is guaranteed by the parent match above, but Firestore requires
+    // a top-level collectionGroup rule when COLLECTION_GROUP indexes are queried.
+    match /{path=**}/cities/{cityId} {
+      allow read: if request.auth != null && isHouseholdMember();
+      allow write: if false; // writes always go through the users/{userId}/... path
     }
 
     // Deny everything else by default (made explicit for clarity)

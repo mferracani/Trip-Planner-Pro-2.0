@@ -2,67 +2,209 @@ import SwiftUI
 
 // MARK: - CalendarView
 //
-// 3-column grid of trip-days (not a month calendar). Each card shows the
-// date, an optional country flag for the day's city, and a compact stack of
-// item chips (flight / hotel / transport / expense). Tap → DayDetailSheet.
+// 7-column weekly grid (Mon → Sun), matching the web CalendarView.tsx exactly.
+// Weeks are computed by finding the Monday of the trip's start date and
+// building rows until the end date is covered.
+// Cells outside the trip date range are rendered as dimmed/inactive placeholders.
 
 private struct SelectedDate: Identifiable {
     let date: Date
     var id: TimeInterval { date.timeIntervalSince1970 }
 }
 
+// MARK: - PreferenceKey for cell frames
+
+private struct CalendarCellFrameKey: PreferenceKey {
+    nonisolated(unsafe) static var defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue()) { $1 }
+    }
+}
+
 struct CalendarView: View {
     let vm: TripDetailViewModel
+    /// Cities across all user trips — passed down from higher-level context for the catalog.
+    var allUserCities: [TripCity] = []
     @Environment(FirestoreClient.self) private var client
     @State private var selectedDate: SelectedDate?
     @State private var selectedCity: TripCity?
+    @State private var showCreateCity = false
 
-    private let columns = [
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10),
-    ]
-    private let calendar: Calendar = {
+    // MARK: - Range selection state
+    @State private var rangeStart: String? = nil
+    @State private var rangeCurrent: String? = nil
+    @State private var isDragging = false
+    @State private var showCityAssigner = false
+    @State private var cellFrames: [String: CGRect] = [:]
+    @State private var rangeAssignError: String? = nil
+
+    // Mon-first calendar shared across helpers.
+    private let cal: Calendar = {
         var c = Calendar(identifier: .gregorian)
-        c.firstWeekday = 2
+        c.firstWeekday = 2          // 1 = Sun, 2 = Mon
         c.locale = Locale(identifier: "es-AR")
         return c
     }()
 
-    private var tripDays: [Date] {
-        var result: [Date] = []
-        var day = vm.trip.startDate
-        while day <= vm.trip.endDate {
-            result.append(day)
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
+    private let weekdayHeaders = ["L", "M", "X", "J", "V", "S", "D"]
+
+    // MARK: - Week computation
+    //
+    // Returns an array of weeks, each week being exactly 7 ISO date strings.
+    // Strings outside the trip range are kept so the grid always has 7 columns;
+    // they are rendered as empty/dimmed placeholders.
+    private var weeks: [[String]] {
+        let startStr = vm.trip.startDateString
+        let endStr   = vm.trip.endDateString
+        guard
+            let startDay = Trip.isoDateFormatter.date(from: startStr),
+            let endDay   = Trip.isoDateFormatter.date(from: endStr)
+        else { return [] }
+
+        // Walk back to the Monday of the start week.
+        // weekday: 1=Sun, 2=Mon … 7=Sat. Convert to Mon=0 … Sun=6 for offset.
+        let weekday = cal.component(.weekday, from: startDay)
+        let offset = (weekday + 5) % 7
+        let monday = cal.date(byAdding: .day, value: -offset, to: startDay)!
+
+        var result: [[String]] = []
+        var cursor = monday
+        while cursor <= endDay {
+            var week: [String] = []
+            for _ in 0..<7 {
+                week.append(Trip.isoDateFormatter.string(from: cursor))
+                cursor = cal.date(byAdding: .day, value: 1, to: cursor)!
+            }
+            result.append(week)
         }
         return result
     }
 
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                LazyVGrid(columns: columns, spacing: 10) {
-                    ForEach(tripDays, id: \.self) { day in
-                        DayCard(date: day, vm: vm, calendar: calendar) {
-                            let h = UIImpactFeedbackGenerator(style: .soft)
-                            h.impactOccurred()
-                            selectedDate = SelectedDate(date: day)
+    // MARK: - City map  date → [TripCity]
+    private var dateCitiesMap: [String: [TripCity]] {
+        var map: [String: [TripCity]] = [:]
+        for city in vm.cities {
+            for d in city.days {
+                map[d, default: []].append(city)
+            }
+        }
+        return map
+    }
+
+    // MARK: - Range selection helpers
+
+    private var selectedRange: [String] {
+        guard let start = rangeStart else { return [] }
+        let end = rangeCurrent ?? start
+        let flat = weeks.flatMap { $0 }
+        guard let si = flat.firstIndex(of: start),
+              let ei = flat.firstIndex(of: end) else { return [] }
+        let lo = min(si, ei), hi = max(si, ei)
+        return flat[lo...hi].filter {
+            $0 >= vm.trip.startDateString && $0 <= vm.trip.endDateString
+        }
+    }
+
+    private var rangeSelectionGesture: some Gesture {
+        LongPressGesture(minimumDuration: 0.35)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("calGrid")))
+            .onChanged { value in
+                switch value {
+                case .second(true, let drag?):
+                    if !isDragging {
+                        if let date = cellFrames.first(where: { $0.value.contains(drag.startLocation) })?.key {
+                            isDragging = true
+                            rangeStart = date
+                            rangeCurrent = date
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        }
+                    } else {
+                        if let date = cellFrames.first(where: { $0.value.contains(drag.location) })?.key,
+                           date != rangeCurrent {
+                            rangeCurrent = date
+                            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
                         }
                     }
+                default: break
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 18)
+            }
+            .onEnded { _ in
+                if isDragging { showCityAssigner = true }
+                isDragging = false
+            }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                // Countdown banner for upcoming trips
+                countdownBanner
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
+
+                // Weekday header row: L M X J V S D
+                weekdayHeaderRow
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 6)
+
+                // Range selection banner
+                if isDragging {
+                    HStack(spacing: 8) {
+                        Image(systemName: "hand.point.up.left.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(selectedRange.count == 1
+                            ? "1 día — soltá para asignar ciudad"
+                            : "\(selectedRange.count) días — soltá para asignar ciudad")
+                            .font(Tokens.Typo.strongS)
+                        Spacer()
+                        Button("Cancelar") {
+                            isDragging = false
+                            rangeStart = nil
+                            rangeCurrent = nil
+                        }
+                        .font(Tokens.Typo.strongS)
+                    }
+                    .foregroundStyle(Tokens.Color.accentBlue)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                            .fill(Tokens.Color.accentBlue.opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                                    .strokeBorder(Tokens.Color.accentBlue.opacity(0.3), lineWidth: 0.5)
+                            )
+                    )
+                    .padding(.horizontal, 12)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
+                // Weekly rows with gesture support
+                VStack(spacing: Tokens.Calendar.cellGapMobile) {
+                    ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
+                        weekRow(week)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .coordinateSpace(name: "calGrid")
+                .onPreferenceChange(CalendarCellFrameKey.self) { frames in
+                    Task { @MainActor in
+                        cellFrames = frames
+                    }
+                }
+                .gesture(rangeSelectionGesture)
 
                 cityLegend
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
                     .padding(.bottom, 100)
             }
+            .padding(.top, 18)
         }
         .background(Tokens.Color.bgPrimary)
         .scrollIndicators(.hidden)
+        .scrollDisabled(isDragging)
+        .animation(Tokens.Motion.snap, value: isDragging)
         .sheet(item: $selectedDate) { wrapper in
             DayDetailSheet(date: wrapper.date, vm: vm)
                 .presentationDetents([.medium, .large])
@@ -74,16 +216,154 @@ struct CalendarView: View {
                 .environment(client)
                 .presentationBackground(Tokens.Color.bgPrimary)
         }
+        .sheet(isPresented: $showCreateCity) {
+            CreateCitySheet(
+                tripID: vm.trip.id ?? "",
+                existingCities: allUserCities,
+                onClose: { showCreateCity = false }
+            )
+            .environment(client)
+            .presentationBackground(Tokens.Color.bgPrimary)
+        }
+        .sheet(isPresented: $showCityAssigner, onDismiss: {
+            rangeStart = nil
+            rangeCurrent = nil
+        }) {
+            CityRangeAssignSheet(
+                cities: vm.cities,
+                rangeCount: selectedRange.count,
+                onAssign: { city in
+                    let dates = selectedRange
+                    showCityAssigner = false
+                    Task {
+                        do {
+                            if let city {
+                                try await vm.assignCity(city, toDates: dates)
+                            } else {
+                                try await vm.removeCityFromDates(dates)
+                            }
+                        } catch {
+                            rangeAssignError = "No se pudo actualizar."
+                        }
+                    }
+                },
+                onCancel: { showCityAssigner = false }
+            )
+            .presentationDetents([.medium])
+            .presentationBackground(Tokens.Color.bgPrimary)
+        }
+        .alert("Error", isPresented: Binding(
+            get: { rangeAssignError != nil },
+            set: { if !$0 { rangeAssignError = nil } }
+        )) {
+            Button("OK") { rangeAssignError = nil }
+        } message: {
+            Text(rangeAssignError ?? "")
+        }
+    }
+
+    // MARK: - Countdown banner
+
+    @ViewBuilder
+    private var countdownBanner: some View {
+        let today = Trip.isoDateFormatter.string(from: Date())
+        let start = vm.trip.startDateString
+        if start > today {
+            let d = daysBetween(from: today, to: start)
+            if d > 0 {
+                HStack(spacing: 8) {
+                    Text("✈️")
+                        .font(.system(size: 14))
+                    Text(d == 1 ? "Mañana empieza el viaje" : "Faltan \(d) días para que empiece el viaje")
+                        .font(Tokens.Typo.strongS)
+                        .foregroundStyle(Tokens.Color.accentBlue)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Tokens.Color.accentBlue.opacity(0.07))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .strokeBorder(Tokens.Color.accentBlue.opacity(0.22), lineWidth: 1)
+                        )
+                )
+            }
+        }
+    }
+
+    // MARK: - Weekday header
+
+    private var weekdayHeaderRow: some View {
+        HStack(spacing: Tokens.Calendar.cellGapMobile) {
+            ForEach(weekdayHeaders, id: \.self) { label in
+                Text(label)
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(Tokens.Track.labelWider)
+                    .foregroundStyle(Tokens.Color.textTertiary)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    // MARK: - Week row (exactly 7 cells)
+
+    private func weekRow(_ week: [String]) -> some View {
+        HStack(spacing: Tokens.Calendar.cellGapMobile) {
+            ForEach(week, id: \.self) { dateStr in
+                let inRange  = dateStr >= vm.trip.startDateString && dateStr <= vm.trip.endDateString
+                let cities   = dateCitiesMap[dateStr] ?? []
+                DayCell(
+                    dateStr: dateStr,
+                    inRange: inRange,
+                    cities: cities,
+                    vm: vm,
+                    cal: cal,
+                    isSelected: selectedRange.contains(dateStr),
+                    onTap: {
+                        guard inRange,
+                              let date = Trip.isoDateFormatter.date(from: dateStr)
+                        else { return }
+                        let h = UIImpactFeedbackGenerator(style: .soft)
+                        h.impactOccurred()
+                        selectedDate = SelectedDate(date: date)
+                    }
+                )
+            }
+        }
     }
 
     // MARK: - City legend
 
     private var cityLegend: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("CIUDADES DEL VIAJE")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .tracking(Tokens.Track.labelWider)
-                .foregroundStyle(Tokens.Color.textTertiary)
+            HStack {
+                Text("CIUDADES DEL VIAJE")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .tracking(Tokens.Track.labelWider)
+                    .foregroundStyle(Tokens.Color.textTertiary)
+                Spacer()
+                Button {
+                    showCreateCity = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("Agregar")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundStyle(Tokens.Color.accentBlue)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule()
+                            .fill(Tokens.Color.accentBlue.opacity(0.12))
+                            .overlay(Capsule().strokeBorder(Tokens.Color.accentBlue.opacity(0.25), lineWidth: 0.5))
+                    )
+                }
+                .buttonStyle(.plain)
+            }
 
             if vm.cities.isEmpty {
                 Text("Aún no agregaste ciudades a este viaje")
@@ -121,161 +401,344 @@ struct CalendarView: View {
             }
         }
     }
+
+    // MARK: - Helpers
+
+    private func daysBetween(from a: String, to b: String) -> Int {
+        guard
+            let da = Trip.isoDateFormatter.date(from: a),
+            let db = Trip.isoDateFormatter.date(from: b)
+        else { return 0 }
+        return Calendar.current.dateComponents([.day], from: da, to: db).day ?? 0
+    }
 }
 
-// MARK: - DayCard
+// MARK: - DayCell
 
-private struct DayCard: View {
-    let date: Date
+private struct DayCell: View {
+    let dateStr: String
+    let inRange: Bool
+    let cities: [TripCity]
     let vm: TripDetailViewModel
-    let calendar: Calendar
+    let cal: Calendar
+    var isSelected: Bool = false
     let onTap: () -> Void
 
-    private var isToday: Bool { calendar.isDateInToday(date) }
+    private var primaryCity: TripCity? { cities.first }
+    private var isSplit: Bool { cities.count >= 2 }
 
-    private var flights: [Flight] { vm.flights(on: date) }
-    private var hotels: [Hotel] { vm.hotels(on: date) }
-    private var transports: [Transport] { vm.transports(on: date) }
-    private var expenses: [Expense] { vm.expenses(on: date).filter { $0.linkedItemId == nil } }
-    private var city: TripCity? { vm.city(for: date) }
-
-    private var hasAnyItem: Bool {
-        !flights.isEmpty || !hotels.isEmpty || !transports.isEmpty || !expenses.isEmpty
+    private var dateLabel: String {
+        let parts = dateStr.split(separator: "-")
+        guard parts.count == 3 else { return dateStr }
+        return "\(parts[2])/\(parts[1])"
     }
 
-    private var isTravelDay: Bool {
-        !flights.isEmpty || !transports.isEmpty
+    private var isToday: Bool {
+        Trip.isoDateFormatter.string(from: Date()) == dateStr
     }
 
-    private var dateShort: String {
-        let f = DateFormatter()
-        f.dateFormat = "dd/MM"
-        return f.string(from: date)
+    private var date: Date? {
+        Trip.isoDateFormatter.date(from: dateStr)
     }
 
-    private var flagEmoji: String? {
-        guard let cc = city?.countryCode?.uppercased(), cc.count == 2 else { return nil }
+    // Flights, hotels, transports for this cell
+    private var cellFlights: [(id: String, label: String)] {
+        guard let d = date else { return [] }
+        return vm.flights(on: d).prefix(2).map { f in
+            let isArr = f.arrivalDate == dateStr && f.arrivalDate != f.departureDate
+            let time = isArr ? f.arrivalTime : f.departureTime
+            let dest = f.destinationIATA
+            let label = time.isEmpty ? dest : (isArr ? "\(time) \(dest)" : time)
+            return (id: (f.id ?? "") + (isArr ? "_arr" : ""), label: label)
+        }
+    }
+
+    private var cellHotels: [(id: String, label: String)] {
+        guard let d = date else { return [] }
+        return vm.hotels(on: d).prefix(1).map { h in
+            (id: h.id ?? "", label: h.brand ?? String(h.name.prefix(8)))
+        }
+    }
+
+    private var cellTransports: [(id: String, label: String)] {
+        guard let d = date else { return [] }
+        return vm.transports(on: d).prefix(1).map { t in
+            let time = t.departureTime
+            return (id: t.id ?? "", label: time.isEmpty ? String(t.destination.prefix(6)) : time)
+        }
+    }
+
+    // All badges combined (flights + transports + hotels), capped at 3
+    private var allBadges: [(id: String, label: String, type: BadgeType)] {
+        var badges: [(id: String, label: String, type: BadgeType)] = []
+        badges += cellFlights.map    { (id: $0.id, label: $0.label, type: .flight) }
+        badges += cellTransports.map { (id: $0.id, label: $0.label, type: .transport) }
+        badges += cellHotels.map     { (id: $0.id, label: $0.label, type: .hotel) }
+        return Array(badges.prefix(Tokens.Calendar.maxBadgesVisible))
+    }
+
+    private var overflowCount: Int {
+        let total = cellFlights.count + cellTransports.count + cellHotels.count
+        return max(0, total - Tokens.Calendar.maxBadgesVisible)
+    }
+
+    // City progress within the trip (dayIndex / totalDays)
+    private var cityProgress: (current: Int, total: Int)? {
+        guard let city = primaryCity, !isSplit else { return nil }
+        let sorted = city.days.sorted()
+        guard let idx = sorted.firstIndex(of: dateStr) else { return nil }
+        return (current: idx + 1, total: sorted.count)
+    }
+
+    // MARK: - Background
+
+    private var cellBackground: some View {
+        Group {
+            if isSplit, cities.count >= 2 {
+                // Diagonal split: left half = city[0], right half = city[1]
+                ZStack {
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    cities[0].swiftColor.opacity(0.35),
+                                    cities[0].swiftColor.opacity(0.20)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .center
+                            )
+                        )
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    cities[1].swiftColor.opacity(0.20),
+                                    cities[1].swiftColor.opacity(0.35)
+                                ],
+                                startPoint: .center,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .clipShape(
+                            Triangle()
+                        )
+                }
+            } else if let city = primaryCity {
+                LinearGradient(
+                    colors: [
+                        city.swiftColor.opacity(0.42),
+                        city.swiftColor.opacity(0.14)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            } else if inRange {
+                Tokens.Color.elevated.opacity(0.45)
+            } else {
+                Tokens.Color.bgPrimary.opacity(0.0)
+            }
+        }
+    }
+
+    // MARK: - Border color
+
+    private var borderColor: Color {
+        if isToday { return Tokens.Color.accentGold }
+        if let city = primaryCity { return city.swiftColor.opacity(0.66) }
+        return Tokens.Color.borderSoft
+    }
+
+    private var borderWidth: CGFloat {
+        isToday ? 2 : 1
+    }
+
+    // MARK: - Body
+
+    var body: some View {
+        Button(action: onTap) {
+            cellContent
+        }
+        .buttonStyle(DayCardButtonStyle())
+        .disabled(!inRange)
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: CalendarCellFrameKey.self,
+                    value: inRange ? [dateStr: geo.frame(in: .named("calGrid"))] : [:]
+                )
+            }
+        )
+    }
+
+    private var cellContent: some View {
+        ZStack(alignment: .topLeading) {
+            // Background layer
+            RoundedRectangle(cornerRadius: Tokens.Calendar.cellRadius)
+                .fill(Color.clear)
+                .overlay(
+                    cellBackground
+                        .clipShape(RoundedRectangle(cornerRadius: Tokens.Calendar.cellRadius))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Tokens.Calendar.cellRadius)
+                        .strokeBorder(borderColor, lineWidth: borderWidth)
+                )
+
+            // Range selection overlay
+            if isSelected {
+                RoundedRectangle(cornerRadius: Tokens.Calendar.cellRadius)
+                    .fill(Tokens.Color.accentBlue.opacity(0.28))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Tokens.Calendar.cellRadius)
+                            .strokeBorder(Tokens.Color.accentBlue, lineWidth: 2)
+                    )
+            }
+
+            // Content
+            if inRange {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Row 1: date label + today indicator
+                    HStack(alignment: .center) {
+                        Text(dateLabel)
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .foregroundStyle(
+                                isToday ? Tokens.Color.accentGold : Tokens.Color.textSecondary
+                            )
+                        Spacer(minLength: 2)
+                        if isToday {
+                            Circle()
+                                .fill(Tokens.Color.accentGreen)
+                                .frame(width: 5, height: 5)
+                        }
+                    }
+
+                    // City block (flag + name)
+                    if isSplit {
+                        splitCityBlock
+                            .padding(.top, 3)
+                    } else if let city = primaryCity {
+                        singleCityBlock(city)
+                            .padding(.top, 3)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    // Badges at bottom
+                    if !allBadges.isEmpty {
+                        VStack(alignment: .leading, spacing: 2) {
+                            ForEach(allBadges, id: \.id) { badge in
+                                CalendarBadge(label: badge.label, type: badge.type)
+                            }
+                            if overflowCount > 0 {
+                                Text("+\(overflowCount)")
+                                    .font(.system(size: 8, weight: .semibold))
+                                    .foregroundStyle(Tokens.Color.textQuaternary)
+                            }
+                        }
+                    }
+                }
+                .padding(6)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: Tokens.Calendar.cellHeightMobile)
+        .opacity(inRange ? 1.0 : 0.18)
+    }
+
+    // MARK: - City blocks
+
+    private var splitCityBlock: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(cities.prefix(2)) { city in
+                HStack(spacing: 3) {
+                    if let flag = flagEmoji(for: city) {
+                        Text(flag).font(.system(size: 8))
+                    }
+                    Text(String(city.name.prefix(3)).uppercased())
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(city.swiftColor)
+                        .lineLimit(1)
+                }
+            }
+        }
+    }
+
+    private func singleCityBlock(_ city: TripCity) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            if let flag = flagEmoji(for: city) {
+                Text(flag).font(.system(size: 10))
+            }
+            Text(String(city.name.prefix(3)).uppercased())
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(Tokens.Color.textPrimary)
+                .lineLimit(1)
+            if let progress = cityProgress {
+                Text("\(progress.current)/\(progress.total)")
+                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(city.swiftColor.opacity(0.7))
+            }
+        }
+    }
+
+    // MARK: - Flag emoji
+
+    private func flagEmoji(for city: TripCity) -> String? {
+        guard let cc = city.countryCode?.uppercased(), cc.count == 2 else { return nil }
         return cc.unicodeScalars.compactMap {
             UnicodeScalar(127_397 + Int($0.value))
         }.reduce("") { $0 + String($1) }
     }
+}
+
+// MARK: - Triangle (for split diagonal background)
+
+private struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+// MARK: - CalendarBadge
+
+private enum BadgeType {
+    case flight, hotel, transport
+
+    var icon: String {
+        switch self {
+        case .flight:    return "✈"
+        case .hotel:     return "🏨"
+        case .transport: return "🚌"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .flight:    return Color(hex: 0x60A5FA)
+        case .hotel:     return Color(hex: 0xFBBF24)
+        case .transport: return Color(hex: 0xD8B4FE)
+        }
+    }
+}
+
+private struct CalendarBadge: View {
+    let label: String
+    let type: BadgeType
 
     var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 8) {
-                // Top: date + flag
-                HStack(alignment: .center) {
-                    Text(dateShort)
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
-                        .tracking(-0.2)
-                        .foregroundStyle(
-                            isToday ? Tokens.Color.accentBlue : Tokens.Color.textPrimary
-                        )
-                    Spacer(minLength: 2)
-                    if let flag = flagEmoji {
-                        Text(flag)
-                            .font(.system(size: 14))
-                    }
-                }
-
-                // Chips
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(flights.prefix(1), id: \.id) { flight in
-                        DayItemChip(
-                            icon: "airplane",
-                            text: flightBadgeText(flight),
-                            color: Tokens.Color.Category.flight,
-                            isStrong: true
-                        )
-                    }
-                    ForEach(hotels.prefix(1), id: \.id) { hotel in
-                        DayItemChip(
-                            icon: "bed.double.fill",
-                            text: hotelBadgeText(hotel),
-                            color: Tokens.Color.Category.hotel,
-                            isStrong: true
-                        )
-                    }
-                    ForEach(transports.prefix(1), id: \.id) { transport in
-                        DayItemChip(
-                            icon: transportIconName(transport),
-                            text: transportBadgeText(transport),
-                            color: Tokens.Color.Category.transit,
-                            isStrong: true
-                        )
-                    }
-                    ForEach(expenses.prefix(2), id: \.id) { exp in
-                        DayItemChip(
-                            icon: exp.categoryKind.systemImage,
-                            text: shortName(exp.title),
-                            color: exp.categoryKind.tint,
-                            isStrong: false
-                        )
-                    }
-                }
-
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(minHeight: 110, alignment: .topLeading)
-            .padding(10)
-            .background(cardBackground)
-            .overlay(cardBorder)
-            .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.md))
-            .contentShape(RoundedRectangle(cornerRadius: Tokens.Radius.md))
+        HStack(spacing: 2) {
+            Text(type.icon)
+                .font(.system(size: 8))
+            Text(label)
+                .font(.system(size: 8, weight: .medium, design: .monospaced))
+                .lineLimit(1)
+                .foregroundStyle(type.color)
         }
-        .buttonStyle(DayCardButtonStyle())
-    }
-
-    @ViewBuilder
-    private var cardBackground: some View {
-        if hasAnyItem {
-            Tokens.Color.accentBlue.opacity(0.08)
-        } else {
-            Tokens.Color.elevated.opacity(0.45)
-        }
-    }
-
-    @ViewBuilder
-    private var cardBorder: some View {
-        RoundedRectangle(cornerRadius: Tokens.Radius.md)
-            .strokeBorder(
-                isTravelDay
-                    ? Tokens.Color.signalSky.opacity(0.55)
-                    : (hasAnyItem ? Tokens.Color.accentBlue.opacity(0.3) : Tokens.Color.borderSoft),
-                lineWidth: isTravelDay ? 1 : 0.5
-            )
-    }
-
-    // MARK: Helpers
-
-    private func flightBadgeText(_ flight: Flight) -> String {
-        let time = flight.departureTime
-        return time.isEmpty ? flight.destinationIATA : time
-    }
-
-    private func hotelBadgeText(_ hotel: Hotel) -> String {
-        hotel.brand ?? shortName(hotel.name)
-    }
-
-    private func transportBadgeText(_ transport: Transport) -> String {
-        let time = transport.departureTime
-        return time.isEmpty ? shortName(transport.destination) : time
-    }
-
-    private func transportIconName(_ transport: Transport) -> String {
-        switch transport.type.lowercased() {
-        case "train", "subway": return "tram.fill"
-        case "bus":             return "bus.fill"
-        case "ferry":           return "ferry.fill"
-        case "car", "taxi":     return "car.fill"
-        default:                return "tram.fill"
-        }
-    }
-
-    private func shortName(_ name: String) -> String {
-        if name.count <= 9 { return name }
-        return String(name.prefix(9))
     }
 }
 
@@ -289,41 +752,8 @@ private struct DayCardButtonStyle: ButtonStyle {
     }
 }
 
-// MARK: - DayItemChip
+// MARK: - FlowLayout (city legend pills)
 
-private struct DayItemChip: View {
-    let icon: String
-    let text: String
-    let color: Color
-    let isStrong: Bool
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(color)
-            Text(text)
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .tracking(-0.2)
-                .lineLimit(1)
-                .foregroundStyle(
-                    isStrong ? Tokens.Color.textPrimary : Tokens.Color.textSecondary
-                )
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 5)
-                .fill(isStrong ? color.opacity(0.22) : Tokens.Color.elevated.opacity(0.55))
-        )
-    }
-}
-
-// MARK: - FlowLayout
-//
-// Wrap layout for the city legend pills.
 private struct FlowLayout: Layout {
     var spacing: CGFloat = 8
 
@@ -363,7 +793,7 @@ private struct FlowLayout: Layout {
     }
 }
 
-// MARK: - DayDetailSheet
+// MARK: - DayDetailSheet (unchanged, kept in same file)
 
 struct DayDetailSheet: View {
     let date: Date
@@ -902,5 +1332,81 @@ private extension View {
                     )
             )
             .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.md))
+    }
+}
+
+// MARK: - CityRangeAssignSheet
+
+private struct CityRangeAssignSheet: View {
+    let cities: [TripCity]
+    let rangeCount: Int
+    let onAssign: (TripCity?) -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Tokens.Color.bgPrimary.ignoresSafeArea()
+                List {
+                    Section {
+                        Button {
+                            onAssign(nil)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(Tokens.Color.textTertiary)
+                                Text("Sin ciudad")
+                                    .foregroundStyle(Tokens.Color.textSecondary)
+                                    .font(Tokens.Typo.strongS)
+                            }
+                        }
+                        .listRowBackground(Tokens.Color.surface)
+                    }
+                    if cities.isEmpty {
+                        Section {
+                            Text("Agregá una ciudad primero")
+                                .font(Tokens.Typo.bodyS)
+                                .foregroundStyle(Tokens.Color.textTertiary)
+                                .listRowBackground(Tokens.Color.surface)
+                        }
+                    } else {
+                        Section("Asignar a") {
+                            ForEach(cities) { city in
+                                Button {
+                                    onAssign(city)
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        Circle()
+                                            .fill(city.swiftColor)
+                                            .frame(width: 10, height: 10)
+                                        Text(city.name)
+                                            .foregroundStyle(Tokens.Color.textPrimary)
+                                            .font(Tokens.Typo.strongS)
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(Tokens.Color.textTertiary)
+                                    }
+                                }
+                                .listRowBackground(Tokens.Color.surface)
+                            }
+                        }
+                    }
+                }
+                .scrollContentBackground(.hidden)
+            }
+            .navigationTitle(
+                rangeCount == 1 ? "1 día seleccionado" : "\(rangeCount) días seleccionados"
+            )
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar", action: onCancel)
+                        .foregroundStyle(Tokens.Color.textSecondary)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
     }
 }

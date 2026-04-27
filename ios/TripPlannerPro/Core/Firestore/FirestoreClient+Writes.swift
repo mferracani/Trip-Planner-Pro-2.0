@@ -79,15 +79,36 @@ extension FirestoreClient {
     func updateTrip(_ trip: Trip) async throws {
         guard let id = trip.id else { return }
         let ref = try userCollection("trips").document(id)
-        try await ref.updateData([
+        var data: [String: Any] = [
             "name": trip.name,
             "start_date": trip.startDateString,
             "end_date": trip.endDateString,
+            "updated_at": FieldValue.serverTimestamp()
+        ]
+        if let coverURL = trip.coverURL {
+            data["cover_url"] = coverURL
+        } else {
+            data["cover_url"] = FieldValue.delete()
+        }
+        try await ref.updateData(data)
+    }
+
+    /// Mirrors web `updateTripStatus`: persists "draft" or "planned" to Firestore.
+    func updateTripStatus(tripID: String, status: TripStatus) async throws {
+        let ref = try userCollection("trips").document(tripID)
+        try await ref.updateData([
+            "status": status.rawValue,
             "updated_at": FieldValue.serverTimestamp()
         ])
     }
 
     // MARK: Cities
+
+    func createCity(_ city: TripCity, tripID: String) async throws {
+        let ref = try userCollection("trips").document(tripID).collection("cities")
+        try ref.addDocument(from: city)
+        try await recalcTripAggregates(tripID: tripID)
+    }
 
     func updateCity(_ city: TripCity, tripID: String) async throws {
         guard let id = city.id else { return }

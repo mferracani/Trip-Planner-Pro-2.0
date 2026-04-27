@@ -15,6 +15,7 @@
 - [ ] Gate 3: Build completo
 
 ## Decisiones tomadas
+- 2026-04-26 [PM] Auditoría de paridad web↔iOS completada. Gaps documentados en este archivo (ver "Gaps iOS identificados"). Prioridad alta: countdown granular en hero card, crear viaje con elección draft/confirmed, editar portada (cover/tema) en TripEditSheet, CityEditSheet en iOS. Prioridad media: DraftDatePicker visual con calendarios en iOS. Settings: export JSON y moneda preferida ausentes.
 - 2026-04-25 [PM] Modo Borrador aprobado para MVP — entra en Módulo A (Viajes). Agrega campo `status: "draft"|"planned"|"active"|"past"` a Firestore trips. Plan completo en `docs/draft-mode-plan.md`. Tickets escritos para web (Fase 2) e iOS (Fase 4).
 - 2026-04-25 [PM] Borradores excluidos del tab "Todos" en Dashboard — tienen su propio tab "Borradores" al final del filtro. Los borradores no aparecen en el Hero.
 - 2026-04-25 [PM] Fechas tentativas como texto libre (`tentative_start_date: string`) + `start_date`/`end_date` pueden ser `""` en borradores. Todos los componentes que leen fechas deben ser defensivos.
@@ -83,6 +84,7 @@
 - [x] Detalle desde Catálogo (pendiente build Xcode)
 - [x] Monedas con símbolos en Catálogo/Costos/Formularios (pendiente build Xcode)
 - [x] Build Debug iOS Simulator compila en Xcode 26.4.1
+- [x] Long-press + drag para seleccionar rango de días y asignar ciudad (Ticket 4)
 - [ ] Settings
 - [ ] Tests (checklist QA creado; ejecucion Xcode pendiente)
 ### ⬜ Fase 5 — TestFlight (bloqueado por Fase 4)
@@ -98,6 +100,29 @@
 - [x] [frontend-engineer] → [frontend-engineer]: implementar Ticket 9 iOS — detalle desde Catalogo
 - [x] [frontend-engineer] → [frontend-engineer]: implementar Ticket 8 iOS — monedas con simbolos
 - [ ] [frontend-engineer] → [backend-designer]: definir estrategia para ciudades reutilizables sin duplicados
+
+## Política de feature parity (establecida 2026-04-27)
+iOS y desktop deben mantener las mismas funcionalidades. Antes de cerrar un feature en una plataforma, marcarlo pendiente en la otra. El feature-parity audit completo está en `.project/feature-parity.md`.
+
+**Estado al 2026-04-27:** Costos — paridad alcanzada. CostsView iOS ahora tiene swipe "Marcar como pagado" por item (CategoryBreakdownSheet) y quick-action "Todo pagado" por categoría (CostsView). Archivos: TripDetailViewModel.swift, CategoryBreakdownSheet.swift, CostsView.swift.
+
+## Gaps iOS identificados (auditoría 2026-04-26)
+
+### P1 — Alta prioridad (bloquean la experiencia del primer viaje real)
+1. **Countdown granular en hero card**: iOS muestra "En 45 días" plano. Web tiene 5 niveles del PRD (>30d / 7-30d / 2-7d / mañana / horas). Falta la lógica de nivel + animación "pulsante" cuando es 1 día.
+2. **Crear viaje: elección draft/confirmed**: Web presenta un chooser de 2 opciones antes de pedir fechas. iOS va directo al form sin el paso de elección y siempre crea en `.draft`. La distinción visual y el flujo de 2 pasos falta.
+3. **TripEditSheet ausente en iOS**: En web, el botón `MoreHorizontal` abre `TripForm` con campos nombre + fechas + cover/tema + eliminar. En iOS, `showTripEdit` llama a `TripEditSheet(trip:)` pero ese archivo no existe (`ios/TripPlannerPro/Features/Editing/TripEditSheet.swift` da 404). El botón "slider.horizontal.3" de la navbar no funciona.
+4. **CityEditSheet ausente en iOS**: Web tiene `CityForm` completo (nombre, color, timezone, lat/lng, días). El ItemsView de iOS no tiene subtab "Ciudades" ni permite crear/editar ciudades desde la app (solo vuelos, hoteles, transportes, gastos).
+
+### P2 — Media prioridad (importante para paridad completa)
+5. **DraftDatePicker visual con grillas de meses**: Web tiene un calendario interactivo de 2 meses con strip de rango seleccionable. iOS tiene DatePickers nativos (funcionales, pero experiencia diferente). No es un blocker para el MVP pero la UX de web es más rica.
+6. **Settings: moneda preferida de display**: Web no tiene este setting aún (también ausente), pero el PRD lo define en Módulo G. iOS tampoco lo tiene.
+7. **Settings: export de data JSON**: PRD Módulo G lo requiere. Ausente en ambas plataformas.
+8. **Stats hero card — "demo de viaje" (web)**: Web tiene botón "Ver demo" en empty state. iOS tiene empty state sin ese botón. Nice-to-have para testing personal.
+
+### P3 — Baja prioridad / ya en backlog
+9. **Cover image/Unsplash en iOS**: TripEditSheet (cuando exista) debería ofrecer el picker de temas + Unsplash como en web. Bloqueado por P1-item 3.
+10. **Countdown "Día X de tu viaje" en navegación**: Web muestra "Día X de tu viaje" en el title del active trip en el greeting del dashboard. iOS lo hace en `greeting` del ViewModel (presente) pero el title del hero card no usa la misma jerarquía visual que web.
 
 ## Open questions para el usuario
 - [Modo Borrador] ¿Un borrador puede tener cero fechas (start_date = "")? El plan lo asume como sí. Confirmar antes de implementar.

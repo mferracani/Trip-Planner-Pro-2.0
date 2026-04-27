@@ -15,16 +15,19 @@ export interface User {
 // Trip
 // ---------------------------------------------------------------------------
 
-export type TripStatus = "planned" | "active" | "past";
+export type TripStatus = "draft" | "planned" | "active" | "past";
 
 export interface Trip {
   name: string;
-  start_date: string; // "2026-03-15"
-  end_date: string;   // "2026-03-20"
-  status: TripStatus;
-  fx_eur_usd_fixed_rate: number | null; // set when trip is archived
-  cover_image_url: string | null;
+  start_date: string;       // "2026-03-15"
+  end_date: string;         // "2026-03-20"
+  status: TripStatus | null;
+  cover_url: string | null;
+  fx_eur_usd_fixed_rate: number | null;
   cover_image_credit: string | null;
+  updated_at: Timestamp | null;
+  total_usd: number | null;
+  cities_count: number | null;
   created_at: Timestamp;
 }
 
@@ -33,13 +36,15 @@ export interface Trip {
 // ---------------------------------------------------------------------------
 
 export interface City {
+  trip_id: string | null;
   name: string;
-  country: string;
-  lat: number;
-  lng: number;
-  color_index: number; // 0–7, maps to app palette
-  timezone: string;    // IANA tz string, e.g. "Europe/Madrid"
-  display_order: number;
+  country: string | null;
+  country_code: string | null;
+  color: string | null;     // hex string e.g. "#4D96FF"
+  days: string[];           // "YYYY-MM-DD" dates this city occupies in the trip
+  lat: number | null;
+  lng: number | null;
+  timezone: string | null;  // IANA tz string, e.g. "Europe/Madrid"
 }
 
 // ---------------------------------------------------------------------------
@@ -60,22 +65,25 @@ export interface TripDay {
 export type CabinClass = "economy" | "premium_economy" | "business" | "first";
 
 export interface Flight {
+  trip_id: string | null;
   airline: string | null;
   flight_number: string | null;
-  departure_airport: string | null;   // IATA code, e.g. "EZE"
+  origin_iata: string | null;       // IATA code, e.g. "EZE"
+  destination_iata: string | null;
   departure_local_time: string | null; // "2026-03-15T21:35" — for display
   departure_timezone: string | null;   // IANA, e.g. "America/Argentina/Buenos_Aires"
   departure_utc: Timestamp | null;     // UTC timestamp — for sorting & duration
-  arrival_airport: string | null;
   arrival_local_time: string | null;
   arrival_timezone: string | null;
   arrival_utc: Timestamp | null;
-  duration_minutes: number | null;     // calculated at write time, never on client
+  duration_minutes: number | null;  // calculated at write time, never on client
   cabin_class: CabinClass | null;
   seat: string | null;
-  confirmation_code: string | null;
+  booking_ref: string | null;
   price: number | null;
-  currency: string | null; // ISO 4217, e.g. "USD"
+  currency: string | null;          // ISO 4217, e.g. "USD"
+  price_usd: number | null;
+  paid_amount: number | null;
   notes: string | null;
   parse_job_id: string | null;
   // Flight tracking fields (v1.1 — populated by trackFlights function)
@@ -94,16 +102,21 @@ export interface Flight {
 // ---------------------------------------------------------------------------
 
 export interface Hotel {
+  trip_id: string | null;
   name: string | null;
+  brand: string | null;
   chain: string | null;
   address: string | null;
   city_id: string | null;
-  check_in_datetime: string | null;  // "2026-03-15" or "2026-03-15T15:00"
-  check_out_datetime: string | null;
+  check_in: string | null;          // "2026-03-15"
+  check_out: string | null;         // "2026-03-20"
   room_type: string | null;
-  confirmation_code: string | null;
-  price: number | null;
+  booking_ref: string | null;
+  price_per_night: number | null;
+  total_price: number | null;
   currency: string | null;
+  total_price_usd: number | null;
+  paid_amount: number | null;
   notes: string | null;
   parse_job_id: string | null;
 }
@@ -113,11 +126,12 @@ export interface Hotel {
 // Same timezone-aware pattern as flights.
 // ---------------------------------------------------------------------------
 
-export type TransportMode = "bus" | "train" | "ferry" | "car" | "other";
+export type TransportMode = "bus" | "train" | "ferry" | "car" | "taxi" | "subway" | "other";
 
 export interface Transport {
+  trip_id: string | null;
   type: TransportMode | null;
-  provider: string | null;
+  operator: string | null;
   origin: string | null;
   destination: string | null;
   departure_local_time: string | null;
@@ -127,11 +141,32 @@ export interface Transport {
   arrival_timezone: string | null;
   arrival_utc: Timestamp | null;
   duration_minutes: number | null;
-  confirmation_code: string | null;
+  booking_ref: string | null;
   price: number | null;
   currency: string | null;
+  price_usd: number | null;
+  paid_amount: number | null;
   notes: string | null;
   parse_job_id: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Expense (subcollection of trip)
+// ---------------------------------------------------------------------------
+
+export interface Expense {
+  trip_id: string | null;
+  title: string;
+  amount: number;
+  currency: string;           // ISO 4217
+  amount_usd: number | null;
+  paid_amount: number | null;
+  date: string;               // "YYYY-MM-DD"
+  category: string;           // "flight" | "hotel" | "transport" | "food" | "activity" | "shopping" | "other"
+  notes: string | null;
+  linked_item_id: string | null;
+  linked_item_type: string | null; // "flight" | "hotel" | "transport"
+  created_at: Timestamp;
 }
 
 // ---------------------------------------------------------------------------
@@ -145,13 +180,13 @@ export type ParseProvider = "claude" | "gemini";
 export interface ParseJob {
   provider: ParseProvider;
   input_type: ParseInputType;
-  input_text: string | null;         // raw input text (if text mode)
+  input_text: string | null;            // raw input text (if text mode)
   attachment_storage_ref: string | null; // Storage path (if attachment mode)
   status: ParseJobStatus;
   error_message: string | null;
-  raw_response: string | null;       // raw JSON string from AI provider
+  raw_response: string | null;          // raw JSON string from AI provider
   parsed_items: ParsedItem[] | null;
-  confidence_score: number | null;   // overall job confidence 0–1
+  confidence_score: number | null;      // overall job confidence 0–1
   tokens_used: number | null;
   latency_ms: number | null;
   created_at: Timestamp;
@@ -179,7 +214,7 @@ export interface ParsedHotel {
   type: "hotel";
   confidence: number;
   name: string | null;
-  city: string | null;
+  city: string | null; // free-text city name (not city_id) — for preview only
   check_in: string | null;  // "2026-03-15"
   check_out: string | null;
   booking_ref: string | null;
