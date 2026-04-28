@@ -17,15 +17,6 @@ interface Props {
   onChanged?: () => void;
 }
 
-interface DayGroup {
-  date: string;
-  city?: City;
-  flights: Flight[];
-  hotels: Hotel[];
-  transports: Transport[];
-  expenses: Expense[];
-}
-
 type EditTarget =
   | { kind: "flight"; data: Flight }
   | { kind: "hotel"; data: Hotel }
@@ -33,58 +24,605 @@ type EditTarget =
   | { kind: "expense"; data: Expense }
   | null;
 
-function buildDayGroups(
-  trip: Trip,
-  cities: City[],
-  flights: Flight[],
-  hotels: Hotel[],
-  transports: Transport[],
-  expenses: Expense[]
-): DayGroup[] {
-  const dateCityMap: Record<string, City> = {};
-  for (const c of cities) {
-    for (const d of c.days ?? []) dateCityMap[d] = c;
-  }
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
-  const dates: string[] = [];
-  const cur = new Date(trip.start_date + "T00:00:00");
-  const end = new Date(trip.end_date + "T00:00:00");
-  while (cur <= end) {
-    dates.push(cur.toISOString().split("T")[0]);
-    cur.setDate(cur.getDate() + 1);
-  }
-
-  return dates
-    .map((date) => ({
-      date,
-      city: dateCityMap[date],
-      flights: flights.filter((f) => {
-        if (f.departure_local_time?.startsWith(date)) return true;
-        return f.legs?.some((l) => l.departure_local_time?.startsWith(date)) ?? false;
-      }),
-      hotels: hotels.filter((h) => h.check_in <= date && h.check_out > date),
-      transports: transports.filter((t) => t.departure_local_time?.startsWith(date)),
-      expenses: expenses.filter((e) => e.date === date && !e.linked_item_id),
-    }))
-    .filter(
-      (g) =>
-        g.flights.length > 0 ||
-        g.hotels.length > 0 ||
-        g.transports.length > 0 ||
-        g.expenses.length > 0
-    );
+function fmtTime(localTime?: string): string {
+  return localTime?.split("T")[1]?.slice(0, 5) ?? "";
 }
+
+function fmtDate(localTime?: string): string {
+  const date = localTime?.split("T")[0];
+  if (!date) return "";
+  const d = new Date(date + "T00:00:00");
+  return d.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
+}
+
+function fmtDuration(minutes?: number): string {
+  if (!minutes || minutes <= 0) return "";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+function nightsLabel(checkIn: string, checkOut: string): string {
+  const msPerDay = 86400000;
+  const n = Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / msPerDay);
+  return `${n} noche${n === 1 ? "" : "s"}`;
+}
+
+const TRANSPORT_EMOJI: Record<string, string> = {
+  train: "🚆", bus: "🚌", ferry: "⛴️", car: "🚗",
+  car_rental: "🚙", taxi: "🚕", subway: "🚇", other: "🚐",
+};
+const TRANSPORT_LABEL: Record<string, string> = {
+  train: "Tren", bus: "Bus", ferry: "Ferry", car: "Auto",
+  car_rental: "Auto", taxi: "Taxi", subway: "Metro", other: "Transporte",
+};
+const EXPENSE_EMOJI: Record<string, string> = {
+  flight: "✈️", hotel: "🏨", transport: "🚆", food: "🍽️",
+  activity: "🎭", shopping: "🛍️", taxi: "🚕", other: "💰",
+};
+const CABIN_LABEL: Record<string, string> = {
+  economy: "Economy", premium_economy: "Premium Economy",
+  business: "Business", first: "Primera",
+};
+
+// ─── CopyableRef ──────────────────────────────────────────────────────────────
+
+function CopyableRef({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  function copy(e: React.MouseEvent) {
+    e.stopPropagation();
+    navigator.clipboard.writeText(value).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+  return (
+    <button
+      onClick={copy}
+      className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#2A2A2A] border border-[#3A3A3A] hover:border-[#555] transition-colors shrink-0"
+      title="Copiar ref"
+    >
+      <span className="font-mono text-[11px] text-[#B0B0B0] tracking-wider">{value}</span>
+      <span className="text-[10px] text-[#666]">{copied ? "✓" : "⎘"}</span>
+    </button>
+  );
+}
+
+// ─── CategoryHeader ───────────────────────────────────────────────────────────
+
+function CategoryHeader({
+  emoji,
+  label,
+  count,
+  totalUSD,
+}: {
+  emoji: string;
+  label: string;
+  count: number;
+  totalUSD: number;
+}) {
+  return (
+    <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center gap-2">
+        <span className="text-[13px]">{emoji}</span>
+        <span className="text-[13px] font-semibold text-[#A0A0A0] uppercase tracking-widest">
+          {label}
+        </span>
+        <span className="text-[11px] text-[#555] font-mono">·{count}</span>
+      </div>
+      {totalUSD > 0 && (
+        <span className="text-[13px] font-semibold text-white tabular-nums">
+          ${Math.round(totalUSD).toLocaleString("es-AR")} USD
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ─── FlightsBlock ─────────────────────────────────────────────────────────────
+
+function FlightsBlock({
+  flights,
+  expandedId,
+  onToggle,
+  onEdit,
+}: {
+  flights: Flight[];
+  expandedId: string | null;
+  onToggle: (id: string) => void;
+  onEdit: (f: Flight) => void;
+}) {
+  const sorted = [...flights].sort((a, b) =>
+    (a.departure_local_time ?? "").localeCompare(b.departure_local_time ?? "")
+  );
+  const totalUSD = flights.reduce((s, f) => s + (f.price_usd ?? 0), 0);
+
+  return (
+    <div>
+      <CategoryHeader emoji="✈️" label="Vuelos" count={flights.length} totalUSD={totalUSD} />
+      <div className="space-y-2">
+        {sorted.map((f) => (
+          <FlightCard
+            key={f.id}
+            flight={f}
+            isExpanded={expandedId === f.id}
+            onToggle={() => onToggle(f.id)}
+            onEdit={() => onEdit(f)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FlightCard({
+  flight: f,
+  isExpanded,
+  onToggle,
+  onEdit,
+}: {
+  flight: Flight;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+}) {
+  const outbound = f.legs?.filter((l) => l.direction === "outbound") ?? [];
+  const inbound = f.legs?.filter((l) => l.direction === "inbound") ?? [];
+  const hasLegs = f.legs && f.legs.length > 0;
+
+  const compactDep = fmtTime(f.departure_local_time);
+  const compactArr = fmtTime(f.arrival_local_time);
+  const route = hasLegs
+    ? `${outbound[0]?.origin_iata ?? f.origin_iata} → ${outbound[outbound.length - 1]?.destination_iata ?? f.destination_iata}`
+    : `${f.origin_iata} → ${f.destination_iata}`;
+
+  return (
+    <div className="bg-[#1A1A1A] border border-[#333] rounded-[14px] overflow-hidden">
+      {/* Compact row — always visible */}
+      <button
+        onClick={onToggle}
+        className="w-full text-left px-4 py-3 flex items-center gap-3 press-feedback"
+      >
+        <div className="w-9 h-9 rounded-full bg-[#0A84FF]/15 flex items-center justify-center text-lg shrink-0">
+          ✈️
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] font-semibold text-white">{route}</p>
+          <p className="text-[13px] text-[#A0A0A0]">
+            {f.airline} {f.flight_number}
+            {compactDep ? ` · ${compactDep}` : ""}
+            {compactArr ? ` → ${compactArr}` : ""}
+            {f.duration_minutes ? ` · ${fmtDuration(f.duration_minutes)}` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {f.booking_ref && <CopyableRef value={f.booking_ref} />}
+          <span className="text-[#555] text-[12px] transition-transform duration-200" style={{ transform: isExpanded ? "rotate(180deg)" : "none" }}>▾</span>
+        </div>
+      </button>
+
+      {/* Expanded detail */}
+      {isExpanded && (
+        <div className="border-t border-[#2A2A2A] px-4 py-3 space-y-3">
+          {/* Legs */}
+          {hasLegs ? (
+            <div className="space-y-3">
+              {outbound.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold text-[#555] uppercase tracking-wider mb-1.5">Ida</p>
+                  <div className="space-y-2">
+                    {outbound.map((leg, i) => <LegDetail key={i} leg={leg} />)}
+                  </div>
+                </div>
+              )}
+              {inbound.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold text-[#555] uppercase tracking-wider mb-1.5">Vuelta</p>
+                  <div className="space-y-2">
+                    {inbound.map((leg, i) => <LegDetail key={i} leg={leg} />)}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[13px]">
+              <DetailField label="Origen" value={f.origin_iata} />
+              <DetailField label="Destino" value={f.destination_iata} />
+              <DetailField label="Salida" value={`${fmtDate(f.departure_local_time)} ${fmtTime(f.departure_local_time)}`} />
+              <DetailField label="Llegada" value={`${fmtDate(f.arrival_local_time)} ${fmtTime(f.arrival_local_time)}`} />
+              <DetailField label="Duración" value={fmtDuration(f.duration_minutes)} />
+              {f.cabin_class && <DetailField label="Clase" value={CABIN_LABEL[f.cabin_class] ?? f.cabin_class} />}
+              {f.seat && <DetailField label="Asiento" value={f.seat} />}
+            </div>
+          )}
+
+          {/* Price row */}
+          {(f.price || f.price_usd) && (
+            <div className="flex items-center gap-3 text-[13px] pt-1 border-t border-[#2A2A2A]">
+              {f.price && f.currency && (
+                <span className="text-[#A0A0A0]">{f.currency} {f.price.toLocaleString("es-AR")}</span>
+              )}
+              {f.price_usd && (
+                <span className="text-white font-semibold">${Math.round(f.price_usd).toLocaleString("es-AR")} USD</span>
+              )}
+              {f.paid_amount != null && f.paid_amount > 0 && (
+                <span className="text-[#30D158] ml-auto">Pagado: {f.currency} {f.paid_amount.toLocaleString("es-AR")}</span>
+              )}
+            </div>
+          )}
+
+          {/* Edit button */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            className="w-full text-center text-[13px] text-[#0A84FF] py-1.5 rounded-[8px] bg-[#0A84FF]/10 hover:bg-[#0A84FF]/20 transition-colors"
+          >
+            Editar vuelo
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LegDetail({ leg }: { leg: FlightLeg }) {
+  const dep = fmtTime(leg.departure_local_time);
+  const arr = fmtTime(leg.arrival_local_time);
+  const depDate = fmtDate(leg.departure_local_time);
+  return (
+    <div className="bg-[#222] rounded-[10px] px-3 py-2.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[13px]">
+      <DetailField label="Vuelo" value={`${leg.airline} ${leg.flight_number}`} />
+      <DetailField label="Ruta" value={`${leg.origin_iata} → ${leg.destination_iata}`} />
+      <DetailField label="Salida" value={`${depDate} ${dep}`} />
+      <DetailField label="Llegada" value={fmtTime(leg.arrival_local_time)} />
+      <DetailField label="Duración" value={fmtDuration(leg.duration_minutes)} />
+      {leg.cabin_class && <DetailField label="Clase" value={CABIN_LABEL[leg.cabin_class] ?? leg.cabin_class} />}
+      {leg.seat && <DetailField label="Asiento" value={leg.seat} />}
+    </div>
+  );
+}
+
+// ─── HotelsBlock ──────────────────────────────────────────────────────────────
+
+function HotelsBlock({
+  hotels,
+  cities,
+  expandedId,
+  onToggle,
+  onEdit,
+}: {
+  hotels: Hotel[];
+  cities: City[];
+  expandedId: string | null;
+  onToggle: (id: string) => void;
+  onEdit: (h: Hotel) => void;
+}) {
+  const sorted = [...hotels].sort((a, b) => a.check_in.localeCompare(b.check_in));
+  const totalUSD = hotels.reduce((s, h) => s + (h.total_price_usd ?? 0), 0);
+  const cityMap: Record<string, City> = {};
+  for (const c of cities) cityMap[c.id] = c;
+
+  return (
+    <div>
+      <CategoryHeader emoji="🏨" label="Hoteles" count={hotels.length} totalUSD={totalUSD} />
+      <div className="space-y-2">
+        {sorted.map((h) => (
+          <HotelCard
+            key={h.id}
+            hotel={h}
+            city={h.city_id ? cityMap[h.city_id] : undefined}
+            isExpanded={expandedId === h.id}
+            onToggle={() => onToggle(h.id)}
+            onEdit={() => onEdit(h)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HotelCard({
+  hotel: h,
+  city,
+  isExpanded,
+  onToggle,
+  onEdit,
+}: {
+  hotel: Hotel;
+  city?: City;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+}) {
+  return (
+    <div className="bg-[#1A1A1A] border border-[#333] rounded-[14px] overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full text-left px-4 py-3 flex items-center gap-3 press-feedback"
+      >
+        <div className="w-9 h-9 rounded-full bg-[#FF9F0A]/15 flex items-center justify-center text-lg shrink-0">🏨</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] font-semibold text-white truncate">{h.name}</p>
+          <p className="text-[13px] text-[#A0A0A0]">
+            {h.check_in} → {h.check_out} · {nightsLabel(h.check_in, h.check_out)}
+            {city ? ` · ${city.name}` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {h.booking_ref && <CopyableRef value={h.booking_ref} />}
+          <span className="text-[#555] text-[12px] transition-transform duration-200" style={{ transform: isExpanded ? "rotate(180deg)" : "none" }}>▾</span>
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div className="border-t border-[#2A2A2A] px-4 py-3 space-y-3">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[13px]">
+            <DetailField label="Check-in" value={h.check_in} />
+            <DetailField label="Check-out" value={h.check_out} />
+            <DetailField label="Noches" value={nightsLabel(h.check_in, h.check_out)} />
+            {h.room_type && <DetailField label="Habitación" value={h.room_type} />}
+            {city && <DetailField label="Ciudad" value={city.name} />}
+          </div>
+          {(h.total_price || h.total_price_usd) && (
+            <div className="flex items-center gap-3 text-[13px] pt-1 border-t border-[#2A2A2A]">
+              {h.total_price && h.currency && (
+                <span className="text-[#A0A0A0]">{h.currency} {h.total_price.toLocaleString("es-AR")}</span>
+              )}
+              {h.total_price_usd && (
+                <span className="text-white font-semibold">${Math.round(h.total_price_usd).toLocaleString("es-AR")} USD</span>
+              )}
+              {h.paid_amount != null && h.paid_amount > 0 && (
+                <span className="text-[#30D158] ml-auto">Pagado: {h.currency} {h.paid_amount.toLocaleString("es-AR")}</span>
+              )}
+            </div>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            className="w-full text-center text-[13px] text-[#FF9F0A] py-1.5 rounded-[8px] bg-[#FF9F0A]/10 hover:bg-[#FF9F0A]/20 transition-colors"
+          >
+            Editar hotel
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── TransportsBlock ──────────────────────────────────────────────────────────
+
+function TransportsBlock({
+  transports,
+  expandedId,
+  onToggle,
+  onEdit,
+  isCarRental = false,
+}: {
+  transports: Transport[];
+  expandedId: string | null;
+  onToggle: (id: string) => void;
+  onEdit: (t: Transport) => void;
+  isCarRental?: boolean;
+}) {
+  const sorted = [...transports].sort((a, b) =>
+    (a.departure_local_time ?? "").localeCompare(b.departure_local_time ?? "")
+  );
+  const totalUSD = transports.reduce((s, t) => s + (t.price_usd ?? 0), 0);
+  const emoji = isCarRental ? "🚙" : "🚆";
+  const label = isCarRental ? "Alquileres" : "Transportes";
+
+  return (
+    <div>
+      <CategoryHeader emoji={emoji} label={label} count={transports.length} totalUSD={totalUSD} />
+      <div className="space-y-2">
+        {sorted.map((t) => (
+          <TransportCard
+            key={t.id}
+            transport={t}
+            isExpanded={expandedId === t.id}
+            onToggle={() => onToggle(t.id)}
+            onEdit={() => onEdit(t)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TransportCard({
+  transport: t,
+  isExpanded,
+  onToggle,
+  onEdit,
+}: {
+  transport: Transport;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+}) {
+  const dep = fmtTime(t.departure_local_time);
+  const arr = fmtTime(t.arrival_local_time);
+  const emoji = TRANSPORT_EMOJI[t.type] ?? "🚐";
+
+  return (
+    <div className="bg-[#1A1A1A] border border-[#333] rounded-[14px] overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full text-left px-4 py-3 flex items-center gap-3 press-feedback"
+      >
+        <div className="w-9 h-9 rounded-full bg-[#BF5AF2]/15 flex items-center justify-center text-lg shrink-0">{emoji}</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] font-semibold text-white truncate">
+            {t.origin} → {t.destination}
+          </p>
+          <p className="text-[13px] text-[#A0A0A0]">
+            {TRANSPORT_LABEL[t.type] ?? "Transporte"}
+            {dep ? ` · ${dep}` : ""}
+            {arr ? ` → ${arr}` : ""}
+            {t.operator ? ` · ${t.operator}` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {t.booking_ref && <CopyableRef value={t.booking_ref} />}
+          <span className="text-[#555] text-[12px] transition-transform duration-200" style={{ transform: isExpanded ? "rotate(180deg)" : "none" }}>▾</span>
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div className="border-t border-[#2A2A2A] px-4 py-3 space-y-3">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[13px]">
+            <DetailField label="Origen" value={t.origin} />
+            <DetailField label="Destino" value={t.destination} />
+            {dep && <DetailField label="Salida" value={`${fmtDate(t.departure_local_time)} ${dep}`} />}
+            {arr && <DetailField label="Llegada" value={arr} />}
+            {t.operator && <DetailField label="Operador" value={t.operator} />}
+          </div>
+          {(t.price || t.price_usd) && (
+            <div className="flex items-center gap-3 text-[13px] pt-1 border-t border-[#2A2A2A]">
+              {t.price && t.currency && (
+                <span className="text-[#A0A0A0]">{t.currency} {t.price.toLocaleString("es-AR")}</span>
+              )}
+              {t.price_usd && (
+                <span className="text-white font-semibold">${Math.round(t.price_usd).toLocaleString("es-AR")} USD</span>
+              )}
+            </div>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            className="w-full text-center text-[13px] text-[#BF5AF2] py-1.5 rounded-[8px] bg-[#BF5AF2]/10 hover:bg-[#BF5AF2]/20 transition-colors"
+          >
+            Editar transporte
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ExpensesBlock ────────────────────────────────────────────────────────────
+
+function ExpensesBlock({
+  expenses,
+  expandedId,
+  onToggle,
+  onEdit,
+}: {
+  expenses: Expense[];
+  expandedId: string | null;
+  onToggle: (id: string) => void;
+  onEdit: (e: Expense) => void;
+}) {
+  const sorted = [...expenses].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  const totalUSD = expenses.reduce((s, e) => s + (e.amount_usd ?? 0), 0);
+
+  return (
+    <div>
+      <CategoryHeader emoji="💰" label="Otros gastos" count={expenses.length} totalUSD={totalUSD} />
+      <div className="space-y-2">
+        {sorted.map((e) => (
+          <ExpenseCard
+            key={e.id}
+            expense={e}
+            isExpanded={expandedId === e.id}
+            onToggle={() => onToggle(e.id)}
+            onEdit={() => onEdit(e)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ExpenseCard({
+  expense: e,
+  isExpanded,
+  onToggle,
+  onEdit,
+}: {
+  expense: Expense;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+}) {
+  const emoji = EXPENSE_EMOJI[e.category] ?? "💰";
+  return (
+    <div className="bg-[#1A1A1A] border border-[#333] rounded-[14px] overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full text-left px-4 py-3 flex items-center gap-3 press-feedback"
+      >
+        <div className="w-9 h-9 rounded-full bg-[#30D158]/10 flex items-center justify-center text-lg shrink-0">{emoji}</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] font-semibold text-white truncate">{e.title}</p>
+          <p className="text-[13px] text-[#A0A0A0]">
+            {e.category}
+            {e.date ? ` · ${e.date}` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-[14px] font-semibold text-white tabular-nums">
+            {e.currency} {e.amount.toLocaleString("es-AR")}
+          </span>
+          <span className="text-[#555] text-[12px] transition-transform duration-200" style={{ transform: isExpanded ? "rotate(180deg)" : "none" }}>▾</span>
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div className="border-t border-[#2A2A2A] px-4 py-3 space-y-3">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[13px]">
+            <DetailField label="Categoría" value={e.category} />
+            {e.date && <DetailField label="Fecha" value={e.date} />}
+            <DetailField label="Monto" value={`${e.currency} ${e.amount.toLocaleString("es-AR")}`} />
+            {e.amount_usd && <DetailField label="USD" value={`$${Math.round(e.amount_usd)}`} />}
+          </div>
+          <button
+            onClick={(e2) => { e2.stopPropagation(); onEdit(); }}
+            className="w-full text-center text-[13px] text-[#30D158] py-1.5 rounded-[8px] bg-[#30D158]/10 hover:bg-[#30D158]/20 transition-colors"
+          >
+            Editar gasto
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── DetailField ──────────────────────────────────────────────────────────────
+
+function DetailField({ label, value }: { label: string; value?: string | null }) {
+  if (!value) return null;
+  return (
+    <div>
+      <p className="text-[11px] text-[#555] uppercase tracking-wider">{label}</p>
+      <p className="text-[13px] text-[#D0D0D0] font-medium">{value}</p>
+    </div>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function ListView({ trip, cities, flights, hotels, transports, expenses = [], onChanged }: Props) {
   const [editing, setEditing] = useState<EditTarget>(null);
-  const groups = buildDayGroups(trip, cities, flights, hotels, transports, expenses);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  function toggleExpand(id: string) {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }
 
   function handleSaved() {
     setEditing(null);
     onChanged?.();
   }
 
-  if (groups.length === 0) {
+  const regularTransports = transports.filter((t) => t.type !== "car_rental");
+  const carRentals = transports.filter((t) => t.type === "car_rental");
+  const unlinkedExpenses = expenses.filter((e) => !e.linked_item_id);
+  const hasAny =
+    flights.length > 0 ||
+    hotels.length > 0 ||
+    transports.length > 0 ||
+    unlinkedExpenses.length > 0;
+
+  if (!hasAny) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <span className="text-4xl">📋</span>
@@ -95,70 +633,51 @@ export function ListView({ trip, cities, flights, hotels, transports, expenses =
 
   return (
     <>
-      <div className="px-6 md:px-8 space-y-6 pb-32 md:pb-8">
-        {groups.map((group) => {
-          const date = new Date(group.date + "T00:00:00");
-          const label = date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
-
-          return (
-            <div key={group.date}>
-              <div className="flex items-center gap-3 mb-3">
-                <div
-                  className="w-1 h-5 rounded-full"
-                  style={{ backgroundColor: group.city?.color ?? "#333" }}
-                />
-                <div>
-                  <p className="text-[15px] font-semibold text-white capitalize">{label}</p>
-                  {group.city && (
-                    <p className="text-[12px] text-[#A0A0A0]">{group.city.name}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {group.flights.map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => setEditing({ kind: "flight", data: f })}
-                    className="w-full text-left press-feedback"
-                  >
-                    <FlightRow flight={f} date={group.date} />
-                  </button>
-                ))}
-                {group.hotels.map((h) => (
-                  <button
-                    key={h.id}
-                    onClick={() => setEditing({ kind: "hotel", data: h })}
-                    className="w-full text-left press-feedback"
-                  >
-                    <HotelRow hotel={h} />
-                  </button>
-                ))}
-                {group.transports.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setEditing({ kind: "transport", data: t })}
-                    className="w-full text-left press-feedback"
-                  >
-                    <TransportRow transport={t} />
-                  </button>
-                ))}
-                {group.expenses.map((e) => (
-                  <button
-                    key={e.id}
-                    onClick={() => setEditing({ kind: "expense", data: e })}
-                    className="w-full text-left press-feedback"
-                  >
-                    <ExpenseRow expense={e} />
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+      <div className="px-6 md:px-8 space-y-8 pb-32 md:pb-8">
+        {flights.length > 0 && (
+          <FlightsBlock
+            flights={flights}
+            expandedId={expandedId}
+            onToggle={toggleExpand}
+            onEdit={(f) => setEditing({ kind: "flight", data: f })}
+          />
+        )}
+        {hotels.length > 0 && (
+          <HotelsBlock
+            hotels={hotels}
+            cities={cities}
+            expandedId={expandedId}
+            onToggle={toggleExpand}
+            onEdit={(h) => setEditing({ kind: "hotel", data: h })}
+          />
+        )}
+        {regularTransports.length > 0 && (
+          <TransportsBlock
+            transports={regularTransports}
+            expandedId={expandedId}
+            onToggle={toggleExpand}
+            onEdit={(t) => setEditing({ kind: "transport", data: t })}
+          />
+        )}
+        {carRentals.length > 0 && (
+          <TransportsBlock
+            transports={carRentals}
+            expandedId={expandedId}
+            onToggle={toggleExpand}
+            onEdit={(t) => setEditing({ kind: "transport", data: t })}
+            isCarRental
+          />
+        )}
+        {unlinkedExpenses.length > 0 && (
+          <ExpensesBlock
+            expenses={unlinkedExpenses}
+            expandedId={expandedId}
+            onToggle={toggleExpand}
+            onEdit={(e) => setEditing({ kind: "expense", data: e })}
+          />
+        )}
       </div>
 
-      {/* Edit forms */}
       {editing?.kind === "flight" && (
         <FlightForm
           tripId={trip.id}
@@ -193,217 +712,5 @@ export function ListView({ trip, cities, flights, hotels, transports, expenses =
         />
       )}
     </>
-  );
-}
-
-// ─── helpers ──────────────────────────────────────────────────────────────────
-
-function fmtLegTime(localTime: string): string {
-  return localTime?.split("T")[1]?.slice(0, 5) ?? "";
-}
-
-function fmtLegDate(localTime: string): string {
-  const date = localTime?.split("T")[0];
-  if (!date) return "";
-  const d = new Date(date + "T00:00:00");
-  return d.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
-}
-
-function fmtDuration(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m === 0 ? `${h}h` : `${h}h ${m}m`;
-}
-
-function LegLine({ leg }: { leg: FlightLeg }) {
-  const dep = fmtLegTime(leg.departure_local_time);
-  const arr = fmtLegTime(leg.arrival_local_time);
-  const date = fmtLegDate(leg.departure_local_time);
-  return (
-    <p className="text-[13px] text-[#A0A0A0]">
-      {leg.flight_number}
-      {date ? ` · ${date}` : ""}
-      {dep ? ` · ${dep}` : ""}
-      {arr ? ` → ${arr}` : ""}
-      {leg.duration_minutes > 0 ? ` · ${fmtDuration(leg.duration_minutes)}` : ""}
-    </p>
-  );
-}
-
-function FlightRow({ flight, date }: { flight: Flight; date: string }) {
-  if (flight.legs && flight.legs.length > 0) {
-    const dayLegs = flight.legs.filter((l) => l.departure_local_time?.startsWith(date));
-
-    if (dayLegs.length > 0) {
-      return (
-        <div className="bg-[#1A1A1A] border border-[#333] rounded-[14px] px-4 py-3 flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#0A84FF]/15 flex items-center justify-center text-xl shrink-0">
-            ✈️
-          </div>
-          <div className="flex-1 min-w-0 space-y-1">
-            {dayLegs.map((leg, i) => {
-              const dep = fmtLegTime(leg.departure_local_time);
-              const arr = fmtLegTime(leg.arrival_local_time);
-              const arrDate = leg.arrival_local_time?.split("T")[0];
-              const isReturn = leg.direction === "inbound";
-              const nextDay = arrDate && arrDate !== date;
-              return (
-                <div key={i}>
-                  <p className="text-[15px] font-semibold text-white">
-                    {isReturn && <span className="mr-1 opacity-60">↩</span>}
-                    {leg.origin_iata} → {leg.destination_iata}
-                  </p>
-                  <p className="text-[13px] text-[#A0A0A0]">
-                    {leg.flight_number}
-                    {dep ? ` · ${dep}` : ""}
-                    {arr ? ` → ${arr}` : ""}
-                    {nextDay ? ` (+1)` : ""}
-                    {leg.duration_minutes > 0 ? ` · ${fmtDuration(leg.duration_minutes)}` : ""}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-
-    // Fallback: full card (root departure day)
-    const outbound = flight.legs.filter((l) => l.direction === "outbound");
-    const inbound = flight.legs.filter((l) => l.direction === "inbound");
-    const outFirst = outbound[0];
-    const outLast = outbound[outbound.length - 1];
-    const outRoute = outbound.length > 0
-      ? outbound.map((l) => l.origin_iata).join(" → ") + " → " + (outLast?.destination_iata ?? "")
-      : "";
-    const outTotal = outFirst && outLast
-      ? fmtLegTime(outFirst.departure_local_time) + " → " + fmtLegTime(outLast.arrival_local_time)
-      : "";
-    const outTotalMins = outFirst && outLast
-      ? Math.round((outLast.arrival_utc.toMillis() - outFirst.departure_utc.toMillis()) / 60000)
-      : 0;
-
-    return (
-      <div className="bg-[#1A1A1A] border border-[#333] rounded-[14px] px-4 py-3 flex items-start gap-3">
-        <div className="w-10 h-10 rounded-full bg-[#0A84FF]/15 flex items-center justify-center text-xl shrink-0">✈️</div>
-        <div className="flex-1 min-w-0 space-y-2">
-          {outbound.length > 0 && (
-            <div>
-              <p className="text-[15px] font-semibold text-white">
-                {outRoute}
-                {outbound.length > 1 && (
-                  <span className="ml-2 text-[11px] font-normal text-[#0A84FF] bg-[#0A84FF]/15 rounded px-1.5 py-0.5">
-                    {outbound.length} tramos
-                  </span>
-                )}
-              </p>
-              {outTotal && (
-                <p className="text-[13px] text-[#A0A0A0]">
-                  {outTotal}
-                  {outTotalMins > 0 ? ` · ${fmtDuration(outTotalMins)} total` : ""}
-                </p>
-              )}
-              {outbound.length > 1 && outbound.map((leg, i) => <LegLine key={i} leg={leg} />)}
-            </div>
-          )}
-          {inbound.length > 0 && (
-            <div className="pt-1 border-t border-[#2A2A2A]">
-              {inbound.map((leg, i) => {
-                const dep = fmtLegTime(leg.departure_local_time);
-                const arr = fmtLegTime(leg.arrival_local_time);
-                const legDate = fmtLegDate(leg.departure_local_time);
-                return (
-                  <div key={i}>
-                    <p className="text-[14px] font-semibold text-[#A0A0A0]">
-                      <span className="mr-1 text-[#A0A0A0]">↩</span>
-                      {leg.origin_iata} → {leg.destination_iata}
-                    </p>
-                    <p className="text-[13px] text-[#707070]">
-                      {leg.flight_number}
-                      {legDate ? ` · ${legDate}` : ""}
-                      {dep ? ` · ${dep}` : ""}
-                      {arr ? ` → ${arr}` : ""}
-                      {leg.duration_minutes > 0 ? ` · ${fmtDuration(leg.duration_minutes)}` : ""}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Legacy mono-leg doc
-  const dep = flight.departure_local_time?.split("T")[1]?.slice(0, 5) ?? "";
-  const arr = flight.arrival_local_time?.split("T")[1]?.slice(0, 5) ?? "";
-  return (
-    <div className="bg-[#1A1A1A] border border-[#333] rounded-[14px] px-4 py-3 flex items-center gap-3">
-      <div className="w-10 h-10 rounded-full bg-[#0A84FF]/15 flex items-center justify-center text-xl">✈️</div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-semibold text-white">
-          {flight.airline} {flight.flight_number} · {flight.origin_iata}→{flight.destination_iata}
-        </p>
-        <p className="text-[13px] text-[#A0A0A0]">
-          {dep} → {arr}
-          {flight.duration_minutes ? ` · ${fmtDuration(flight.duration_minutes)}` : ""}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function HotelRow({ hotel }: { hotel: Hotel }) {
-  return (
-    <div className="bg-[#1A1A1A] border border-[#333] rounded-[14px] px-4 py-3 flex items-center gap-3">
-      <div className="w-10 h-10 rounded-full bg-[#FF9F0A]/15 flex items-center justify-center text-xl">🏨</div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-semibold text-white">{hotel.name}</p>
-        <p className="text-[13px] text-[#A0A0A0]">
-          {hotel.check_in} → {hotel.check_out}
-          {hotel.room_type ? ` · ${hotel.room_type}` : ""}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function TransportRow({ transport }: { transport: Transport }) {
-  const dep = transport.departure_local_time?.split("T")[1]?.slice(0, 5) ?? "";
-  const emoji = ({ train: "🚆", bus: "🚌", ferry: "⛴️", car: "🚗", car_rental: "🚙", taxi: "🚕", subway: "🚇", other: "🚐" } as Record<string, string>)[transport.type] ?? "🚐";
-  return (
-    <div className="bg-[#1A1A1A] border border-[#333] rounded-[14px] px-4 py-3 flex items-center gap-3">
-      <div className="w-10 h-10 rounded-full bg-[#BF5AF2]/15 flex items-center justify-center text-xl">{emoji}</div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-semibold text-white">
-          {transport.origin} → {transport.destination}
-        </p>
-        <p className="text-[13px] text-[#A0A0A0]">
-          {dep}
-          {transport.operator ? ` · ${transport.operator}` : ""}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function ExpenseRow({ expense }: { expense: Expense }) {
-  const EMOJI: Record<string, string> = {
-    flight: "✈️", hotel: "🏨", transport: "🚆", food: "🍽️",
-    activity: "🎭", shopping: "🛍️", taxi: "🚕", other: "💰",
-  };
-  const emoji = EMOJI[expense.category] ?? "💰";
-  return (
-    <div className="bg-[#1A1A1A] border border-[#333] rounded-[14px] px-4 py-3 flex items-center gap-3">
-      <div className="w-10 h-10 rounded-full bg-[#30D158]/10 flex items-center justify-center text-xl">{emoji}</div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-semibold text-white">{expense.title}</p>
-        <p className="text-[13px] text-[#A0A0A0]">{expense.category}</p>
-      </div>
-      <p className="text-[14px] font-semibold text-white tabular-nums">
-        {expense.currency} {expense.amount.toLocaleString("es-AR")}
-      </p>
-    </div>
   );
 }
