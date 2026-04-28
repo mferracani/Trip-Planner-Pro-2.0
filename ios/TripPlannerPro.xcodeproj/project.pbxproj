@@ -57,6 +57,10 @@
 		F3CEF6BA5263E3344301A0B2 /* EditSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A7C86285A04EFD731D9E9F5 /* EditSheets.swift */; };
 		FBC69458CA99BFA3E34C644E /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D8409AA00EDAECD94F980D2 /* SignInView.swift */; };
 		FC3F2053AF6F17C23FDCD301 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98656ECD7F6F4EDD755E01FA /* SettingsView.swift */; };
+		96AB127B18A015873137A9BF /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA681C513E909C69EE99A91A /* StatsView.swift */; };
+		1C42E38C9E4F0D73FA4CAD06 /* StatsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBDB5BE7B8A27FCAF20B09D1 /* StatsViewModel.swift */; };
+		FC4A415FFDD753A98D9D18D9 /* TravelGlobeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A8FF94D65A7D3080F895BF8 /* TravelGlobeView.swift */; };
+		869C4CF77C7C12CB61A54119 /* CountUpText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 093537520159615B3B42AF5A /* CountUpText.swift */; };
 		FCCAA20E9E202EE433572F61 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B8E80705B47694B1EC8A53D /* Components.swift */; };
 		FE510838DC68A146F34E0892 /* AppRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F98D908DFD041768BECE4CEE /* AppRoot.swift */; };
 		FF0229CE0B290A7F9F61ACB9 /* TripDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005885A7CA7330AE3A03F3A5 /* TripDetailView.swift */; };
@@ -114,6 +118,10 @@
 		F5B50B6094A65351FEDB064F /* TripDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailViewModel.swift; sourceTree = "<group>"; };
 		F7875DE7670482043E262AD3 /* FirestoreClient+Writes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FirestoreClient+Writes.swift"; sourceTree = "<group>"; };
 		F98D908DFD041768BECE4CEE /* AppRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRoot.swift; sourceTree = "<group>"; };
+		DA681C513E909C69EE99A91A /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
+		EBDB5BE7B8A27FCAF20B09D1 /* StatsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsViewModel.swift; sourceTree = "<group>"; };
+		4A8FF94D65A7D3080F895BF8 /* TravelGlobeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelGlobeView.swift; sourceTree = "<group>"; };
+		093537520159615B3B42AF5A /* CountUpText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountUpText.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -286,6 +294,7 @@
 				BB6ED1A03D370B1B958A98ED /* Dashboard */,
 				DF9D0B3A258AB12306AFE03A /* Editing */,
 				4C8E1F3A12DDCECC2F3F2710 /* Settings */,
+				A7C4D734B17E7B36FB10564E /* Stats */,
 				59D6961316AB39F8AFCED0B9 /* TripDetail */,
 			);
 			path = Features;
@@ -298,6 +307,17 @@
 				AEA417168AFB682DEF64C145 /* TripPlannerPro */,
 				82125D8B9E2B720CB0BC575C /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		A7C4D734B17E7B36FB10564E /* Stats */ = {
+			isa = PBXGroup;
+			children = (
+				DA681C513E909C69EE99A91A /* StatsView.swift */,
+				EBDB5BE7B8A27FCAF20B09D1 /* StatsViewModel.swift */,
+				4A8FF94D65A7D3080F895BF8 /* TravelGlobeView.swift */,
+				093537520159615B3B42AF5A /* CountUpText.swift */,
+			);
+			path = Stats;
 			sourceTree = "<group>";
 		};
 		DF9D0B3A258AB12306AFE03A /* Editing */ = {
@@ -498,6 +518,10 @@
 				12B4D9C3113D5CE8874138DF /* SelectedItem.swift in Sources */,
 				FC3F2053AF6F17C23FDCD301 /* SettingsView.swift in Sources */,
 				FBC69458CA99BFA3E34C644E /* SignInView.swift in Sources */,
+				96AB127B18A015873137A9BF /* StatsView.swift in Sources */,
+				1C42E38C9E4F0D73FA4CAD06 /* StatsViewModel.swift in Sources */,
+				FC4A415FFDD753A98D9D18D9 /* TravelGlobeView.swift in Sources */,
+				869C4CF77C7C12CB61A54119 /* CountUpText.swift in Sources */,
 				AD2EB3956033F36879444B02 /* Tokens.swift in Sources */,
 				9FCD969236CCDE7EC3CB4954 /* Trip.swift in Sources */,
 				57AD3424DD5EBDF9589302E0 /* TripCityEditSheets.swift in Sources */,

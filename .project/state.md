@@ -64,6 +64,10 @@
 - [ ] firebase/seed/upload-airports.ts
 
 ### ⬜ Fase 2 — Web UI + CRUD (bloqueado por Fase 1)
+
+#### Web progress (MAT-39)
+- [x] /stats — "Tu mundo": globe cobe WebGL + stat cards + CountUpNumber (2026-04-28)
+
 ### ⬜ Fase 3 — Módulo IA en web (bloqueado por Fase 2)
 ### ⏳ Fase 4 — iOS app (en progreso — rama feat/ios-app)
 
@@ -89,6 +93,7 @@
 - [x] Settings
 - [x] Dashboard — sección "Mis estadísticas" (GlobalStatsStrip: viajes, ciudades, vuelos, días) — T11 (2026-04-27)
 - [x] Cache offline CatalogView — T3 completo: CatalogViewModel + CachedCatalogSnapshot (SwiftData v4) + offline banner (2026-04-28)
+- [x] "Tu mundo" StatsView iOS (MAT-39) — globe canvas + CountUpText + StatsViewModel + tab "Mundo" (2026-04-28)
 - [ ] Tests (checklist QA creado; ejecucion Xcode pendiente)
 ### ⬜ Fase 5 — TestFlight (bloqueado por Fase 4)
 
