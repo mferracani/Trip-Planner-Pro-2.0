@@ -33,11 +33,6 @@ function normalizeCity(name: string): string {
   return name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
-function cityFlag(countryCode: string): string {
-  return [...countryCode.toUpperCase()]
-    .map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
-    .join("");
-}
 
 export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, initialDay, initialDays, onClose, onSaved }: Props) {
   const { user } = useAuth();
@@ -52,10 +47,8 @@ export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, ini
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Catalog picker
-  const [citySettings, setCitySettings] = useState<CitySetting[]>([]);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerSearch, setPickerSearch] = useState("");
+  // Catalog chips — cities from all user trips, shown as horizontal scrollable chips
+  const [catalogCities, setCatalogCities] = useState<CitySetting[]>([]);
 
   useEffect(() => {
     if (!user || existing) return;
@@ -71,23 +64,16 @@ export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, ini
           }
         }
         merged.sort((a, b) => a.name.localeCompare(b.name));
-        setCitySettings(merged);
+        setCatalogCities(merged);
       }
-    );
+    ).catch(() => {
+      // Error silencioso — no mostrar sugerencias si falla la query
+    });
   }, [user, existing]);
 
-  const filteredSettings = citySettings
-    .filter((cs) =>
-      pickerSearch.length === 0 ||
-      cs.name.toLowerCase().includes(pickerSearch.toLowerCase())
-    )
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  function pickExistingCity(cs: CitySetting) {
+  function pickCatalogCity(cs: CitySetting) {
     setName(cs.name);
     if (cs.color) setColor(cs.color);
-    setPickerOpen(false);
-    setPickerSearch("");
   }
 
   function toggleDay(d: string) {
@@ -151,68 +137,37 @@ export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, ini
       canSubmit={!!name.trim()}
       error={error}
     >
-      {/* Catalog picker — only when creating new */}
-      {!existing && citySettings.length > 0 && (
+      {/* Catalog chips — only when creating new and there are previous cities */}
+      {!existing && catalogCities.length > 0 && (
         <div className="mb-1">
-          {!pickerOpen ? (
-            <button
-              onClick={() => setPickerOpen(true)}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-[12px] text-[13px] font-medium press-feedback transition-all"
-              style={{ background: "#1A1A1A", border: "1px solid #333" }}
-            >
-              <span className="text-[#A0A0A0]">Elegir ciudad existente del catálogo</span>
-              <span className="text-[#555] text-[16px] leading-none">›</span>
-            </button>
-          ) : (
-            <div
-              className="rounded-[12px] overflow-hidden"
-              style={{ border: "1px solid #333", background: "#111" }}
-            >
-              {/* Search */}
-              <div className="flex items-center gap-2 px-3 py-2 border-b border-[#222]">
-                <span className="text-[#555] text-[13px]">🔍</span>
-                <input
-                  autoFocus
-                  value={pickerSearch}
-                  onChange={(e) => setPickerSearch(e.target.value)}
-                  placeholder="Buscar ciudad..."
-                  className="flex-1 bg-transparent text-[13px] text-white placeholder-[#555] outline-none"
-                />
+          <p className="text-[11px] font-medium text-[#707070] uppercase tracking-wide mb-2">
+            Mis ciudades
+          </p>
+          <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+            <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
+              {catalogCities.map((cs) => (
                 <button
-                  onClick={() => { setPickerOpen(false); setPickerSearch(""); }}
-                  className="text-[#555] hover:text-white text-[18px] leading-none transition-colors"
+                  key={cs.normalized_name}
+                  onClick={() => pickCatalogCity(cs)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-medium transition-colors hover:border-[#555]"
+                  style={{
+                    background: cs.color ? `${cs.color}1A` : "#1A1A1A",
+                    border: `1px solid ${cs.color ? `${cs.color}59` : "#333"}`,
+                    color: "#A0A0A0",
+                    whiteSpace: "nowrap",
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#FFFFFF"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#A0A0A0"; }}
                 >
-                  ×
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: cs.color ?? "#555" }}
+                  />
+                  {cs.name}
                 </button>
-              </div>
-
-              {/* City list */}
-              <div className="max-h-[200px] overflow-y-auto">
-                {filteredSettings.length === 0 ? (
-                  <p className="text-center text-[12px] text-[#555] py-4">Sin resultados</p>
-                ) : (
-                  filteredSettings.map((cs) => (
-                    <button
-                      key={cs.normalized_name}
-                      onClick={() => pickExistingCity(cs)}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-[#1A1A1A] transition-colors border-b border-[#1A1A1A] last:border-0"
-                    >
-                      <div
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: cs.color ?? "#555" }}
-                      />
-                      {cs.country_code && (
-                        <span className="text-[13px] leading-none flex-shrink-0">
-                          {cityFlag(cs.country_code)}
-                        </span>
-                      )}
-                      <span className="text-[13px] text-white font-medium">{cs.name}</span>
-                    </button>
-                  ))
-                )}
-              </div>
+              ))}
             </div>
-          )}
+          </div>
         </div>
       )}
 
