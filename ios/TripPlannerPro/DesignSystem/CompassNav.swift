@@ -39,7 +39,14 @@ struct AtlasTabBar: View {
 
     private var barBody: some View {
         HStack(spacing: 0) {
-            if tabs.count >= 4 {
+            if tabs.count >= 5 {
+                tabButton(at: 0)
+                tabButton(at: 1)
+                Spacer().frame(width: 72) // FAB cutout
+                tabButton(at: 2)
+                tabButton(at: 3)
+                tabButton(at: 4)
+            } else if tabs.count >= 4 {
                 tabButton(at: 0)
                 tabButton(at: 1)
                 Spacer().frame(width: 72) // FAB cutout
@@ -233,7 +240,8 @@ extension AtlasTab {
     static let home = AtlasTab(id: "home", title: "Inicio", icon: "house", iconActive: "house.fill")
     static let trips = AtlasTab(id: "trips", title: "Viajes", icon: "paperplane", iconActive: "paperplane.fill")
     static let catalog = AtlasTab(id: "catalog", title: "Catálogo", icon: "square.stack", iconActive: "square.stack.fill")
+    static let mundo = AtlasTab(id: "mundo", title: "Mundo", icon: "globe.americas", iconActive: "globe.americas.fill")
     static let settings = AtlasTab(id: "settings", title: "Perfil", icon: "person", iconActive: "person.fill")
 
-    static let mainTabs: [AtlasTab] = [.home, .trips, .catalog, .settings]
+    static let mainTabs: [AtlasTab] = [.home, .trips, .catalog, .mundo, .settings]
 }
