@@ -16,7 +16,7 @@ service cloud.firestore {
 
     // Household pattern:
     // A single document `households/main` holds { memberUids: ["uid1", "uid2"] }.
-    // This enables Mati and a second member (e.g., his wife) to share all trip data
+    // This enables Mati and Agustina to share all trip data
     // that lives under the owner's uid subtree, without duplicating documents.
     // Reading the household doc is needed by the rules engine itself (via get()) so
     // any authenticated user must be able to read it.
