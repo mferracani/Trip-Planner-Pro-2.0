@@ -156,6 +156,33 @@ final class DashboardViewModel {
         return Int(total.rounded())
     }
 
+    // MARK: - Global stats (all trips, no year filter, drafts excluded)
+
+    /// Total number of confirmed trips (excludes drafts).
+    var globalStatTrips: Int { confirmedTrips.count }
+
+    /// Total city count across all confirmed trips.
+    /// Uses the denormalized `citiesCount` field per trip.
+    /// When TripCity streaming is available, replace with a real cross-trip dedup.
+    var globalStatCities: Int {
+        confirmedTrips.reduce(0) { $0 + ($1.citiesCount ?? 0) }
+    }
+
+    /// Total flight count across all confirmed trips.
+    var globalStatFlights: Int {
+        confirmedTrips.reduce(0) { $0 + ($1.flightsCount ?? 0) }
+    }
+
+    /// Sum of trip duration (inclusive day count) for past and active trips only.
+    var globalStatDaysTraveling: Int {
+        confirmedTrips
+            .filter { $0.status_computed == .past || $0.status_computed == .active }
+            .reduce(0) { acc, trip in
+                let days = Calendar.current.dateComponents([.day], from: trip.startDate, to: trip.endDate).day ?? 0
+                return acc + max(1, days + 1)
+            }
+    }
+
     /// Days between today and the heroTrip's start (0 if active / past).
     var daysUntilHero: Int {
         guard let hero = heroTrip else { return 0 }

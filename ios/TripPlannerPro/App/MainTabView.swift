@@ -38,7 +38,7 @@ struct MainTabView: View {
                     AppGroupBridge.writeTripSummaries(summaries)
                 })
             case 2:
-                CatalogView()
+                CatalogView(cache: cacheManager)
             default:
                 SettingsView()
             }

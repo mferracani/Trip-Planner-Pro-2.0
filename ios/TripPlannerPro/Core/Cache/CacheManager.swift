@@ -103,6 +103,49 @@ final class CacheManager {
         return (try? decoder.decode([TripCity].self, from: d)) ?? []
     }
 
+    // MARK: - Catalog snapshot (cross-trip)
+
+    func upsertCatalogSnapshot(_ items: CatalogItems) {
+        let snapshot = fetchOrCreateCatalogSnapshot()
+
+        let flights = items.flights.map { CatalogFlightEntry(trip: $0.trip, flight: $0.flight) }
+        let hotels = items.hotels.map { CatalogHotelEntry(trip: $0.trip, hotel: $0.hotel) }
+        let transports = items.transports.map { CatalogTransportEntry(trip: $0.trip, transport: $0.transport) }
+        let cities = items.cities.map { CatalogCityEntry(trip: $0.trip, city: $0.city) }
+
+        snapshot.flightsData = (try? encoder.encode(flights)) ?? Data()
+        snapshot.hotelsData = (try? encoder.encode(hotels)) ?? Data()
+        snapshot.transportsData = (try? encoder.encode(transports)) ?? Data()
+        snapshot.citiesData = (try? encoder.encode(cities)) ?? Data()
+        snapshot.cachedAt = Date()
+        try? modelContext.save()
+    }
+
+    func cachedCatalogSnapshot() -> CatalogItems? {
+        guard let snapshot = fetchCatalogSnapshot() else { return nil }
+
+        func decode<T: Decodable>(_ type: T.Type, from data: Data) -> [T] {
+            guard !data.isEmpty else { return [] }
+            return (try? decoder.decode([T].self, from: data)) ?? []
+        }
+
+        let flightEntries   = decode(CatalogFlightEntry.self, from: snapshot.flightsData)
+        let hotelEntries    = decode(CatalogHotelEntry.self, from: snapshot.hotelsData)
+        let transportEntries = decode(CatalogTransportEntry.self, from: snapshot.transportsData)
+        let cityEntries     = decode(CatalogCityEntry.self, from: snapshot.citiesData)
+
+        guard !flightEntries.isEmpty || !hotelEntries.isEmpty || !transportEntries.isEmpty || !cityEntries.isEmpty else {
+            return nil
+        }
+
+        return CatalogItems(
+            flights:    flightEntries.map { (trip: $0.trip, flight: $0.flight) },
+            hotels:     hotelEntries.map { (trip: $0.trip, hotel: $0.hotel) },
+            transports: transportEntries.map { (trip: $0.trip, transport: $0.transport) },
+            cities:     cityEntries.map { (trip: $0.trip, city: $0.city) }
+        )
+    }
+
     // MARK: - Private
 
     private func fetchCachedTrip(id: String) -> CachedTrip? {
@@ -124,6 +167,21 @@ final class CacheManager {
     private func itemEntry(tripID: String) -> CachedTripItems {
         if let existing = fetchItemEntry(tripID: tripID) { return existing }
         let new = CachedTripItems(tripID: tripID)
+        modelContext.insert(new)
+        return new
+    }
+
+    private func fetchCatalogSnapshot() -> CachedCatalogSnapshot? {
+        var descriptor = FetchDescriptor<CachedCatalogSnapshot>(
+            predicate: #Predicate { $0.singletonKey == "catalog" }
+        )
+        descriptor.fetchLimit = 1
+        return try? modelContext.fetch(descriptor).first
+    }
+
+    private func fetchOrCreateCatalogSnapshot() -> CachedCatalogSnapshot {
+        if let existing = fetchCatalogSnapshot() { return existing }
+        let new = CachedCatalogSnapshot()
         modelContext.insert(new)
         return new
     }

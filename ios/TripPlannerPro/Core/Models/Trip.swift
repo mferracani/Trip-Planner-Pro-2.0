@@ -19,6 +19,8 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
     var totalUSD: Double?
     var paidUSD: Double?
     var citiesCount: Int?
+    /// Denormalized count of flights for this trip — updated by Cloud Function on write.
+    var flightsCount: Int?
     /// Persisted status — "draft" or "planned". When nil, status is inferred from dates.
     var statusStored: TripStatus?
     /// True when the trip is a draft with tentative (estimated) dates.
@@ -35,6 +37,7 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         case totalUSD = "total_usd"
         case paidUSD = "paid_usd"
         case citiesCount = "cities_count"
+        case flightsCount = "flights_count"
         case statusStored = "status"
         case isTentativeDates = "is_tentative_dates"
     }
@@ -79,7 +82,8 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         createdAt: Date = .now,
         totalUSD: Double? = nil,
         paidUSD: Double? = nil,
-        citiesCount: Int? = nil
+        citiesCount: Int? = nil,
+        flightsCount: Int? = nil
     ) {
         self._id = .init(wrappedValue: id)
         self.name = name
@@ -93,6 +97,7 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         self.totalUSD = totalUSD
         self.paidUSD = paidUSD
         self.citiesCount = citiesCount
+        self.flightsCount = flightsCount
     }
 
     init(

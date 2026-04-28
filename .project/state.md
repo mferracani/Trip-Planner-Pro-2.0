@@ -87,6 +87,8 @@
 - [x] Modo Borrador iOS — paridad completa con web (2026-04-27)
 - [x] Long-press + drag para seleccionar rango de días y asignar ciudad (Ticket 4)
 - [x] Settings
+- [x] Dashboard — sección "Mis estadísticas" (GlobalStatsStrip: viajes, ciudades, vuelos, días) — T11 (2026-04-27)
+- [x] Cache offline CatalogView — T3 completo: CatalogViewModel + CachedCatalogSnapshot (SwiftData v4) + offline banner (2026-04-28)
 - [ ] Tests (checklist QA creado; ejecucion Xcode pendiente)
 ### ⬜ Fase 5 — TestFlight (bloqueado por Fase 4)
 

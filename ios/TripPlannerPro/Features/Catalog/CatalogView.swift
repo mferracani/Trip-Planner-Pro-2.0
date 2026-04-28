@@ -30,57 +30,93 @@ private enum CatalogTab: String, CaseIterable {
 // MARK: - CatalogView
 
 struct CatalogView: View {
-    @Environment(FirestoreClient.self) private var client
-    @State private var loadState: LoadState = .loading
-    @State private var activeTab: CatalogTab = .flights
+    var cache: CacheManager? = nil
 
-    private enum LoadState {
-        case loading
-        case loaded(CatalogItems)
-        case error(String)
-    }
+    @Environment(FirestoreClient.self) private var client
+    @State private var vm: CatalogViewModel?
+    @State private var activeTab: CatalogTab = .flights
 
     var body: some View {
         NavigationStack {
             ZStack {
                 Tokens.Color.bgPrimary.ignoresSafeArea()
 
-                switch loadState {
-                case .loading:
-                    CatalogSkeletonView()
-                case .error(let msg):
-                    CatalogErrorView(message: msg)
-                case .loaded(let items):
-                    loadedContent(items)
+                if let vm {
+                    mainContent(vm)
                 }
             }
             .navigationTitle("Catálogo")
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(Tokens.Color.bgPrimary, for: .navigationBar)
         }
-        .task {
-            await loadItems()
+        .onAppear {
+            let viewModel = CatalogViewModel(client: client, cache: cache)
+            vm = viewModel
+            viewModel.start()
+        }
+        .onDisappear { vm?.stop() }
+    }
+
+    // MARK: - Main content dispatcher
+
+    @ViewBuilder
+    private func mainContent(_ vm: CatalogViewModel) -> some View {
+        if vm.isLoading {
+            CatalogSkeletonView()
+        } else if let err = vm.error {
+            CatalogErrorView(message: err.localizedDescription)
+        } else {
+            loadedContent(vm)
         }
     }
 
     // MARK: - Loaded content
 
-    private func loadedContent(_ items: CatalogItems) -> some View {
+    private func loadedContent(_ vm: CatalogViewModel) -> some View {
         VStack(spacing: 0) {
+            if vm.isOffline {
+                offlineBanner
+            }
+
             tabSelector
+
             Divider().background(Tokens.Color.border)
 
             switch activeTab {
             case .flights:
-                FlightsTab(entries: items.flights)
+                FlightsTab(entries: vm.items.flights)
             case .hotels:
-                HotelsTab(entries: items.hotels)
+                HotelsTab(entries: vm.items.hotels)
             case .transports:
-                TransportsTab(entries: items.transports)
+                TransportsTab(entries: vm.items.transports)
             case .cities:
-                CitiesTab(entries: items.cities)
+                CitiesTab(entries: vm.items.cities)
             }
         }
+    }
+
+    // MARK: - Offline banner
+
+    private var offlineBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 11, weight: .medium))
+            Text("Sin conexión · mostrando datos guardados")
+                .font(.system(size: 12, weight: .medium).monospaced())
+            Spacer()
+        }
+        .foregroundStyle(Tokens.Color.textTertiary)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .background(
+            Tokens.Color.surface.opacity(0.6)
+                .overlay(
+                    Rectangle()
+                        .fill(Tokens.Color.borderSoft)
+                        .frame(height: 0.5),
+                    alignment: .bottom
+                )
+        )
     }
 
     // MARK: - Tab selector
@@ -116,18 +152,6 @@ struct CatalogView: View {
         .background(Tokens.Color.surface)
     }
 
-    // MARK: - Load
-
-    private func loadItems() async {
-        do {
-            let stream = try client.allItemsStream()
-            for try await items in stream {
-                loadState = .loaded(items)
-            }
-        } catch {
-            loadState = .error(error.localizedDescription)
-        }
-    }
 }
 
 // MARK: - FlightsTab

@@ -69,3 +69,54 @@ final class CachedTripItems {
         self.cachedAt = Date()
     }
 }
+
+// MARK: - CachedCatalogSnapshot
+//
+// Singleton row (singletonKey = "catalog") that stores the full cross-trip
+// CatalogItems as JSON blobs. Encoding uses CatalogFlightEntry / etc. wrappers
+// so we capture both the Trip context and the item in one serialisable struct.
+
+@Model
+final class CachedCatalogSnapshot {
+    /// Always "catalog" — used as the unique lookup key.
+    @Attribute(.unique) var singletonKey: String
+    var flightsData: Data
+    var hotelsData: Data
+    var transportsData: Data
+    var citiesData: Data
+    var cachedAt: Date
+
+    init() {
+        self.singletonKey = "catalog"
+        self.flightsData = Data()
+        self.hotelsData = Data()
+        self.transportsData = Data()
+        self.citiesData = Data()
+        self.cachedAt = Date()
+    }
+}
+
+// MARK: - Catalog serialisation helpers
+//
+// `CatalogItems` contains tuples which are not Codable. These flat structs
+// replicate the data in a form that JSONEncoder can handle.
+
+struct CatalogFlightEntry: Codable, Sendable {
+    let trip: Trip
+    let flight: Flight
+}
+
+struct CatalogHotelEntry: Codable, Sendable {
+    let trip: Trip
+    let hotel: Hotel
+}
+
+struct CatalogTransportEntry: Codable, Sendable {
+    let trip: Trip
+    let transport: Transport
+}
+
+struct CatalogCityEntry: Codable, Sendable {
+    let trip: Trip
+    let city: TripCity
+}

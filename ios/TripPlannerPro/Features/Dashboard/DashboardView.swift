@@ -86,6 +86,11 @@ struct DashboardView: View {
                             .padding(.horizontal, 20)
                     }
 
+                    if !vm.confirmedTrips.isEmpty {
+                        GlobalStatsStrip(vm: vm)
+                            .padding(.horizontal, 20)
+                    }
+
                     TripsListSection(vm: vm)
                         .padding(.horizontal, 20)
                 }
@@ -880,6 +885,89 @@ private struct HeroStatusBadge: View {
                 Capsule().fill(bg)
                     .overlay(Capsule().strokeBorder(fg.opacity(0.3), lineWidth: 0.5))
             )
+    }
+}
+
+// MARK: - GlobalStatsStrip
+//
+// Horizontal strip of 4 aggregate metrics across all confirmed trips.
+// Placed between the hero card and "Mis viajes" section.
+// Only rendered when confirmedTrips.count > 0 (guarded by caller).
+
+private struct GlobalStatsStrip: View {
+    let vm: DashboardViewModel
+
+    var body: some View {
+        HStack(spacing: 0) {
+            StatCell(
+                icon: "suitcase.fill",
+                value: "\(vm.globalStatTrips)",
+                label: "Viajes"
+            )
+            statDivider
+            StatCell(
+                icon: "mappin.circle.fill",
+                value: "\(vm.globalStatCities)",
+                label: "Ciudades"
+            )
+            statDivider
+            StatCell(
+                icon: "airplane",
+                value: "\(vm.globalStatFlights)",
+                label: "Vuelos"
+            )
+            statDivider
+            StatCell(
+                icon: "calendar",
+                value: "\(vm.globalStatDaysTraveling)",
+                label: "Días"
+            )
+        }
+        .padding(.vertical, 16)
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                .fill(Tokens.Color.elevated)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                        .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
+                )
+        )
+    }
+
+    private var statDivider: some View {
+        Rectangle()
+            .fill(Tokens.Color.borderSoft)
+            .frame(width: 0.5)
+            .padding(.vertical, 8)
+    }
+}
+
+// MARK: - StatCell
+
+private struct StatCell: View {
+    let icon: String
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(alignment: .center, spacing: 4) {
+            HStack(alignment: .center, spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Tokens.Color.textSecondary)
+                Text(value)
+                    .font(.system(size: 20, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Tokens.Color.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Tokens.Color.textTertiary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 

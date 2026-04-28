@@ -36,6 +36,7 @@
 		5DE9562E9EF7E32FA79BFAD6 /* FirestoreClient+SaveParsed.swift in Sources */ = {isa = PBXBuildFile; fileRef = 394E9145A6F17EEA4213367E /* FirestoreClient+SaveParsed.swift */; };
 		61DA9CE806F12CFA403FAECC /* CompassNav.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE881A888083E9F1FA2B675 /* CompassNav.swift */; };
 		629358D9009DF97EC0714669 /* CatalogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F75A43D1D2EB09299028521 /* CatalogView.swift */; };
+		AA1B2C3D4E5F607180A1B2C3 /* CatalogViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2C3D4E5F6071819A2B3C4D /* CatalogViewModel.swift */; };
 		63F408A366A902E967F9FB5A /* CategoryBreakdownSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66E2B23EDCC5278347DA37B1 /* CategoryBreakdownSheet.swift */; };
 		73D82416E9924A088BC0D1CD /* FirestoreClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6F5D4AAA10A7E712EBA46C0 /* FirestoreClient.swift */; };
 		7F8956774DA55D7163FF9A55 /* FirestoreClient+ManualSave.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9303A97FD96652D11DA80 /* FirestoreClient+ManualSave.swift */; };
@@ -87,6 +88,7 @@
 		7B8E80705B47694B1EC8A53D /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		7DE881A888083E9F1FA2B675 /* CompassNav.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassNav.swift; sourceTree = "<group>"; };
 		7F75A43D1D2EB09299028521 /* CatalogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogView.swift; sourceTree = "<group>"; };
+		BB2C3D4E5F6071819A2B3C4D /* CatalogViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogViewModel.swift; sourceTree = "<group>"; };
 		84D86E88BE3E10B56BEC75D5 /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
 		86C9FDE5B639E8638E84A965 /* CostsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CostsView.swift; sourceTree = "<group>"; };
 		8715C7BA942D527D3C62A315 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
@@ -337,6 +339,7 @@
 			isa = PBXGroup;
 			children = (
 				7F75A43D1D2EB09299028521 /* CatalogView.swift */,
+				BB2C3D4E5F6071819A2B3C4D /* CatalogViewModel.swift */,
 			);
 			path = Catalog;
 			sourceTree = "<group>";
@@ -471,6 +474,7 @@
 				432D907E731D4ACDEDE49ECB /* CachedModels.swift in Sources */,
 				A63AA6019A1C9BA894F8B0DB /* CalendarView.swift in Sources */,
 				629358D9009DF97EC0714669 /* CatalogView.swift in Sources */,
+				AA1B2C3D4E5F607180A1B2C3 /* CatalogViewModel.swift in Sources */,
 				63F408A366A902E967F9FB5A /* CategoryBreakdownSheet.swift in Sources */,
 				61DA9CE806F12CFA403FAECC /* CompassNav.swift in Sources */,
 				FCCAA20E9E202EE433572F61 /* Components.swift in Sources */,
