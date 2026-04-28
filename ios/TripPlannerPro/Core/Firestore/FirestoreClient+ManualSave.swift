@@ -57,7 +57,7 @@ extension FirestoreClient {
 
         let madrid = TripCity(id: nil, tripId: tripID, name: "Madrid",
                               country: "España", countryCode: "ES",
-                              color: "#FF6422", days: madridDays,
+                              color: "#FFB347", days: madridDays,
                               lat: 40.4168, lng: -3.7038, timezone: "Europe/Madrid")
         let barcelona = TripCity(id: nil, tripId: tripID, name: "Barcelona",
                                  country: "España", countryCode: "ES",

@@ -191,7 +191,9 @@ export interface CitySetting {
 }
 
 // Design system constants
+// 16 colores — índices 0-7 son los originales (no cambiar order para no romper ciudades existentes)
 export const CITY_COLORS = [
+  // — originales (índices 0-7) —
   "#71D3A6", // menta viaje
   "#74ACDF", // cielo
   "#FFD16A", // sol
@@ -200,6 +202,15 @@ export const CITY_COLORS = [
   "#E98A9A", // rosa atardecer
   "#6BCB77", // verde fresco
   "#6CAFE8", // azul costa
+  // — nuevos (índices 8-15) —
+  "#FF6B6B", // coral rojo
+  "#4ECDC4", // teal
+  "#FFB347", // naranja durazno
+  "#48DBFB", // celeste eléctrico
+  "#A29BFE", // lavanda brillante
+  "#FD79A8", // rosa chicle
+  "#55EFC4", // menta neón
+  "#FDCB6E", // dorado cálido
 ];
 
 // Representative color per country (ISO 3166-1 alpha-2) — drawn from flag palettes

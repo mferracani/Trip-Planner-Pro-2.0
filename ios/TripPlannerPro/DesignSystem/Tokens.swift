@@ -56,24 +56,27 @@ enum Tokens {
         static let signalSky  = SwiftUI.Color(hex: 0x4D96FF)
 
         // MARK: City palette — matches web CITY_COLORS array (types.ts)
+        // 16 colores. Índices 0-7 son los originales — no reordenar para no romper ciudades existentes.
 
         static let cityPalette: [SwiftUI.Color] = [
-            SwiftUI.Color(hex: 0x71D3A6),
-            SwiftUI.Color(hex: 0x74ACDF),
-            SwiftUI.Color(hex: 0xFFD16A),
-            SwiftUI.Color(hex: 0xF29E7D),
-            SwiftUI.Color(hex: 0xA891E8),
-            SwiftUI.Color(hex: 0xE98A9A),
-            SwiftUI.Color(hex: 0x6BCB77),
-            SwiftUI.Color(hex: 0x6CAFE8),
-            SwiftUI.Color(hex: 0xFF6B6B),
-            SwiftUI.Color(hex: 0x4ECDC4),
-            SwiftUI.Color(hex: 0xFFAA00),
-            SwiftUI.Color(hex: 0x00D4FF),
-            SwiftUI.Color(hex: 0xAADF00),
-            SwiftUI.Color(hex: 0xE040FB),
-            SwiftUI.Color(hex: 0xFF6422),
-            SwiftUI.Color(hex: 0xFB7185),
+            // — originales (índices 0-7) —
+            SwiftUI.Color(hex: 0x71D3A6), // menta viaje
+            SwiftUI.Color(hex: 0x74ACDF), // cielo
+            SwiftUI.Color(hex: 0xFFD16A), // sol
+            SwiftUI.Color(hex: 0xF29E7D), // coral cálido
+            SwiftUI.Color(hex: 0xA891E8), // lavanda IA
+            SwiftUI.Color(hex: 0xE98A9A), // rosa atardecer
+            SwiftUI.Color(hex: 0x6BCB77), // verde fresco
+            SwiftUI.Color(hex: 0x6CAFE8), // azul costa
+            // — nuevos (índices 8-15) —
+            SwiftUI.Color(hex: 0xFF6B6B), // coral rojo
+            SwiftUI.Color(hex: 0x4ECDC4), // teal
+            SwiftUI.Color(hex: 0xFFB347), // naranja durazno
+            SwiftUI.Color(hex: 0x48DBFB), // celeste eléctrico
+            SwiftUI.Color(hex: 0xA29BFE), // lavanda brillante
+            SwiftUI.Color(hex: 0xFD79A8), // rosa chicle
+            SwiftUI.Color(hex: 0x55EFC4), // menta neón
+            SwiftUI.Color(hex: 0xFDCB6E), // dorado cálido
         ]
 
         static let cityBgOpacity: Double     = 0.14

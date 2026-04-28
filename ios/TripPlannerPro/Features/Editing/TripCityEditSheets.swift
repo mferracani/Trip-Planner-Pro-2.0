@@ -7,11 +7,15 @@ fileprivate struct ColorSwatch: Identifiable {
     let color: Color
 }
 
+// Sincronizado con Tokens.City.cityPalette y web CITY_COLORS (types.ts).
+// Índices 0-7 son los originales — no reordenar.
 fileprivate let cityPaletteHexStrings: [String] = [
+    // — originales (índices 0-7) —
     "#71D3A6", "#74ACDF", "#FFD16A", "#F29E7D",
     "#A891E8", "#E98A9A", "#6BCB77", "#6CAFE8",
-    "#FF6B6B", "#4ECDC4", "#FFAA00", "#00D4FF",
-    "#AADF00", "#E040FB", "#FF6422", "#FB7185",
+    // — nuevos (índices 8-15) —
+    "#FF6B6B", "#4ECDC4", "#FFB347", "#48DBFB",
+    "#A29BFE", "#FD79A8", "#55EFC4", "#FDCB6E",
 ]
 
 fileprivate let citySwatches: [ColorSwatch] = cityPaletteHexStrings.map { hex in
