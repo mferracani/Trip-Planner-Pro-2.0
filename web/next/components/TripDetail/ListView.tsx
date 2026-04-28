@@ -32,6 +32,12 @@ function fmtTime(localTime?: string): string {
   return localTime?.split("T")[1]?.slice(0, 5) ?? "";
 }
 
+function fmtISODate(iso?: string | null): string {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return d ? `${d}-${m}-${y}` : iso;
+}
+
 function fmtDate(localTime?: string): string {
   const date = localTime?.split("T")[0];
   if (!date) return "";
@@ -386,7 +392,7 @@ function HotelCard({
         <div className="flex-1 min-w-0">
           <p className="text-[15px] font-semibold text-white truncate">{h.name}</p>
           <p className="text-[13px] text-[#A0A0A0]">
-            {h.check_in} → {h.check_out} · {nightsLabel(h.check_in, h.check_out)}
+            {fmtISODate(h.check_in)} → {fmtISODate(h.check_out)} · {nightsLabel(h.check_in, h.check_out)}
             {city ? ` · ${city.name}` : ""}
           </p>
         </div>
@@ -399,8 +405,8 @@ function HotelCard({
       {isExpanded && (
         <div className="border-t border-[#2A2A2A] px-4 py-3 space-y-3">
           <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[13px]">
-            <DetailField label="Check-in" value={h.check_in} />
-            <DetailField label="Check-out" value={h.check_out} />
+            <DetailField label="Check-in" value={fmtISODate(h.check_in)} />
+            <DetailField label="Check-out" value={fmtISODate(h.check_out)} />
             <DetailField label="Noches" value={nightsLabel(h.check_in, h.check_out)} />
             {h.room_type && <DetailField label="Habitación" value={h.room_type} />}
             {city && <DetailField label="Ciudad" value={city.name} />}
@@ -613,7 +619,7 @@ function ExpenseCard({
           <p className="text-[15px] font-semibold text-white truncate">{e.title}</p>
           <p className="text-[13px] text-[#A0A0A0]">
             {e.category}
-            {e.date ? ` · ${e.date}` : ""}
+            {e.date ? ` · ${fmtISODate(e.date)}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -628,7 +634,7 @@ function ExpenseCard({
         <div className="border-t border-[#2A2A2A] px-4 py-3 space-y-3">
           <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[13px]">
             <DetailField label="Categoría" value={e.category} />
-            {e.date && <DetailField label="Fecha" value={e.date} />}
+            {e.date && <DetailField label="Fecha" value={fmtISODate(e.date)} />}
             <DetailField label="Monto" value={`${e.currency} ${e.amount.toLocaleString("es-AR")}`} />
             {e.amount_usd && <DetailField label="USD" value={`$${Math.round(e.amount_usd)}`} />}
           </div>

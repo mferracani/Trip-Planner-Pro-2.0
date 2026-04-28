@@ -402,7 +402,7 @@ private struct HotelRowCompact: View {
                     .tracking(Tokens.Track.bodyTight)
                     .foregroundStyle(Tokens.Color.textPrimary)
                     .lineLimit(1)
-                MonoLabel(text: "\(hotel.nights) noches · \(hotel.checkIn)", color: Tokens.Color.textTertiary, size: .xs)
+                MonoLabel(text: "\(hotel.nights) noches · \(fmtISODate(hotel.checkIn))", color: Tokens.Color.textTertiary, size: .xs)
             }
 
             Spacer(minLength: 8)
@@ -441,8 +441,8 @@ private struct HotelRowDetail: View {
             Hairline()
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
                 GridRow {
-                    DetailCell(label: "Check-in", value: hotel.checkIn)
-                    DetailCell(label: "Check-out", value: hotel.checkOut)
+                    DetailCell(label: "Check-in", value: fmtISODate(hotel.checkIn))
+                    DetailCell(label: "Check-out", value: fmtISODate(hotel.checkOut))
                 }
                 GridRow {
                     DetailCell(label: "Noches", value: "\(hotel.nights)")
@@ -878,7 +878,7 @@ private struct ExpenseRowDetail: View {
             Hairline()
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
                 GridRow {
-                    DetailCell(label: "Fecha", value: expense.date)
+                    DetailCell(label: "Fecha", value: fmtISODate(expense.date))
                     DetailCell(label: "Categoría", value: expense.category)
                 }
             }
@@ -1025,11 +1025,17 @@ private func fmtTime(_ localTime: String) -> String {
     String(localTime.split(separator: "T").last?.prefix(5) ?? "")
 }
 
+private func fmtISODate(_ iso: String) -> String {
+    let p = iso.split(separator: "-")
+    guard p.count == 3 else { return iso }
+    return "\(p[2])-\(p[1])-\(p[0])"
+}
+
 private func fmtDateTime(_ localTime: String) -> String {
     let parts = localTime.split(separator: "T")
     let date = parts.first.map(String.init) ?? ""
     let time = parts.last.map { String($0.prefix(5)) } ?? ""
-    return [date, time].filter { !$0.isEmpty }.joined(separator: " ")
+    return [fmtISODate(date), time].filter { !$0.isEmpty }.joined(separator: " ")
 }
 
 private func fmtDuration(_ minutes: Int) -> String {

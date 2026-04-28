@@ -9,6 +9,12 @@ import { TransportForm } from "../forms/TransportForm";
 
 type SubTab = "flights" | "hotels" | "transports" | "cities";
 
+function fmtISODate(iso?: string | null): string {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return d ? `${d}-${m}-${y}` : iso;
+}
+
 const SUBTABS: { value: SubTab; label: string; emoji: string }[] = [
   { value: "flights", label: "Vuelos", emoji: "✈️" },
   { value: "hotels", label: "Hoteles", emoji: "🏨" },
@@ -232,7 +238,7 @@ function HotelRow({ hotel }: { hotel: Hotel }) {
       <div className="flex-1 min-w-0">
         <p className="text-[15px] font-semibold text-white truncate">{hotel.name}</p>
         <p className="text-[13px] text-[#A0A0A0]">
-          {hotel.check_in} → {hotel.check_out}
+          {fmtISODate(hotel.check_in)} → {fmtISODate(hotel.check_out)}
           {hotel.room_type ? ` · ${hotel.room_type}` : ""}
         </p>
       </div>
