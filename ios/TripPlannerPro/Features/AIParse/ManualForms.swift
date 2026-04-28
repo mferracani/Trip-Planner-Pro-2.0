@@ -102,8 +102,10 @@ private struct LegFormState: Identifiable {
     var destIATA = ""
     var departureDate = Date()
     var departureTime = ""
+    var departureTimezone = "America/Argentina/Buenos_Aires"
     var arrivalDate = Date()
     var arrivalTime = ""
+    var arrivalTimezone = "America/Argentina/Buenos_Aires"
     var cabinClass = "economy"
     var seat = ""
 
@@ -117,8 +119,8 @@ private struct LegFormState: Identifiable {
     func toFlightLeg(direction: String) -> FlightLeg {
         let depISO = isoString(date: departureDate, time: departureTime)
         let arrISO = isoString(date: arrivalDate, time: arrivalTime)
-        let depUTC = parseLocalApproxUTC(date: departureDate, time: departureTime)
-        let arrUTC = parseLocalApproxUTC(date: arrivalDate, time: arrivalTime)
+        let depUTC = parseWithTimezone(date: departureDate, time: departureTime, timezone: departureTimezone)
+        let arrUTC = parseWithTimezone(date: arrivalDate, time: arrivalTime, timezone: arrivalTimezone)
         let duration = max(0, Int(arrUTC.timeIntervalSince(depUTC) / 60))
         return FlightLeg(
             direction: direction,
@@ -127,8 +129,10 @@ private struct LegFormState: Identifiable {
             originIATA: originIATA.trimmingCharacters(in: .whitespaces).uppercased(),
             destinationIATA: destIATA.trimmingCharacters(in: .whitespaces).uppercased(),
             departureLocalTime: depISO,
+            departureTimezone: departureTimezone,
             departureUTC: depUTC,
             arrivalLocalTime: arrISO,
+            arrivalTimezone: arrivalTimezone,
             arrivalUTC: arrUTC,
             durationMinutes: duration,
             cabinClass: cabinClass,
@@ -193,6 +197,20 @@ private struct LegCard: View {
                     DatePickerRow(label: "Fecha", selection: $leg.departureDate)
                     FormField(label: "Hora local (HH:mm)", placeholder: "21:35", text: $leg.departureTime)
                         .keyboardType(.numbersAndPunctuation)
+                    HStack {
+                        Text("Timezone")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Tokens.Color.textTertiary)
+                        Spacer()
+                        Picker("", selection: $leg.departureTimezone) {
+                            ForEach(CommonTimezones.options, id: \.self) { tz in
+                                Text(tz).tag(tz)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .font(.system(size: 13))
+                        .tint(Tokens.Color.accentBlue)
+                    }
                 }
             }
 
@@ -201,6 +219,20 @@ private struct LegCard: View {
                     DatePickerRow(label: "Fecha", selection: $leg.arrivalDate)
                     FormField(label: "Hora local (HH:mm)", placeholder: "13:05", text: $leg.arrivalTime)
                         .keyboardType(.numbersAndPunctuation)
+                    HStack {
+                        Text("Timezone")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Tokens.Color.textTertiary)
+                        Spacer()
+                        Picker("", selection: $leg.arrivalTimezone) {
+                            ForEach(CommonTimezones.options, id: \.self) { tz in
+                                Text(tz).tag(tz)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .font(.system(size: 13))
+                        .tint(Tokens.Color.accentBlue)
+                    }
                 }
             }
 
@@ -433,9 +465,9 @@ struct ManualFlightForm: View {
                 let lastOut = outboundLegs.filter(\.isValid).last!
 
                 let depISO = isoString(date: firstOut.departureDate, time: firstOut.departureTime)
-                let depUTC = parseLocalApproxUTC(date: firstOut.departureDate, time: firstOut.departureTime)
+                let depUTC = parseWithTimezone(date: firstOut.departureDate, time: firstOut.departureTime, timezone: firstOut.departureTimezone)
                 let arrISO = isoString(date: lastOut.arrivalDate, time: lastOut.arrivalTime)
-                let arrUTC = parseLocalApproxUTC(date: lastOut.arrivalDate, time: lastOut.arrivalTime)
+                let arrUTC = parseWithTimezone(date: lastOut.arrivalDate, time: lastOut.arrivalTime, timezone: lastOut.arrivalTimezone)
                 let duration = max(0, Int(arrUTC.timeIntervalSince(depUTC) / 60))
 
                 let flight = Flight(
@@ -445,8 +477,10 @@ struct ManualFlightForm: View {
                     originIATA: firstOut.originIATA.trimmingCharacters(in: .whitespaces).uppercased(),
                     destinationIATA: lastOut.destIATA.trimmingCharacters(in: .whitespaces).uppercased(),
                     departureLocalTime: depISO,
+                    departureTimezone: firstOut.departureTimezone,
                     departureUTC: depUTC,
                     arrivalLocalTime: arrISO,
+                    arrivalTimezone: lastOut.arrivalTimezone,
                     arrivalUTC: arrUTC,
                     durationMinutes: duration,
                     cabinClass: firstOut.cabinClass,
@@ -715,7 +749,7 @@ struct ManualTransportForm: View {
         Task {
             do {
                 let depISO = isoString(date: departureDate, time: departureTime)
-                let depUTC = parseLocalApproxUTC(date: departureDate, time: departureTime)
+                let depUTC = parseWithTimezone(date: departureDate, time: departureTime, timezone: TimeZone.current.identifier)
                 let transport = Transport(
                     tripId: tripID,
                     type: type,
@@ -1177,18 +1211,19 @@ func dateOnlyISO(_ date: Date) -> String {
     return formatter.string(from: date)
 }
 
-private func parseLocalApproxUTC(date: Date, time: String) -> Date {
-    // Approximation: interpret time as local wall clock, store in UTC-0 as-is.
-    // Cloud Function should recalculate with proper timezone if available.
+private func parseWithTimezone(date: Date, time: String, timezone: String) -> Date {
     let parts = time.split(separator: ":")
     let hour = Int(parts.first ?? "0") ?? 0
     let minute = Int(parts.dropFirst().first ?? "0") ?? 0
 
-    var components = Calendar.current.dateComponents([.year, .month, .day], from: date)
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = TimeZone(identifier: timezone) ?? TimeZone(identifier: "UTC")!
+
+    var components = cal.dateComponents([.year, .month, .day], from: date)
     components.hour = hour
     components.minute = minute
     components.second = 0
-    return Calendar.current.date(from: components) ?? date
+    return cal.date(from: components) ?? date
 }
 
 func startOfDay(_ date: Date) -> Date {

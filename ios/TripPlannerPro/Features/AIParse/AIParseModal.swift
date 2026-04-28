@@ -1,4 +1,7 @@
 import SwiftUI
+import FirebaseAuth
+import FirebaseStorage
+import UniformTypeIdentifiers
 
 // MARK: - EditableParsedItem
 // Wraps ParsedItem with a stable UUID so that editing fields that affect
@@ -19,11 +22,13 @@ struct EditableParsedItem: Identifiable, Sendable {
 
 enum ParseMode: String, CaseIterable {
     case chat = "Chat"
+    case file = "Archivo"
     case manual = "Manual"
 
     var icon: String {
         switch self {
         case .chat: return "sparkles"
+        case .file: return "doc.fill"
         case .manual: return "pencil"
         }
     }
@@ -43,6 +48,9 @@ struct AIParseModal: View {
     @State private var parseState: ParseState = .idle
     @State private var selectedItems: Set<UUID> = []
     @State private var editingItem: EditableParsedItem? = nil
+    @State private var selectedFileData: Data? = nil
+    @State private var selectedFileName: String = ""
+    @State private var showFilePicker = false
 
     enum ParseState {
         case idle
@@ -151,11 +159,24 @@ struct AIParseModal: View {
             VStack(spacing: Tokens.Spacing.md) {
                 if mode == .chat {
                     chatInput
+                } else if mode == .file {
+                    fileInput
                 } else {
                     ManualItemsView(trip: trip)
                 }
             }
             .padding(Tokens.Spacing.base)
+        }
+        .fileImporter(
+            isPresented: $showFilePicker,
+            allowedContentTypes: [.image, .pdf],
+            allowsMultipleSelection: false
+        ) { result in
+            guard case .success(let urls) = result, let url = urls.first else { return }
+            let accessing = url.startAccessingSecurityScopedResource()
+            defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+            selectedFileData = try? Data(contentsOf: url)
+            selectedFileName = url.lastPathComponent
         }
     }
 
@@ -211,6 +232,81 @@ struct AIParseModal: View {
                     )
                 }
                 .disabled(inputText.isEmpty)
+            }
+        }
+    }
+
+    private var fileInput: some View {
+        VStack(alignment: .leading, spacing: Tokens.Spacing.md) {
+            VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
+                Text("Subí un PDF o imagen")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Tokens.Color.textSecondary)
+                Text("Funciona con confirmaciones de reserva, e-tickets y PDFs de itinerario.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Tokens.Color.textTertiary)
+            }
+
+            Button {
+                showFilePicker = true
+            } label: {
+                HStack(spacing: Tokens.Spacing.sm) {
+                    Image(systemName: selectedFileData != nil ? "doc.fill" : "arrow.up.doc")
+                        .font(.system(size: 16))
+                        .foregroundStyle(selectedFileData != nil ? Tokens.Color.accentPurple : Tokens.Color.textSecondary)
+                    Text(selectedFileData != nil ? selectedFileName : "Seleccionar archivo")
+                        .font(.system(size: 14))
+                        .foregroundStyle(selectedFileData != nil ? Tokens.Color.textPrimary : Tokens.Color.textSecondary)
+                        .lineLimit(1)
+                    Spacer()
+                    if selectedFileData != nil {
+                        Button {
+                            selectedFileData = nil
+                            selectedFileName = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(Tokens.Color.textTertiary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(Tokens.Spacing.md)
+                .frame(maxWidth: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                        .fill(Tokens.Color.elevated)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                                .strokeBorder(
+                                    selectedFileData != nil ? Tokens.Color.accentPurple.opacity(0.4) : Tokens.Color.border,
+                                    lineWidth: 1
+                                )
+                        )
+                )
+            }
+            .buttonStyle(.plain)
+
+            HStack {
+                providerPicker
+                Spacer()
+                Button {
+                    Task { await runParseFile() }
+                } label: {
+                    HStack(spacing: Tokens.Spacing.xs) {
+                        Image(systemName: "sparkles")
+                        Text("Parsear")
+                    }
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, Tokens.Spacing.base)
+                    .padding(.vertical, Tokens.Spacing.sm)
+                    .background(
+                        RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                            .fill(selectedFileData == nil ? Tokens.Color.textTertiary : Tokens.Color.accentPurple)
+                    )
+                }
+                .disabled(selectedFileData == nil)
             }
         }
     }
@@ -352,6 +448,36 @@ struct AIParseModal: View {
                 input: inputText,
                 provider: provider,
                 tripId: tripID
+            )
+            let editables = response.items.map { EditableParsedItem(item: $0) }
+            parseState = .preview(editables)
+            selectedItems = Set(editables.map(\.id))
+        } catch {
+            parseState = .error(error.localizedDescription)
+        }
+    }
+
+    private func runParseFile() async {
+        guard let tripID = trip.id,
+              let fileData = selectedFileData,
+              let user = Auth.auth().currentUser else { return }
+
+        parseState = .parsing
+
+        do {
+            let storagePath = "users/\(user.uid)/parse_attachments/\(Int(Date().timeIntervalSince1970))_\(selectedFileName.isEmpty ? "attachment" : selectedFileName)"
+            let storageRef = Storage.storage().reference().child(storagePath)
+            let mimeType = selectedFileName.lowercased().hasSuffix(".pdf") ? "application/pdf" : "image/jpeg"
+            let metadata = StorageMetadata()
+            metadata.contentType = mimeType
+            _ = try await storageRef.putDataAsync(fileData, metadata: metadata)
+
+            let response = try await AIParseClient.shared.parse(
+                input: "",
+                inputType: "attachment",
+                provider: .gemini,
+                tripId: tripID,
+                attachmentRef: storagePath
             )
             let editables = response.items.map { EditableParsedItem(item: $0) }
             parseState = .preview(editables)
@@ -716,8 +842,8 @@ struct ConfidenceBadge: View {
     let confidence: Double
 
     private var color: Color {
-        if confidence >= 0.85 { return Tokens.Color.accentGreen }
-        if confidence >= 0.60 { return Tokens.Color.accentOrange }
+        if confidence >= 0.90 { return Tokens.Color.accentGreen }
+        if confidence >= 0.70 { return Tokens.Color.accentOrange }
         return Tokens.Color.accentRed
     }
 

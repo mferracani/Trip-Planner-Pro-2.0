@@ -52,7 +52,8 @@ actor AIParseClient {
         input: String,
         inputType: String = "text",
         provider: AIProvider = .claude,
-        tripId: String
+        tripId: String,
+        attachmentRef: String? = nil
     ) async throws -> ParseResponse {
         guard !PARSE_FUNCTION_URL.contains("REPLACE_WITH_PROJECT_ID") else {
             throw AIParseError.functionURLNotConfigured
@@ -74,12 +75,15 @@ actor AIParseClient {
         request.setValue("Bearer \(idToken)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 90
 
-        let body: [String: String] = [
+        var body: [String: String] = [
             "input": input,
             "inputType": inputType,
             "provider": provider.rawValue,
             "tripId": tripId,
         ]
+        if let ref = attachmentRef {
+            body["attachmentRef"] = ref
+        }
         request.httpBody = try JSONEncoder().encode(body)
 
         let (data, response) = try await URLSession.shared.data(for: request)

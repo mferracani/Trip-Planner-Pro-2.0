@@ -75,6 +75,8 @@ final class DashboardViewModel {
             if days == 0 { return "Buen viaje, Mati" }
             if days == 1 { return "Mañana empieza" }
             if days <= 7 { return "Esta semana viajás" }
+            if days < 60 { return "En \(days / 7) semana\(days / 7 == 1 ? "" : "s")" }
+            return "En \(days / 30) mes\(days / 30 == 1 ? "" : "es")"
         }
 
         return "Hola, Mati"
