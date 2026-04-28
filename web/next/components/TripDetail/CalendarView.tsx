@@ -3,7 +3,7 @@
 import { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { Trip, City, Flight, Hotel, Transport, CITY_TO_COUNTRY, COUNTRY_COLORS } from "@/lib/types";
+import { Trip, City, Flight, FlightLeg, Hotel, Transport, CITY_TO_COUNTRY, COUNTRY_COLORS } from "@/lib/types";
 import { useAuth } from "@/context/AuthContext";
 import { updateTrip, citySettingsRef } from "@/lib/firestore";
 import { onSnapshot } from "firebase/firestore";
@@ -102,25 +102,52 @@ function buildDayItemsMap(
   }
 
   for (const f of flights) {
-    const depDate = f.departure_local_time?.split("T")[0];
-    const arrDate = f.arrival_local_time?.split("T")[0];
-    const depTime = f.departure_local_time?.split("T")[1]?.slice(0, 5) ?? "";
-    const arrTime = f.arrival_local_time?.split("T")[1]?.slice(0, 5) ?? "";
-    if (depDate) {
-      ensure(depDate);
-      map[depDate].flights.push({
-        id: f.id,
-        time: depTime,
-        label: `${depTime} ${f.destination_iata ?? ""}`.trim(),
-      });
-    }
-    if (arrDate && arrDate !== depDate) {
-      ensure(arrDate);
-      map[arrDate].flights.push({
-        id: f.id + "_arr",
-        time: arrTime,
-        label: `${arrTime} ${f.destination_iata ?? ""}`.trim(),
-      });
+    if (f.legs && f.legs.length > 0) {
+      // Leg-aware: one grid entry per leg departure / arrival day
+      for (const leg of f.legs) {
+        const legDepDate = leg.departure_local_time?.split("T")[0];
+        const legArrDate = leg.arrival_local_time?.split("T")[0];
+        const legDepTime = leg.departure_local_time?.split("T")[1]?.slice(0, 5) ?? "";
+        const legArrTime = leg.arrival_local_time?.split("T")[1]?.slice(0, 5) ?? "";
+        if (legDepDate) {
+          ensure(legDepDate);
+          map[legDepDate].flights.push({
+            id: `${f.id}_dep_${leg.flight_number}`,
+            time: legDepTime,
+            label: `${legDepTime} ${leg.destination_iata}`.trim(),
+          });
+        }
+        if (legArrDate && legArrDate !== legDepDate) {
+          ensure(legArrDate);
+          map[legArrDate].flights.push({
+            id: `${f.id}_arr_${leg.flight_number}`,
+            time: legArrTime,
+            label: `${legArrTime} ${leg.destination_iata}`.trim(),
+          });
+        }
+      }
+    } else {
+      // Legacy mono-leg: use top-level fields
+      const depDate = f.departure_local_time?.split("T")[0];
+      const arrDate = f.arrival_local_time?.split("T")[0];
+      const depTime = f.departure_local_time?.split("T")[1]?.slice(0, 5) ?? "";
+      const arrTime = f.arrival_local_time?.split("T")[1]?.slice(0, 5) ?? "";
+      if (depDate) {
+        ensure(depDate);
+        map[depDate].flights.push({
+          id: f.id,
+          time: depTime,
+          label: `${depTime} ${f.destination_iata ?? ""}`.trim(),
+        });
+      }
+      if (arrDate && arrDate !== depDate) {
+        ensure(arrDate);
+        map[arrDate].flights.push({
+          id: f.id + "_arr",
+          time: arrTime,
+          label: `${arrTime} ${f.destination_iata ?? ""}`.trim(),
+        });
+      }
     }
   }
 
@@ -990,6 +1017,13 @@ function DayDetailSheet({
 
   // Filter items relevant to this day
   const dayFlights = flights.filter((f) => {
+    if (f.legs && f.legs.length > 0) {
+      return f.legs.some(
+        (l) =>
+          extractDate(l.departure_local_time) === dateStr ||
+          extractDate(l.arrival_local_time) === dateStr
+      );
+    }
     const dep = extractDate(f.departure_local_time);
     const arr = extractDate(f.arrival_local_time);
     return dep === dateStr || arr === dateStr;
@@ -1196,9 +1230,151 @@ function DayDetailSheet({
   );
 }
 
+// ─── Leg flight card (for multi-leg flights) ────────────────────────────────
+
+function LegFlightCard({
+  leg,
+  flight: f,
+  dateStr,
+  delay,
+  showBookingInfo,
+}: {
+  leg: FlightLeg;
+  flight: Flight;
+  dateStr: string;
+  delay: number;
+  showBookingInfo: boolean;
+}) {
+  const depDate = extractDate(leg.departure_local_time);
+  const arrDate = extractDate(leg.arrival_local_time);
+  const depTime = extractTime(leg.departure_local_time);
+  const arrTime = extractTime(leg.arrival_local_time);
+  const isArrival = depDate !== dateStr && arrDate === dateStr;
+  const dayOffset = arrDate && depDate ? daysBetweenDates(depDate, arrDate) : 0;
+  const sameDay = dayOffset === 0;
+  const isInbound = leg.direction === "inbound";
+  const accentColor = isInbound ? "#30D158" : "#4D96FF";
+  const bgGradient = isInbound
+    ? "linear-gradient(135deg, #0F2018 0%, #101417 100%)"
+    : "linear-gradient(135deg, #0F1B2E 0%, #101417 100%)";
+  const borderColor = isInbound ? "#1E3028" : "#1E2A40";
+  const dirLabel = isInbound ? "VUELTA" : "IDA";
+
+  return (
+    <div
+      className="relative rounded-[16px] px-4 pt-3.5 pb-3 animate-spring-up overflow-hidden"
+      style={{ background: bgGradient, border: `1px solid ${borderColor}`, animationDelay: `${delay}ms` }}
+    >
+      <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: accentColor }} />
+      <div className="flex items-center gap-2 mb-2.5 pl-1">
+        <span className="text-[14px]">✈️</span>
+        <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+          {isArrival ? "Llegada" : dirLabel}
+        </span>
+        <span className="text-[12px] text-[#A0A0A0]">· {leg.airline} {leg.flight_number}</span>
+      </div>
+
+      {isArrival ? (
+        <div className="pl-1">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[24px] font-bold text-white tabular-nums">{arrTime}</span>
+            <span className="text-[13px] text-[#A0A0A0]">en</span>
+            <span className="text-[18px] font-bold text-white">{leg.destination_iata}</span>
+          </div>
+          {depTime && depDate && (
+            <p className="text-[12px] text-[#707070] mt-1">
+              ← Salió de {leg.origin_iata} el {dayLabelShort(depDate)} a las {depTime}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="pl-1">
+          <div className="flex items-center gap-3">
+            <div>
+              <div className="text-[22px] font-bold text-white tabular-nums leading-none">{depTime}</div>
+              <div className="text-[15px] font-bold text-[#E0E0E0] mt-1">{leg.origin_iata}</div>
+            </div>
+            <div className="flex-1 flex items-center gap-1">
+              <div className="flex-1 h-[1px]" style={{ background: `linear-gradient(to right, ${accentColor}, ${accentColor}60)` }} />
+              <span className="text-[12px]" style={{ color: accentColor }}>✈</span>
+              <div className="flex-1 h-[1px]" style={{ background: `linear-gradient(to right, ${accentColor}60, ${accentColor})` }} />
+            </div>
+            <div className="text-right">
+              <div className="text-[22px] font-bold text-white tabular-nums leading-none relative inline-block">
+                {arrTime}
+                {!sameDay && dayOffset > 0 && (
+                  <span className="absolute -top-1 -right-5 text-[10px] font-bold text-[#FF9F0A]">+{dayOffset}</span>
+                )}
+              </div>
+              <div className="text-[15px] font-bold text-[#E0E0E0] mt-1">{leg.destination_iata}</div>
+            </div>
+          </div>
+          {!sameDay && dayOffset > 0 && (
+            <p className="text-[11px] text-[#FF9F0A] mt-2">
+              Llega el {dayLabelShort(arrDate)} ({dayOffset === 1 ? "mañana" : `+${dayOffset} días`})
+            </p>
+          )}
+        </div>
+      )}
+
+      {showBookingInfo && f.booking_ref && (
+        <div className="mt-3 pl-1">
+          <CopyableBookingRef value={f.booking_ref} color={accentColor} />
+        </div>
+      )}
+
+      {showBookingInfo && (leg.seat || leg.cabin_class || f.price != null) && (
+        <div className="flex items-center gap-2 mt-3 pt-2.5 border-t pl-1 flex-wrap" style={{ borderColor: `${accentColor}33` }}>
+          {leg.seat && (
+            <span className="text-[11.5px] text-[#A0A0A0]">
+              <span className="text-[#4D4D4D]">Asiento</span>{" "}
+              <span className="text-white font-semibold">{leg.seat}</span>
+            </span>
+          )}
+          {leg.cabin_class && (
+            <><span className="text-[#333]">·</span><span className="text-[11.5px] text-[#A0A0A0]">{leg.cabin_class}</span></>
+          )}
+          {f.price != null && (
+            <><span className="text-[#333]">·</span>
+            <span className="text-[11.5px] text-[#30D158] font-semibold">
+              {f.currency ?? "USD"} {f.price.toLocaleString("es-AR")}
+            </span></>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Flight card ────────────────────────────────────────────────────────────
 
 function FlightCard({ flight: f, dateStr, delay }: { flight: Flight; dateStr: string; delay: number }) {
+  // Multi-leg flight: render one card per leg relevant to this date
+  if (f.legs && f.legs.length > 0) {
+    const matchingLegs = f.legs.filter(
+      (l) =>
+        extractDate(l.departure_local_time) === dateStr ||
+        extractDate(l.arrival_local_time) === dateStr
+    );
+    if (matchingLegs.length > 0) {
+      return (
+        <div className="space-y-2">
+          {matchingLegs.map((leg, i) => (
+            <LegFlightCard
+              key={`${f.id}_${leg.flight_number}_${i}`}
+              leg={leg}
+              flight={f}
+              dateStr={dateStr}
+              delay={delay + i * 60}
+              showBookingInfo={i === 0}
+            />
+          ))}
+        </div>
+      );
+    }
+  }
+
+  // Legacy mono-leg rendering
   const depDate = extractDate(f.departure_local_time);
   const arrDate = extractDate(f.arrival_local_time);
   const depTime = extractTime(f.departure_local_time);
