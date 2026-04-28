@@ -10,6 +10,12 @@ extension FirestoreClient {
 
     // MARK: Flights
 
+    func createFlight(_ flight: Flight, tripID: String) async throws {
+        let ref = try userCollection("trips").document(tripID).collection("flights")
+        _ = try ref.addDocument(from: flight)
+        try await recalcTripAggregates(tripID: tripID)
+    }
+
     func updateFlight(_ flight: Flight, tripID: String) async throws {
         guard let id = flight.id else { return }
         let ref = try userCollection("trips").document(tripID).collection("flights").document(id)
@@ -25,6 +31,12 @@ extension FirestoreClient {
 
     // MARK: Hotels
 
+    func createHotel(_ hotel: Hotel, tripID: String) async throws {
+        let ref = try userCollection("trips").document(tripID).collection("hotels")
+        _ = try ref.addDocument(from: hotel)
+        try await recalcTripAggregates(tripID: tripID)
+    }
+
     func updateHotel(_ hotel: Hotel, tripID: String) async throws {
         guard let id = hotel.id else { return }
         let ref = try userCollection("trips").document(tripID).collection("hotels").document(id)
@@ -39,6 +51,12 @@ extension FirestoreClient {
     }
 
     // MARK: Transports
+
+    func createTransport(_ transport: Transport, tripID: String) async throws {
+        let ref = try userCollection("trips").document(tripID).collection("transports")
+        _ = try ref.addDocument(from: transport)
+        try await recalcTripAggregates(tripID: tripID)
+    }
 
     func updateTransport(_ transport: Transport, tripID: String) async throws {
         guard let id = transport.id else { return }

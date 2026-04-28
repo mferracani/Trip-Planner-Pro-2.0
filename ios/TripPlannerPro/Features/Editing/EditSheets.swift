@@ -67,7 +67,7 @@ struct FlightEditSheet: View {
             error: error,
             onCancel: onClose,
             onSave: save,
-            onDelete: delete
+            onDelete: existing.id != nil ? Optional(delete) : nil
         ) {
             VStack(spacing: 12) {
                 HStack(spacing: 10) {
@@ -167,7 +167,11 @@ struct FlightEditSheet: View {
                     updated.durationMinutes = Int(arr.timeIntervalSince(dep) / 60)
                 }
 
-                try await client.updateFlight(updated, tripID: tripID)
+                if existing.id == nil {
+                    try await client.createFlight(updated, tripID: tripID)
+                } else {
+                    try await client.updateFlight(updated, tripID: tripID)
+                }
                 onClose()
             } catch {
                 self.error = error.localizedDescription
@@ -246,7 +250,7 @@ struct HotelEditSheet: View {
             error: error,
             onCancel: onClose,
             onSave: save,
-            onDelete: delete
+            onDelete: existing.id != nil ? Optional(delete) : nil
         ) {
             VStack(spacing: 12) {
                 EditField(label: "Nombre") {
@@ -315,7 +319,11 @@ struct HotelEditSheet: View {
                 updated.currency = totalPrice != nil || pricePerNight != nil ? currency : nil
                 updated.totalPriceUSD = totalPriceUSD
                 updated.paidAmount = paidAmount
-                try await client.updateHotel(updated, tripID: tripID)
+                if existing.id == nil {
+                    try await client.createHotel(updated, tripID: tripID)
+                } else {
+                    try await client.updateHotel(updated, tripID: tripID)
+                }
                 onClose()
             } catch {
                 self.error = error.localizedDescription
@@ -406,7 +414,7 @@ struct TransportEditSheet: View {
             error: error,
             onCancel: onClose,
             onSave: save,
-            onDelete: delete
+            onDelete: existing.id != nil ? Optional(delete) : nil
         ) {
             VStack(spacing: 12) {
                 EditField(label: "Tipo") {
@@ -489,7 +497,11 @@ struct TransportEditSheet: View {
                     updated.arrivalUTC = nil
                 }
 
-                try await client.updateTransport(updated, tripID: tripID)
+                if existing.id == nil {
+                    try await client.createTransport(updated, tripID: tripID)
+                } else {
+                    try await client.updateTransport(updated, tripID: tripID)
+                }
                 onClose()
             } catch {
                 self.error = error.localizedDescription
@@ -572,7 +584,7 @@ struct ExpenseEditSheet: View {
             error: error,
             onCancel: onClose,
             onSave: save,
-            onDelete: delete
+            onDelete: existing.id != nil ? Optional(delete) : nil
         ) {
             VStack(spacing: 12) {
                 EditField(label: "Título") {
@@ -622,7 +634,11 @@ struct ExpenseEditSheet: View {
                 updated.paidAmount = paidAmount
                 updated.date = Trip.isoDateFormatter.string(from: date)
                 updated.notes = notes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : notes
-                try await client.updateExpense(updated, tripID: tripID)
+                if existing.id == nil {
+                    try await client.createExpense(updated, tripID: tripID)
+                } else {
+                    try await client.updateExpense(updated, tripID: tripID)
+                }
                 onClose()
             } catch {
                 self.error = error.localizedDescription

@@ -38,6 +38,7 @@ struct TripEditSheet: View {
     @State private var showThemePicker = false
     @State private var saving = false
     @State private var error: String?
+    @State private var confirmDelete = false
 
     init(trip: Trip, onClose: @escaping () -> Void) {
         self.trip = trip
@@ -66,7 +67,7 @@ struct TripEditSheet: View {
             error: error,
             onCancel: onClose,
             onSave: save,
-            onDelete: nil
+            onDelete: { confirmDelete = true }
         ) {
             VStack(spacing: 12) {
                 EditField(label: "Nombre del viaje") {
@@ -127,6 +128,12 @@ struct TripEditSheet: View {
             ThemePickerView(selectedCoverUrl: $selectedCoverUrl)
                 .presentationBackground(Tokens.Color.bgPrimary)
                 .presentationDetents([.large])
+        }
+        .alert("¿Eliminar viaje?", isPresented: $confirmDelete) {
+            Button("Eliminar", role: .destructive) { deleteTrip() }
+            Button("Cancelar", role: .cancel) { }
+        } message: {
+            Text("Se eliminará \"\(trip.name)\" y todos sus datos. Esta acción no se puede deshacer.")
         }
     }
 
@@ -192,6 +199,18 @@ struct TripEditSheet: View {
             } catch {
                 self.error = error.localizedDescription
                 saving = false
+            }
+        }
+    }
+
+    private func deleteTrip() {
+        guard let id = trip.id else { return }
+        Task {
+            do {
+                try await client.deleteTrip(id: id)
+                onClose()
+            } catch {
+                self.error = error.localizedDescription
             }
         }
     }

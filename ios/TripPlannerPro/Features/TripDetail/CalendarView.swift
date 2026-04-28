@@ -819,6 +819,7 @@ struct DayDetailSheet: View {
     let vm: TripDetailViewModel
 
     @State private var selected: SelectedItem?
+    @State private var showAddMenu = false
 
     private var flights: [Flight] { vm.flights(on: date) }
     private var hotels: [Hotel] { vm.hotels(on: date) }
@@ -917,6 +918,23 @@ struct DayDetailSheet: View {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showAddMenu = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                }
+            }
+        }
+        .confirmationDialog("Agregar a este día", isPresented: $showAddMenu, titleVisibility: .visible) {
+            Button("Vuelo") { selected = .flight(blankFlight) }
+            Button("Hotel") { selected = .hotel(blankHotel) }
+            Button("Transporte") { selected = .transport(blankTransport) }
+            Button("Gasto") { selected = .expense(blankExpense) }
+            Button("Cancelar", role: .cancel) { }
         }
         .editSheet(item: $selected, tripID: vm.trip.id ?? "")
         .preferredColorScheme(.dark)
@@ -934,6 +952,31 @@ struct DayDetailSheet: View {
         f.locale = Locale(identifier: "es-AR")
         f.setLocalizedDateFormatFromTemplate("MMMM yyyy")
         return f.string(from: date)
+    }
+
+    private var dateISO: String {
+        Trip.isoDateFormatter.string(from: date)
+    }
+
+    private var blankFlight: Flight {
+        Flight(
+            airline: "", flightNumber: "",
+            originIATA: "", destinationIATA: "",
+            departureLocalTime: "\(dateISO)T00:00",
+            arrivalLocalTime: "\(dateISO)T00:00"
+        )
+    }
+
+    private var blankHotel: Hotel {
+        Hotel(name: "", checkIn: dateISO, checkOut: dateISO)
+    }
+
+    private var blankTransport: Transport {
+        Transport(type: "train", origin: "", destination: "", departureLocalTime: "\(dateISO)T00:00")
+    }
+
+    private var blankExpense: Expense {
+        Expense(title: "", amount: 0, currency: "USD", date: dateISO, category: "other")
     }
 
     private func cityChip(_ city: TripCity) -> some View {

@@ -7,6 +7,7 @@ struct DashboardView: View {
     @Environment(FirestoreClient.self) private var client
     @State private var vm: DashboardViewModel?
     @State private var now = Date()
+    @State private var showSettings = false
     @State private var isCreatingDemo = false
     @State private var demoError: String?
 
@@ -38,6 +39,7 @@ struct DashboardView: View {
         }
         .onDisappear { vm?.stop() }
         .onReceive(timer) { now = $0 }
+        .sheet(isPresented: $showSettings) { SettingsView() }
         .preferredColorScheme(.dark)
     }
 
@@ -141,7 +143,7 @@ struct DashboardView: View {
     }
 
     private var avatarButton: some View {
-        Button { } label: {
+        Button { showSettings = true } label: {
             ZStack {
                 Circle()
                     .fill(Tokens.Color.elevated)

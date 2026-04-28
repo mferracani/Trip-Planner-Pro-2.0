@@ -661,7 +661,7 @@ private struct TransportCatalogCard: View {
                     .tracking(0.5)
 
                 HStack(spacing: Tokens.Spacing.xs) {
-                    Text(transport.destination)
+                    Text(transport.origin.isEmpty ? transport.destination : "\(transport.origin) → \(transport.destination)")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(Tokens.Color.textPrimary)
                     Text("·")
