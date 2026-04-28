@@ -168,6 +168,32 @@ final class TripDetailViewModel {
         }
     }
 
+    // MARK: - Delete
+
+    func deleteFlight(id: String) async throws {
+        guard let tripID = trip.id else { return }
+        try await client.deleteFlight(id: id, tripID: tripID)
+        try await client.recalcTripAggregates(tripID: tripID)
+    }
+
+    func deleteHotel(id: String) async throws {
+        guard let tripID = trip.id else { return }
+        try await client.deleteHotel(id: id, tripID: tripID)
+        try await client.recalcTripAggregates(tripID: tripID)
+    }
+
+    func deleteTransport(id: String) async throws {
+        guard let tripID = trip.id else { return }
+        try await client.deleteTransport(id: id, tripID: tripID)
+        try await client.recalcTripAggregates(tripID: tripID)
+    }
+
+    func deleteExpense(id: String) async throws {
+        guard let tripID = trip.id else { return }
+        try await client.deleteExpense(id: id, tripID: tripID)
+        try await client.recalcTripAggregates(tripID: tripID)
+    }
+
     // MARK: - Calendar helpers
 
     var weeks: [[Date?]] {

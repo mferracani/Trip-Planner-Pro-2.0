@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { createFlight, updateFlight } from "@/lib/firestore";
+import { createFlight, updateFlight, deleteFlight, recalcTripAggregates } from "@/lib/firestore";
 import type { Flight, FlightLeg } from "@/lib/types";
 import { Timestamp } from "firebase/firestore";
 import { COMMON_TIMEZONES, localToUtcTimestamp, minutesBetween, guessTimezone } from "@/lib/datetime";
@@ -693,6 +693,21 @@ export function FlightForm({ tripId, existing, initialDate: _initialDate, onClos
     setLegs((prev) => prev.filter((_, i) => i !== globalIndex));
   }
 
+  async function handleDeleteFlight() {
+    if (!user || !existing) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await deleteFlight(user.uid, tripId, existing.id);
+      await recalcTripAggregates(user.uid, tripId);
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleSubmit() {
     if (!user || !canSubmit) return;
     setSaving(true);
@@ -760,6 +775,7 @@ export function FlightForm({ tripId, existing, initialDate: _initialDate, onClos
       title={existing ? "Editar reserva" : "Nueva reserva de vuelo"}
       onClose={onClose}
       onSubmit={handleSubmit}
+      onDelete={existing ? handleDeleteFlight : undefined}
       submitting={saving}
       canSubmit={canSubmit}
       error={error}

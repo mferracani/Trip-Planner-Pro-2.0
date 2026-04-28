@@ -29,19 +29,39 @@ struct ListView: View {
                     emptyState
                 } else {
                     if !vm.flights.isEmpty {
-                        FlightsBlock(flights: vm.flights) { selected = .flight($0) }
+                        FlightsBlock(
+                            flights: vm.flights,
+                            onEdit: { selected = .flight($0) },
+                            onDelete: { f in Task { try? await vm.deleteFlight(id: f.id ?? "") } }
+                        )
                     }
                     if !vm.hotels.isEmpty {
-                        HotelsBlock(hotels: vm.hotels) { selected = .hotel($0) }
+                        HotelsBlock(
+                            hotels: vm.hotels,
+                            onEdit: { selected = .hotel($0) },
+                            onDelete: { h in Task { try? await vm.deleteHotel(id: h.id ?? "") } }
+                        )
                     }
                     if !regularTransports.isEmpty {
-                        TransportsBlock(transports: regularTransports) { selected = .transport($0) }
+                        TransportsBlock(
+                            transports: regularTransports,
+                            onEdit: { selected = .transport($0) },
+                            onDelete: { t in Task { try? await vm.deleteTransport(id: t.id ?? "") } }
+                        )
                     }
                     if !carRentals.isEmpty {
-                        CarRentalsBlock(rentals: carRentals) { selected = .transport($0) }
+                        CarRentalsBlock(
+                            rentals: carRentals,
+                            onEdit: { selected = .transport($0) },
+                            onDelete: { t in Task { try? await vm.deleteTransport(id: t.id ?? "") } }
+                        )
                     }
                     if !unlinkedExpenses.isEmpty {
-                        ExpensesBlock(expenses: unlinkedExpenses) { selected = .expense($0) }
+                        ExpensesBlock(
+                            expenses: unlinkedExpenses,
+                            onEdit: { selected = .expense($0) },
+                            onDelete: { e in Task { try? await vm.deleteExpense(id: e.id ?? "") } }
+                        )
                     }
                 }
             }
@@ -73,6 +93,7 @@ struct ListView: View {
 private struct FlightsBlock: View {
     let flights: [Flight]
     let onEdit: (Flight) -> Void
+    let onDelete: (Flight) -> Void
 
     @State private var expandedId: String?
     @State private var copiedRef: String?
@@ -108,10 +129,8 @@ private struct FlightsBlock: View {
 
                         // Expanded detail
                         if expandedId == f.id {
-                            FlightRowDetail(flight: f, copiedRef: $copiedRef) {
-                                onEdit(f)
-                            }
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                            FlightRowDetail(flight: f, copiedRef: $copiedRef, onEdit: { onEdit(f) }, onDelete: { onDelete(f) })
+                                .transition(.opacity.combined(with: .move(edge: .top)))
                         }
 
                         if idx < sorted.count - 1 { Hairline() }
@@ -195,6 +214,9 @@ private struct FlightRowDetail: View {
     let flight: Flight
     @Binding var copiedRef: String?
     let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -230,19 +252,34 @@ private struct FlightRowDetail: View {
                 }
             }
 
-            // Edit button
-            Button(action: onEdit) {
-                Text("Editar vuelo")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Tokens.Color.Category.flight)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: Tokens.Radius.sm)
-                            .fill(Tokens.Color.Category.flight.opacity(0.12))
-                    )
+            // Edit / Delete row
+            HStack(spacing: 8) {
+                Button(action: onEdit) {
+                    Text("Editar vuelo")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Tokens.Color.Category.flight)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: Tokens.Radius.sm).fill(Tokens.Color.Category.flight.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+
+                Button { showDeleteConfirm = true } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Tokens.Color.accentRed)
+                        .frame(width: 36)
+                        .padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: Tokens.Radius.sm).fill(Tokens.Color.accentRed.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+                .alert("¿Eliminar?", isPresented: $showDeleteConfirm) {
+                    Button("Eliminar", role: .destructive, action: onDelete)
+                    Button("Cancelar", role: .cancel) {}
+                } message: {
+                    Text("Esta acción no se puede deshacer.")
+                }
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 12)
@@ -301,6 +338,7 @@ private struct LegGroup: View {
 private struct HotelsBlock: View {
     let hotels: [Hotel]
     let onEdit: (Hotel) -> Void
+    let onDelete: (Hotel) -> Void
 
     @State private var expandedId: String?
     @State private var copiedRef: String?
@@ -334,7 +372,7 @@ private struct HotelsBlock: View {
                         .buttonStyle(RowButtonStyle())
 
                         if expandedId == h.id {
-                            HotelRowDetail(hotel: h) { onEdit(h) }
+                            HotelRowDetail(hotel: h, onEdit: { onEdit(h) }, onDelete: { onDelete(h) })
                                 .transition(.opacity.combined(with: .move(edge: .top)))
                         }
 
@@ -394,6 +432,9 @@ private struct HotelRowCompact: View {
 private struct HotelRowDetail: View {
     let hotel: Hotel
     let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -412,18 +453,33 @@ private struct HotelRowDetail: View {
                     }
                 }
             }
-            Button(action: onEdit) {
-                Text("Editar hotel")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Tokens.Color.Category.hotel)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: Tokens.Radius.sm)
-                            .fill(Tokens.Color.Category.hotel.opacity(0.12))
-                    )
+            HStack(spacing: 8) {
+                Button(action: onEdit) {
+                    Text("Editar hotel")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Tokens.Color.Category.hotel)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: Tokens.Radius.sm).fill(Tokens.Color.Category.hotel.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+
+                Button { showDeleteConfirm = true } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Tokens.Color.accentRed)
+                        .frame(width: 36)
+                        .padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: Tokens.Radius.sm).fill(Tokens.Color.accentRed.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+                .alert("¿Eliminar?", isPresented: $showDeleteConfirm) {
+                    Button("Eliminar", role: .destructive, action: onDelete)
+                    Button("Cancelar", role: .cancel) {}
+                } message: {
+                    Text("Esta acción no se puede deshacer.")
+                }
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 12)
@@ -435,6 +491,7 @@ private struct HotelRowDetail: View {
 private struct TransportsBlock: View {
     let transports: [Transport]
     let onEdit: (Transport) -> Void
+    let onDelete: (Transport) -> Void
 
     @State private var expandedId: String?
     @State private var copiedRef: String?
@@ -469,7 +526,7 @@ private struct TransportsBlock: View {
                         .buttonStyle(RowButtonStyle())
 
                         if expandedId == t.id {
-                            TransportRowDetail(transport: t) { onEdit(t) }
+                            TransportRowDetail(transport: t, onEdit: { onEdit(t) }, onDelete: { onDelete(t) })
                                 .transition(.opacity.combined(with: .move(edge: .top)))
                         }
 
@@ -558,6 +615,9 @@ private struct TransportRowCompact: View {
 private struct TransportRowDetail: View {
     let transport: Transport
     let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -572,18 +632,33 @@ private struct TransportRowDetail: View {
                     }
                 }
             }
-            Button(action: onEdit) {
-                Text("Editar transporte")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Tokens.Color.Category.transit)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: Tokens.Radius.sm)
-                            .fill(Tokens.Color.Category.transit.opacity(0.12))
-                    )
+            HStack(spacing: 8) {
+                Button(action: onEdit) {
+                    Text("Editar transporte")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Tokens.Color.Category.transit)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: Tokens.Radius.sm).fill(Tokens.Color.Category.transit.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+
+                Button { showDeleteConfirm = true } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Tokens.Color.accentRed)
+                        .frame(width: 36)
+                        .padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: Tokens.Radius.sm).fill(Tokens.Color.accentRed.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+                .alert("¿Eliminar?", isPresented: $showDeleteConfirm) {
+                    Button("Eliminar", role: .destructive, action: onDelete)
+                    Button("Cancelar", role: .cancel) {}
+                } message: {
+                    Text("Esta acción no se puede deshacer.")
+                }
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 12)
@@ -595,6 +670,7 @@ private struct TransportRowDetail: View {
 private struct CarRentalsBlock: View {
     let rentals: [Transport]
     let onEdit: (Transport) -> Void
+    let onDelete: (Transport) -> Void
 
     @State private var expandedId: String?
     @State private var copiedRef: String?
@@ -629,7 +705,7 @@ private struct CarRentalsBlock: View {
                         .buttonStyle(RowButtonStyle())
 
                         if expandedId == t.id {
-                            TransportRowDetail(transport: t) { onEdit(t) }
+                            TransportRowDetail(transport: t, onEdit: { onEdit(t) }, onDelete: { onDelete(t) })
                                 .transition(.opacity.combined(with: .move(edge: .top)))
                         }
 
@@ -696,6 +772,7 @@ private struct CarRentalRowCompact: View {
 private struct ExpensesBlock: View {
     let expenses: [Expense]
     let onEdit: (Expense) -> Void
+    let onDelete: (Expense) -> Void
 
     @State private var expandedId: String?
 
@@ -728,7 +805,7 @@ private struct ExpensesBlock: View {
                         .buttonStyle(RowButtonStyle())
 
                         if expandedId == e.id {
-                            ExpenseRowDetail(expense: e) { onEdit(e) }
+                            ExpenseRowDetail(expense: e, onEdit: { onEdit(e) }, onDelete: { onDelete(e) })
                                 .transition(.opacity.combined(with: .move(edge: .top)))
                         }
 
@@ -792,6 +869,9 @@ private struct ExpenseRowCompact: View {
 private struct ExpenseRowDetail: View {
     let expense: Expense
     let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -802,18 +882,33 @@ private struct ExpenseRowDetail: View {
                     DetailCell(label: "Categoría", value: expense.category)
                 }
             }
-            Button(action: onEdit) {
-                Text("Editar gasto")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Tokens.Color.accentGreen)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: Tokens.Radius.sm)
-                            .fill(Tokens.Color.accentGreen.opacity(0.12))
-                    )
+            HStack(spacing: 8) {
+                Button(action: onEdit) {
+                    Text("Editar gasto")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Tokens.Color.accentGreen)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: Tokens.Radius.sm).fill(Tokens.Color.accentGreen.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+
+                Button { showDeleteConfirm = true } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Tokens.Color.accentRed)
+                        .frame(width: 36)
+                        .padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: Tokens.Radius.sm).fill(Tokens.Color.accentRed.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+                .alert("¿Eliminar?", isPresented: $showDeleteConfirm) {
+                    Button("Eliminar", role: .destructive, action: onDelete)
+                    Button("Cancelar", role: .cancel) {}
+                } message: {
+                    Text("Esta acción no se puede deshacer.")
+                }
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 12)

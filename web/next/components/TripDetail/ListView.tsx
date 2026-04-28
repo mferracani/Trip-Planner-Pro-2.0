@@ -6,6 +6,8 @@ import { FlightForm } from "../forms/FlightForm";
 import { HotelForm } from "../forms/HotelForm";
 import { TransportForm } from "../forms/TransportForm";
 import { ExpenseForm } from "../forms/ExpenseForm";
+import { useAuth } from "@/context/AuthContext";
+import { deleteFlight, deleteHotel, deleteTransport, deleteExpense, recalcTripAggregates } from "@/lib/firestore";
 
 interface Props {
   trip: Trip;
@@ -67,6 +69,33 @@ const CABIN_LABEL: Record<string, string> = {
   business: "Business", first: "Primera",
 };
 
+// ─── DeleteButton ─────────────────────────────────────────────────────────────
+
+function DeleteButton({ onDelete }: { onDelete: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  function handleClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (confirming) {
+      onDelete();
+    } else {
+      setConfirming(true);
+      setTimeout(() => setConfirming(false), 3500);
+    }
+  }
+  return (
+    <button
+      onClick={handleClick}
+      className={`flex-1 text-center text-[13px] py-1.5 rounded-[8px] transition-colors ${
+        confirming
+          ? "text-white bg-[#FF453A] hover:bg-[#FF453A]/90"
+          : "text-[#FF453A] bg-[#FF453A]/10 hover:bg-[#FF453A]/20"
+      }`}
+    >
+      {confirming ? "¿Confirmar?" : "Eliminar"}
+    </button>
+  );
+}
+
 // ─── CopyableRef ──────────────────────────────────────────────────────────────
 
 function CopyableRef({ value }: { value: string }) {
@@ -127,11 +156,13 @@ function FlightsBlock({
   expandedId,
   onToggle,
   onEdit,
+  onDelete,
 }: {
   flights: Flight[];
   expandedId: string | null;
   onToggle: (id: string) => void;
   onEdit: (f: Flight) => void;
+  onDelete: (f: Flight) => void;
 }) {
   const sorted = [...flights].sort((a, b) =>
     (a.departure_local_time ?? "").localeCompare(b.departure_local_time ?? "")
@@ -149,6 +180,7 @@ function FlightsBlock({
             isExpanded={expandedId === f.id}
             onToggle={() => onToggle(f.id)}
             onEdit={() => onEdit(f)}
+            onDelete={() => onDelete(f)}
           />
         ))}
       </div>
@@ -161,11 +193,13 @@ function FlightCard({
   isExpanded,
   onToggle,
   onEdit,
+  onDelete,
 }: {
   flight: Flight;
   isExpanded: boolean;
   onToggle: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 }) {
   const outbound = f.legs?.filter((l) => l.direction === "outbound") ?? [];
   const inbound = f.legs?.filter((l) => l.direction === "inbound") ?? [];
@@ -252,13 +286,16 @@ function FlightCard({
             </div>
           )}
 
-          {/* Edit button */}
-          <button
-            onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            className="w-full text-center text-[13px] text-[#0A84FF] py-1.5 rounded-[8px] bg-[#0A84FF]/10 hover:bg-[#0A84FF]/20 transition-colors"
-          >
-            Editar vuelo
-          </button>
+          {/* Edit / Delete row */}
+          <div className="flex gap-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              className="flex-1 text-center text-[13px] text-[#0A84FF] py-1.5 rounded-[8px] bg-[#0A84FF]/10 hover:bg-[#0A84FF]/20 transition-colors"
+            >
+              Editar vuelo
+            </button>
+            <DeleteButton onDelete={onDelete} />
+          </div>
         </div>
       )}
     </div>
@@ -290,12 +327,14 @@ function HotelsBlock({
   expandedId,
   onToggle,
   onEdit,
+  onDelete,
 }: {
   hotels: Hotel[];
   cities: City[];
   expandedId: string | null;
   onToggle: (id: string) => void;
   onEdit: (h: Hotel) => void;
+  onDelete: (h: Hotel) => void;
 }) {
   const sorted = [...hotels].sort((a, b) => a.check_in.localeCompare(b.check_in));
   const totalUSD = hotels.reduce((s, h) => s + (h.total_price_usd ?? 0), 0);
@@ -314,6 +353,7 @@ function HotelsBlock({
             isExpanded={expandedId === h.id}
             onToggle={() => onToggle(h.id)}
             onEdit={() => onEdit(h)}
+            onDelete={() => onDelete(h)}
           />
         ))}
       </div>
@@ -327,12 +367,14 @@ function HotelCard({
   isExpanded,
   onToggle,
   onEdit,
+  onDelete,
 }: {
   hotel: Hotel;
   city?: City;
   isExpanded: boolean;
   onToggle: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 }) {
   return (
     <div className="bg-[#1A1A1A] border border-[#333] rounded-[14px] overflow-hidden">
@@ -376,12 +418,15 @@ function HotelCard({
               )}
             </div>
           )}
-          <button
-            onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            className="w-full text-center text-[13px] text-[#FF9F0A] py-1.5 rounded-[8px] bg-[#FF9F0A]/10 hover:bg-[#FF9F0A]/20 transition-colors"
-          >
-            Editar hotel
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              className="flex-1 text-center text-[13px] text-[#FF9F0A] py-1.5 rounded-[8px] bg-[#FF9F0A]/10 hover:bg-[#FF9F0A]/20 transition-colors"
+            >
+              Editar hotel
+            </button>
+            <DeleteButton onDelete={onDelete} />
+          </div>
         </div>
       )}
     </div>
@@ -395,12 +440,14 @@ function TransportsBlock({
   expandedId,
   onToggle,
   onEdit,
+  onDelete,
   isCarRental = false,
 }: {
   transports: Transport[];
   expandedId: string | null;
   onToggle: (id: string) => void;
   onEdit: (t: Transport) => void;
+  onDelete: (t: Transport) => void;
   isCarRental?: boolean;
 }) {
   const sorted = [...transports].sort((a, b) =>
@@ -421,6 +468,7 @@ function TransportsBlock({
             isExpanded={expandedId === t.id}
             onToggle={() => onToggle(t.id)}
             onEdit={() => onEdit(t)}
+            onDelete={() => onDelete(t)}
           />
         ))}
       </div>
@@ -433,11 +481,13 @@ function TransportCard({
   isExpanded,
   onToggle,
   onEdit,
+  onDelete,
 }: {
   transport: Transport;
   isExpanded: boolean;
   onToggle: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 }) {
   const dep = fmtTime(t.departure_local_time);
   const arr = fmtTime(t.arrival_local_time);
@@ -486,12 +536,15 @@ function TransportCard({
               )}
             </div>
           )}
-          <button
-            onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            className="w-full text-center text-[13px] text-[#BF5AF2] py-1.5 rounded-[8px] bg-[#BF5AF2]/10 hover:bg-[#BF5AF2]/20 transition-colors"
-          >
-            Editar transporte
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              className="flex-1 text-center text-[13px] text-[#BF5AF2] py-1.5 rounded-[8px] bg-[#BF5AF2]/10 hover:bg-[#BF5AF2]/20 transition-colors"
+            >
+              Editar transporte
+            </button>
+            <DeleteButton onDelete={onDelete} />
+          </div>
         </div>
       )}
     </div>
@@ -505,11 +558,13 @@ function ExpensesBlock({
   expandedId,
   onToggle,
   onEdit,
+  onDelete,
 }: {
   expenses: Expense[];
   expandedId: string | null;
   onToggle: (id: string) => void;
   onEdit: (e: Expense) => void;
+  onDelete: (e: Expense) => void;
 }) {
   const sorted = [...expenses].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
   const totalUSD = expenses.reduce((s, e) => s + (e.amount_usd ?? 0), 0);
@@ -525,6 +580,7 @@ function ExpensesBlock({
             isExpanded={expandedId === e.id}
             onToggle={() => onToggle(e.id)}
             onEdit={() => onEdit(e)}
+            onDelete={() => onDelete(e)}
           />
         ))}
       </div>
@@ -537,11 +593,13 @@ function ExpenseCard({
   isExpanded,
   onToggle,
   onEdit,
+  onDelete,
 }: {
   expense: Expense;
   isExpanded: boolean;
   onToggle: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 }) {
   const emoji = EXPENSE_EMOJI[e.category] ?? "💰";
   return (
@@ -574,12 +632,15 @@ function ExpenseCard({
             <DetailField label="Monto" value={`${e.currency} ${e.amount.toLocaleString("es-AR")}`} />
             {e.amount_usd && <DetailField label="USD" value={`$${Math.round(e.amount_usd)}`} />}
           </div>
-          <button
-            onClick={(e2) => { e2.stopPropagation(); onEdit(); }}
-            className="w-full text-center text-[13px] text-[#30D158] py-1.5 rounded-[8px] bg-[#30D158]/10 hover:bg-[#30D158]/20 transition-colors"
-          >
-            Editar gasto
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={(e2) => { e2.stopPropagation(); onEdit(); }}
+              className="flex-1 text-center text-[13px] text-[#30D158] py-1.5 rounded-[8px] bg-[#30D158]/10 hover:bg-[#30D158]/20 transition-colors"
+            >
+              Editar gasto
+            </button>
+            <DeleteButton onDelete={onDelete} />
+          </div>
         </div>
       )}
     </div>
@@ -601,6 +662,7 @@ function DetailField({ label, value }: { label: string; value?: string | null })
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function ListView({ trip, cities, flights, hotels, transports, expenses = [], onChanged }: Props) {
+  const { user } = useAuth();
   const [editing, setEditing] = useState<EditTarget>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -610,6 +672,34 @@ export function ListView({ trip, cities, flights, hotels, transports, expenses =
 
   function handleSaved() {
     setEditing(null);
+    onChanged?.();
+  }
+
+  async function handleDeleteFlight(id: string) {
+    if (!user) return;
+    await deleteFlight(user.uid, trip.id, id);
+    await recalcTripAggregates(user.uid, trip.id);
+    onChanged?.();
+  }
+
+  async function handleDeleteHotel(id: string) {
+    if (!user) return;
+    await deleteHotel(user.uid, trip.id, id);
+    await recalcTripAggregates(user.uid, trip.id);
+    onChanged?.();
+  }
+
+  async function handleDeleteTransport(id: string) {
+    if (!user) return;
+    await deleteTransport(user.uid, trip.id, id);
+    await recalcTripAggregates(user.uid, trip.id);
+    onChanged?.();
+  }
+
+  async function handleDeleteExpense(id: string) {
+    if (!user) return;
+    await deleteExpense(user.uid, trip.id, id);
+    await recalcTripAggregates(user.uid, trip.id);
     onChanged?.();
   }
 
@@ -640,6 +730,7 @@ export function ListView({ trip, cities, flights, hotels, transports, expenses =
             expandedId={expandedId}
             onToggle={toggleExpand}
             onEdit={(f) => setEditing({ kind: "flight", data: f })}
+            onDelete={(f) => handleDeleteFlight(f.id)}
           />
         )}
         {hotels.length > 0 && (
@@ -649,6 +740,7 @@ export function ListView({ trip, cities, flights, hotels, transports, expenses =
             expandedId={expandedId}
             onToggle={toggleExpand}
             onEdit={(h) => setEditing({ kind: "hotel", data: h })}
+            onDelete={(h) => handleDeleteHotel(h.id)}
           />
         )}
         {regularTransports.length > 0 && (
@@ -657,6 +749,7 @@ export function ListView({ trip, cities, flights, hotels, transports, expenses =
             expandedId={expandedId}
             onToggle={toggleExpand}
             onEdit={(t) => setEditing({ kind: "transport", data: t })}
+            onDelete={(t) => handleDeleteTransport(t.id)}
           />
         )}
         {carRentals.length > 0 && (
@@ -665,6 +758,7 @@ export function ListView({ trip, cities, flights, hotels, transports, expenses =
             expandedId={expandedId}
             onToggle={toggleExpand}
             onEdit={(t) => setEditing({ kind: "transport", data: t })}
+            onDelete={(t) => handleDeleteTransport(t.id)}
             isCarRental
           />
         )}
@@ -674,6 +768,7 @@ export function ListView({ trip, cities, flights, hotels, transports, expenses =
             expandedId={expandedId}
             onToggle={toggleExpand}
             onEdit={(e) => setEditing({ kind: "expense", data: e })}
+            onDelete={(e) => handleDeleteExpense(e.id)}
           />
         )}
       </div>

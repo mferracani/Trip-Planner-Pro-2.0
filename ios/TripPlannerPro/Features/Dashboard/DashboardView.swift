@@ -615,6 +615,8 @@ private struct TripsListSection: View {
     @Bindable var vm: DashboardViewModel
     @Environment(FirestoreClient.self) private var client
 
+    @State private var tripToDelete: Trip? = nil
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -664,6 +666,29 @@ private struct TripsListSection: View {
                                 DraftConfirmButton(trip: trip, client: client)
                             }
                         }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                tripToDelete = trip
+                            } label: {
+                                Label("Eliminar", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+                .alert("¿Eliminar viaje?", isPresented: Binding(
+                    get: { tripToDelete != nil },
+                    set: { if !$0 { tripToDelete = nil } }
+                )) {
+                    Button("Eliminar", role: .destructive) {
+                        if let t = tripToDelete {
+                            Task { try? await client.deleteTrip(id: t.id ?? "") }
+                            tripToDelete = nil
+                        }
+                    }
+                    Button("Cancelar", role: .cancel) { tripToDelete = nil }
+                } message: {
+                    if let t = tripToDelete {
+                        Text("Se eliminará \"\(t.name)\" y todos sus ítems.")
                     }
                 }
             }
