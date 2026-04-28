@@ -33,11 +33,19 @@ function classifyTrip(trip: Trip): "draft" | "active" | "future" | "past" {
   return "active";
 }
 
-function getDaysUntil(dateStr: string): number {
-  const today = new Date();
+function getCountdownText(dateStr: string): string {
+  const now = new Date();
+  const today = new Date(now);
   today.setHours(0, 0, 0, 0);
   const target = new Date(dateStr + "T00:00:00");
-  return Math.ceil((target.getTime() - today.getTime()) / 86400000);
+  const diffDays = Math.ceil((target.getTime() - today.getTime()) / 86400000);
+
+  if (diffDays <= 0) return "Empieza hoy";
+  if (diffDays === 1) return "Mañana";
+  if (diffDays <= 6) return `En ${diffDays} días`;
+  if (diffDays <= 13) return `En 1 semana`;
+  if (diffDays < 60) return `En ${Math.round(diffDays / 7)} semanas`;
+  return `En ${Math.round(diffDays / 30)} meses`;
 }
 
 function getActiveDayNumber(trip: Trip): number {
@@ -300,7 +308,7 @@ function HeroTripCard({ trip, status }: { trip: Trip; status: "active" | "future
   const isActive = status === "active";
   const dayNum = isActive ? getActiveDayNumber(trip) : null;
   const totalDays = getTotalDays(trip);
-  const daysUntil = !isActive ? getDaysUntil(trip.start_date) : null;
+  const countdownText = !isActive ? getCountdownText(trip.start_date) : null;
 
   const theme = getTheme(trip.cover_url);
   const accentRaw = theme?.gradientFrom ?? "rgba(255,209,106,0.9)";
@@ -343,7 +351,7 @@ function HeroTripCard({ trip, status }: { trip: Trip; status: "active" | "future
           <p className="text-[12px] text-[#707070] leading-snug mt-0.5">
             {isActive
               ? `Día ${dayNum} de ${totalDays} · ${dateRange}`
-              : `En ${daysUntil} ${daysUntil === 1 ? "día" : "días"} · ${dateRange}`}
+              : `${countdownText} · ${dateRange}`}
           </p>
         </div>
 
