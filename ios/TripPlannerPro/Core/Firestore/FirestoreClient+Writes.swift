@@ -167,6 +167,7 @@ extension FirestoreClient {
             "total_usd": Int(total.rounded()),
             "paid_usd":  Int(paid.rounded()),
             "cities_count": c.documents.count,
+            "flights_count": f.documents.count,
             "updated_at": FieldValue.serverTimestamp()
         ])
     }

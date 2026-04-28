@@ -288,6 +288,7 @@ export async function recalcTripAggregates(uid: string, tripId: string) {
     total_usd: Math.round(total),
     paid_usd: Math.round(paid),
     cities_count: cities.length,
+    flights_count: flights.length,
   } as Partial<Trip>);
 }
 

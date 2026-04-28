@@ -11,6 +11,7 @@ export interface Trip {
   total_usd: number;
   paid_usd?: number;     // denormalized: sum of paid_amount across all items
   cities_count?: number; // denormalized from cities subcollection
+  flights_count?: number; // denormalized from flights subcollection
   created_at: Timestamp;
   updated_at: Timestamp;
 }
