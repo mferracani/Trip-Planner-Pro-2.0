@@ -668,7 +668,7 @@ function DetailField({ label, value }: { label: string; value?: string | null })
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function ListView({ trip, cities, flights, hotels, transports, expenses = [], onChanged }: Props) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [editing, setEditing] = useState<EditTarget>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -682,30 +682,34 @@ export function ListView({ trip, cities, flights, hotels, transports, expenses =
   }
 
   async function handleDeleteFlight(id: string) {
-    if (!user) return;
-    await deleteFlight(user.uid, trip.id, id);
-    await recalcTripAggregates(user.uid, trip.id);
+    const uid = ownerUid ?? user?.uid;
+    if (!uid) return;
+    await deleteFlight(uid, trip.id, id);
+    await recalcTripAggregates(uid, trip.id);
     onChanged?.();
   }
 
   async function handleDeleteHotel(id: string) {
-    if (!user) return;
-    await deleteHotel(user.uid, trip.id, id);
-    await recalcTripAggregates(user.uid, trip.id);
+    const uid = ownerUid ?? user?.uid;
+    if (!uid) return;
+    await deleteHotel(uid, trip.id, id);
+    await recalcTripAggregates(uid, trip.id);
     onChanged?.();
   }
 
   async function handleDeleteTransport(id: string) {
-    if (!user) return;
-    await deleteTransport(user.uid, trip.id, id);
-    await recalcTripAggregates(user.uid, trip.id);
+    const uid = ownerUid ?? user?.uid;
+    if (!uid) return;
+    await deleteTransport(uid, trip.id, id);
+    await recalcTripAggregates(uid, trip.id);
     onChanged?.();
   }
 
   async function handleDeleteExpense(id: string) {
-    if (!user) return;
-    await deleteExpense(user.uid, trip.id, id);
-    await recalcTripAggregates(user.uid, trip.id);
+    const uid = ownerUid ?? user?.uid;
+    if (!uid) return;
+    await deleteExpense(uid, trip.id, id);
+    await recalcTripAggregates(uid, trip.id);
     onChanged?.();
   }
 

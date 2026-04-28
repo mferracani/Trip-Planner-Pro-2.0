@@ -186,7 +186,7 @@ interface SelectionStats {
 }
 
 export function CalendarView({ trip, cities, flights, hotels, transports, onChanged }: Props) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [filterCity, setFilterCity] = useState<City | null>(null);
@@ -199,14 +199,15 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
   // Global city settings — realtime listener so Catalog changes propagate instantly
   const [citySettingsMap, setCitySettingsMap] = useState<Record<string, { color?: string; country_code?: string }>>({});
   useEffect(() => {
-    if (!user) return;
-    const unsub = onSnapshot(citySettingsRef(user.uid), (snap) => {
+    const uid = ownerUid ?? user?.uid;
+    if (!uid) return;
+    const unsub = onSnapshot(citySettingsRef(uid), (snap) => {
       const map: Record<string, { color?: string; country_code?: string }> = {};
       snap.docs.forEach((d) => { map[d.id] = d.data() as { color?: string; country_code?: string }; });
       setCitySettingsMap(map);
     });
     return unsub;
-  }, [user]);
+  }, [ownerUid, user?.uid]);
 
   // Apply global settings on top of per-trip city data
   const enhancedCities = useMemo(
@@ -319,14 +320,15 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
   }, []);
 
   async function adjustDate(edge: "start" | "end", delta: number) {
-    if (!user) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid) return;
     const base = edge === "start" ? trip.start_date : trip.end_date;
     const d = new Date(base + "T00:00:00");
     d.setDate(d.getDate() + delta);
     const newDate = d.toISOString().split("T")[0];
     if (edge === "start" && newDate >= trip.end_date) return;
     if (edge === "end" && newDate <= trip.start_date) return;
-    await updateTrip(user.uid, trip.id, edge === "start" ? { start_date: newDate } : { end_date: newDate });
+    await updateTrip(uid, trip.id, edge === "start" ? { start_date: newDate } : { end_date: newDate });
     onChanged();
   }
 

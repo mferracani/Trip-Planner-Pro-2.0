@@ -25,7 +25,7 @@ const CATEGORIES: { value: ExpenseCategory; label: string }[] = [
 ];
 
 export function ExpenseForm({ tripId, existing, onClose, onSaved }: Props) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [title, setTitle] = useState(existing?.title ?? "");
   const [amount, setAmount] = useState<number | null>(existing?.amount ?? null);
   const [currency, setCurrency] = useState(existing?.currency ?? "USD");
@@ -39,7 +39,8 @@ export function ExpenseForm({ tripId, existing, onClose, onSaved }: Props) {
   const canSubmit = !!(title.trim() && amount != null && date);
 
   async function handleSubmit() {
-    if (!user || !canSubmit) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !canSubmit) return;
     setSaving(true);
     setError(null);
     try {
@@ -54,9 +55,9 @@ export function ExpenseForm({ tripId, existing, onClose, onSaved }: Props) {
         notes: notes.trim() || undefined,
       };
       if (existing) {
-        await updateExpense(user.uid, tripId, existing.id, data);
+        await updateExpense(uid, tripId, existing.id, data);
       } else {
-        await createExpense(user.uid, tripId, data);
+        await createExpense(uid, tripId, data);
       }
       onSaved();
     } catch (err) {
@@ -67,11 +68,12 @@ export function ExpenseForm({ tripId, existing, onClose, onSaved }: Props) {
   }
 
   async function handleDelete() {
-    if (!user || !existing) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !existing) return;
     setSaving(true);
     setError(null);
     try {
-      await deleteExpense(user.uid, tripId, existing.id);
+      await deleteExpense(uid, tripId, existing.id);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

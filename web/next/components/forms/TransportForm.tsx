@@ -28,7 +28,7 @@ const TRANSPORT_TYPES: { value: Transport["type"]; label: string }[] = [
 ];
 
 export function TransportForm({ tripId, existing, initialDate, onClose, onSaved }: Props) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const defaultTz = guessTimezone();
 
   const [type, setType] = useState<Transport["type"]>(existing?.type ?? "train");
@@ -52,7 +52,8 @@ export function TransportForm({ tripId, existing, initialDate, onClose, onSaved 
   const canSubmit = !!(origin.trim() && destination.trim() && departureLocal);
 
   async function handleSubmit() {
-    if (!user || !canSubmit) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !canSubmit) return;
     setSaving(true);
     setError(null);
     try {
@@ -79,9 +80,9 @@ export function TransportForm({ tripId, existing, initialDate, onClose, onSaved 
         paid_amount: paidAmount ?? undefined,
       };
       if (existing) {
-        await updateTransport(user.uid, tripId, existing.id, data);
+        await updateTransport(uid, tripId, existing.id, data);
       } else {
-        await createTransport(user.uid, tripId, data);
+        await createTransport(uid, tripId, data);
       }
       onSaved();
     } catch (err) {
@@ -92,11 +93,12 @@ export function TransportForm({ tripId, existing, initialDate, onClose, onSaved 
   }
 
   async function handleDelete() {
-    if (!user || !existing) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !existing) return;
     setSaving(true);
     setError(null);
     try {
-      await deleteTransport(user.uid, tripId, existing.id);
+      await deleteTransport(uid, tripId, existing.id);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

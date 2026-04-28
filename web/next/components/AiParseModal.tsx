@@ -34,7 +34,7 @@ const PARSE_MESSAGES = [
 ];
 
 export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [mode, setMode] = useState<Mode>("chat");
   const [text, setText] = useState("");
   const [parsing, setParsing] = useState(false);
@@ -59,7 +59,8 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
   }, [parsing]);
 
   async function handleParse() {
-    if (!user) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!user || !uid) return;
     if (mode === "chat" && !text.trim()) return;
     if (mode === "file" && !selectedFile) return;
     setParsing(true);
@@ -72,7 +73,7 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
 
       if (mode === "file" && selectedFile) {
         // Upload to Firebase Storage first
-        const path = `users/${user.uid}/parse_attachments/${Date.now()}_${selectedFile.name}`;
+        const path = `users/${uid}/parse_attachments/${Date.now()}_${selectedFile.name}`;
         const fileRef2 = storageRef(getFirebaseStorage(), path);
         await uploadBytes(fileRef2, selectedFile, { contentType: selectedFile.type });
         body = { tripId, inputType: "attachment", input: "", attachmentRef: path, provider: "gemini" };
@@ -104,7 +105,8 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
   }
 
   async function handleConfirm() {
-    if (!parsedItems || !user) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!parsedItems || !uid) return;
     setConfirming(true);
     const toTs = (v: unknown): Timestamp => {
       if (!v || typeof v !== "object") return Timestamp.now();
@@ -151,7 +153,7 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
           const f = item as ParsedFlight;
           const depUtc = toTs(f.departure_utc);
           const arrUtc = toTs(f.arrival_utc);
-          await createFlight(user.uid, tripId, {
+          await createFlight(uid, tripId, {
             trip_id: tripId,
             airline: f.airline ?? "",
             flight_number: f.flight_number ?? "",
@@ -168,8 +170,8 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
           });
         } else if (item.type === "hotel") {
           const h = item as ParsedHotel;
-          const cityId = h.city ? await ensureCity(user.uid, tripId, h.city) : "";
-          await createHotel(user.uid, tripId, {
+          const cityId = h.city ? await ensureCity(uid, tripId, h.city) : "";
+          await createHotel(uid, tripId, {
             trip_id: tripId,
             city_id: cityId,
             name: h.name ?? "",
@@ -180,7 +182,7 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
         } else if (item.type === "transport") {
           const t = item as ParsedTransport;
           const depUtc = toTs(t.departure_utc);
-          await createTransport(user.uid, tripId, {
+          await createTransport(uid, tripId, {
             trip_id: tripId,
             type: (t.mode as "train" | "bus" | "ferry" | "car" | "car_rental" | "other") ?? "other",
             origin: t.origin ?? "",

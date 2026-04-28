@@ -178,6 +178,22 @@ final class FirestoreClient {
         }
     }
 
+    // MARK: - Household
+
+    /// Fetches households/main and returns the owner UID (memberUids[0]).
+    /// Falls back to currentUID if the doc doesn't exist or the user isn't a member.
+    func resolveOwnerUID(_ currentUID: String) async -> String {
+        let ref = db.collection("households").document("main")
+        guard let snap = try? await ref.getDocument(),
+              snap.exists,
+              let members = snap.data()?["memberUids"] as? [String],
+              !members.isEmpty,
+              members.contains(currentUID) else {
+            return currentUID
+        }
+        return members[0]
+    }
+
     // MARK: - Helpers
 
     private func streamCollection<T: Codable & Sendable>(_ ref: CollectionReference) -> AsyncThrowingStream<[T], Error> {

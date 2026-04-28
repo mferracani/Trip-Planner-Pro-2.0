@@ -17,7 +17,7 @@ interface Props {
 }
 
 export function HotelForm({ tripId, cities, existing, initialDate, onClose, onSaved }: Props) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [cityId, setCityId] = useState(existing?.city_id ?? "");
   const [name, setName] = useState(existing?.name ?? "");
   const [brand, setBrand] = useState(existing?.brand ?? "");
@@ -35,7 +35,8 @@ export function HotelForm({ tripId, cities, existing, initialDate, onClose, onSa
   const canSubmit = !!(name.trim() && checkIn && checkOut);
 
   async function handleSubmit() {
-    if (!user || !canSubmit) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !canSubmit) return;
     setSaving(true);
     setError(null);
     try {
@@ -60,9 +61,9 @@ export function HotelForm({ tripId, cities, existing, initialDate, onClose, onSa
         paid_amount: paidAmount ?? undefined,
       };
       if (existing) {
-        await updateHotel(user.uid, tripId, existing.id, data);
+        await updateHotel(uid, tripId, existing.id, data);
       } else {
-        await createHotel(user.uid, tripId, data);
+        await createHotel(uid, tripId, data);
       }
       onSaved();
     } catch (err) {
@@ -73,11 +74,12 @@ export function HotelForm({ tripId, cities, existing, initialDate, onClose, onSa
   }
 
   async function handleDelete() {
-    if (!user || !existing) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !existing) return;
     setSaving(true);
     setError(null);
     try {
-      await deleteHotel(user.uid, tripId, existing.id);
+      await deleteHotel(uid, tripId, existing.id);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

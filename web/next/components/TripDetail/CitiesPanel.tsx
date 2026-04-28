@@ -91,7 +91,7 @@ function CityRow({
   tripId: string;
   onChanged: () => void;
 }) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -99,10 +99,11 @@ function CityRow({
   const resolvedColor = cityColor(city);
 
   async function saveField(data: Partial<Omit<City, "id">>) {
-    if (!user) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid) return;
     setSaving(true);
     try {
-      await updateCity(user.uid, tripId, city.id, data);
+      await updateCity(uid, tripId, city.id, data);
       onChanged();
     } finally {
       setSaving(false);

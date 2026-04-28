@@ -664,7 +664,7 @@ function LegSection({
 // ─── FlightForm (main) ───────────────────────────────────────────────────────
 
 export function FlightForm({ tripId, existing, initialDate: _initialDate, onClose, onSaved }: Props) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
 
   const [legs, setLegs] = useState<FlightLeg[]>(existing?.legs ?? []);
   const [expanded, setExpanded] = useState<ExpandedState>(null);
@@ -694,12 +694,13 @@ export function FlightForm({ tripId, existing, initialDate: _initialDate, onClos
   }
 
   async function handleDeleteFlight() {
-    if (!user || !existing) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !existing) return;
     setSaving(true);
     setError(null);
     try {
-      await deleteFlight(user.uid, tripId, existing.id);
-      await recalcTripAggregates(user.uid, tripId);
+      await deleteFlight(uid, tripId, existing.id);
+      await recalcTripAggregates(uid, tripId);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -709,7 +710,8 @@ export function FlightForm({ tripId, existing, initialDate: _initialDate, onClos
   }
 
   async function handleSubmit() {
-    if (!user || !canSubmit) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !canSubmit) return;
     setSaving(true);
     setError(null);
     try {
@@ -760,9 +762,9 @@ export function FlightForm({ tripId, existing, initialDate: _initialDate, onClos
       };
 
       if (existing) {
-        await updateFlight(user.uid, tripId, existing.id, data);
+        await updateFlight(uid, tripId, existing.id, data);
       } else {
-        await createFlight(user.uid, tripId, data);
+        await createFlight(uid, tripId, data);
       }
       onSaved();
     } catch (err) {

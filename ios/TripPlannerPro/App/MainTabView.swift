@@ -14,10 +14,24 @@ struct MainTabView: View {
     @State private var tabBarVisible: Bool = true
     @State private var showCreateTrip = false
     @State private var fabContext = FABContext()
+    @State private var resolvingHousehold = true
 
     private var cacheManager: CacheManager { CacheManager(modelContext: modelContext) }
 
     var body: some View {
+        if resolvingHousehold {
+            ZStack {
+                Tokens.Color.bgPrimary.ignoresSafeArea()
+                ProgressView()
+                    .tint(Tokens.Color.accentBlue)
+            }
+            .preferredColorScheme(.dark)
+            .task {
+                let resolved = await firestoreClient.resolveOwnerUID(user.uid)
+                HouseholdConfig.ownerUID = resolved
+                resolvingHousehold = false
+            }
+        } else {
         // Using .safeAreaInset for the tab bar so the ScrollViews inside each
         // tab know where their bottom edge is — avoids the ZStack-overlay
         // issue where the tab bar eats scroll gestures in its hit area.
@@ -68,9 +82,6 @@ struct MainTabView: View {
                 tabBarVisible = visible
             }
         }
-        .onAppear {
-            HouseholdConfig.ownerUID = user.uid
-        }
         .onChange(of: pendingParseText) { _, newText in
             guard newText != nil else { return }
             showTripPickerForParse = true
@@ -89,6 +100,7 @@ struct MainTabView: View {
             }
             .environment(firestoreClient)
         }
+        } // end else (resolvingHousehold)
     }
 }
 

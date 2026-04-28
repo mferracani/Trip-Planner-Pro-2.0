@@ -12,7 +12,7 @@ interface Props {
 type Step = "choose" | "confirmed" | "draft";
 
 export function CreateTripModal({ onClose, onCreated }: Props) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [step, setStep] = useState<Step>("choose");
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -21,7 +21,8 @@ export function CreateTripModal({ onClose, onCreated }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   async function handleCreate(isDraft: boolean) {
-    if (!user || !name.trim() || !startDate || !endDate) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !name.trim() || !startDate || !endDate) return;
     if (endDate < startDate) {
       setError("La fecha de fin no puede ser antes del inicio.");
       return;
@@ -29,7 +30,7 @@ export function CreateTripModal({ onClose, onCreated }: Props) {
     setSaving(true);
     setError(null);
     try {
-      await createTrip(user.uid, {
+      await createTrip(uid, {
         name: name.trim(),
         start_date: startDate,
         end_date: endDate,

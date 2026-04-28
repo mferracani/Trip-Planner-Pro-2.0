@@ -27,7 +27,7 @@ interface Props {
 }
 
 export function TripDetailPage({ tripId }: Props) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, ownerUid, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("calendar");
@@ -35,39 +35,39 @@ export function TripDetailPage({ tripId }: Props) {
   const [editTripOpen, setEditTripOpen] = useState(false);
 
   const { data: trip, isLoading: loadingTrip, refetch: refetchTrip } = useQuery({
-    queryKey: ["trip", user?.uid, tripId],
-    queryFn: () => getTrip(user!.uid, tripId),
-    enabled: !!user,
+    queryKey: ["trip", ownerUid, tripId],
+    queryFn: () => getTrip(ownerUid!, tripId),
+    enabled: !!ownerUid,
   });
 
   const { data: cities = [], refetch: refetchCities } = useQuery({
-    queryKey: ["cities", user?.uid, tripId],
-    queryFn: () => getCities(user!.uid, tripId),
-    enabled: !!user,
+    queryKey: ["cities", ownerUid, tripId],
+    queryFn: () => getCities(ownerUid!, tripId),
+    enabled: !!ownerUid,
   });
 
   const { data: flights = [], refetch: refetchFlights } = useQuery({
-    queryKey: ["flights", user?.uid, tripId],
-    queryFn: () => getFlights(user!.uid, tripId),
-    enabled: !!user,
+    queryKey: ["flights", ownerUid, tripId],
+    queryFn: () => getFlights(ownerUid!, tripId),
+    enabled: !!ownerUid,
   });
 
   const { data: hotels = [], refetch: refetchHotels } = useQuery({
-    queryKey: ["hotels", user?.uid, tripId],
-    queryFn: () => getHotels(user!.uid, tripId),
-    enabled: !!user,
+    queryKey: ["hotels", ownerUid, tripId],
+    queryFn: () => getHotels(ownerUid!, tripId),
+    enabled: !!ownerUid,
   });
 
   const { data: transports = [], refetch: refetchTransports } = useQuery({
-    queryKey: ["transports", user?.uid, tripId],
-    queryFn: () => getTransports(user!.uid, tripId),
-    enabled: !!user,
+    queryKey: ["transports", ownerUid, tripId],
+    queryFn: () => getTransports(ownerUid!, tripId),
+    enabled: !!ownerUid,
   });
 
   const { data: expenses = [], refetch: refetchExpenses } = useQuery({
-    queryKey: ["expenses", user?.uid, tripId],
-    queryFn: () => getExpenses(user!.uid, tripId),
-    enabled: !!user,
+    queryKey: ["expenses", ownerUid, tripId],
+    queryFn: () => getExpenses(ownerUid!, tripId),
+    enabled: !!ownerUid,
   });
 
   const { data: fxRates = {} } = useQuery({
@@ -82,11 +82,11 @@ export function TripDetailPage({ tripId }: Props) {
     refetchHotels();
     refetchTransports();
     refetchExpenses();
-    if (user) {
+    if (ownerUid) {
       try {
-        await recalcTripAggregates(user.uid, tripId);
+        await recalcTripAggregates(ownerUid, tripId);
         refetchTrip();
-        queryClient.invalidateQueries({ queryKey: ["trips", user.uid] });
+        queryClient.invalidateQueries({ queryKey: ["trips", ownerUid] });
       } catch (e) {
         console.error("recalc failed", e);
       }
@@ -202,7 +202,7 @@ export function TripDetailPage({ tripId }: Props) {
         {trip.status === "draft" ? (
           <DraftDatePicker
             trip={trip}
-            userId={user!.uid}
+            userId={ownerUid ?? user?.uid ?? ""}
             onDatesChanged={refetchTrip}
             onConfirmed={() => router.refresh()}
           />
@@ -334,7 +334,7 @@ export function TripDetailPage({ tripId }: Props) {
           {tab === "costos" && (
             <CostView
               tripId={tripId}
-              userId={user!.uid}
+              userId={ownerUid ?? user?.uid ?? ""}
               flights={flights}
               hotels={hotels}
               transports={transports}
@@ -364,7 +364,7 @@ export function TripDetailPage({ tripId }: Props) {
           onSaved={() => {
             setEditTripOpen(false);
             refetchTrip();
-            queryClient.invalidateQueries({ queryKey: ["trips", user?.uid] });
+            queryClient.invalidateQueries({ queryKey: ["trips", ownerUid] });
           }}
         />
       )}

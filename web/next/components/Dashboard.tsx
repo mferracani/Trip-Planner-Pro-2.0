@@ -92,7 +92,7 @@ function DraftConfirmButton({
 }
 
 export function Dashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, ownerUid, loading: authLoading } = useAuth();
   const [filter, setFilter] = useState<Filter>("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [loadingDemo, setLoadingDemo] = useState(false);
@@ -103,19 +103,19 @@ export function Dashboard() {
   }, []);
 
   const { data: trips = [], isLoading, refetch } = useQuery({
-    queryKey: ["trips", user?.uid],
-    queryFn: () => getTrips(user!.uid),
-    enabled: !!user,
+    queryKey: ["trips", ownerUid],
+    queryFn: () => getTrips(ownerUid!),
+    enabled: !!ownerUid,
   });
 
   const displayName = user?.displayName || user?.email || "Mati";
   const { line1, line2 } = getContextualGreeting(displayName);
 
   async function handleLoadDemo() {
-    if (!user || loadingDemo) return;
+    if (!ownerUid || loadingDemo) return;
     setLoadingDemo(true);
     try {
-      await createDemoTrip(user.uid);
+      await createDemoTrip(ownerUid);
       await refetch();
     } finally {
       setLoadingDemo(false);
@@ -279,7 +279,7 @@ export function Dashboard() {
                     {tripStatus === "draft" && (
                       <DraftConfirmButton
                         tripId={trip.id}
-                        userId={user!.uid}
+                        userId={ownerUid ?? user?.uid ?? ""}
                         onConfirmed={() => refetch()}
                       />
                     )}

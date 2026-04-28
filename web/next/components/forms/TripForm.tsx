@@ -106,7 +106,7 @@ function ThemeSection({
 }
 
 export function TripForm({ trip, onClose, onSaved }: Props) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [name, setName] = useState(trip.name);
@@ -149,11 +149,12 @@ export function TripForm({ trip, onClose, onSaved }: Props) {
   const canSubmit = !!(name.trim() && startDate && endDate && endDate >= startDate);
 
   async function handleSubmit() {
-    if (!user || !canSubmit) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !canSubmit) return;
     setSaving(true);
     setError(null);
     try {
-      await updateTrip(user.uid, trip.id, {
+      await updateTrip(uid, trip.id, {
         name: name.trim(),
         start_date: startDate,
         end_date: endDate,
@@ -168,12 +169,13 @@ export function TripForm({ trip, onClose, onSaved }: Props) {
   }
 
   async function handleDelete() {
-    if (!user) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid) return;
     setSaving(true);
     setError(null);
     try {
-      await deleteTrip(user.uid, trip.id);
-      queryClient.invalidateQueries({ queryKey: ["trips", user.uid] });
+      await deleteTrip(uid, trip.id);
+      queryClient.invalidateQueries({ queryKey: ["trips", uid] });
       router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

@@ -35,7 +35,7 @@ function normalizeCity(name: string): string {
 
 
 export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, initialDay, initialDays, onClose, onSaved }: Props) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [name, setName] = useState(existing?.name ?? "");
   const [lat, setLat] = useState<number | null>(existing?.lat ?? null);
   const [lng, setLng] = useState<number | null>(existing?.lng ?? null);
@@ -51,8 +51,9 @@ export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, ini
   const [catalogCities, setCatalogCities] = useState<CitySetting[]>([]);
 
   useEffect(() => {
-    if (!user || existing) return;
-    Promise.all([getCitySettings(user.uid), getAllCities(user.uid)]).then(
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || existing) return;
+    Promise.all([getCitySettings(uid), getAllCities(uid)]).then(
       ([settings, tripCities]) => {
         const seen = new Map(settings.map((s) => [s.normalized_name, s]));
         const merged: CitySetting[] = [...settings];
@@ -69,7 +70,7 @@ export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, ini
     ).catch(() => {
       // Error silencioso — no mostrar sugerencias si falla la query
     });
-  }, [user, existing]);
+  }, [ownerUid, user?.uid, existing]);
 
   function pickCatalogCity(cs: CitySetting) {
     setName(cs.name);
@@ -81,7 +82,8 @@ export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, ini
   }
 
   async function handleSubmit() {
-    if (!user || !name.trim()) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !name.trim()) return;
     setSaving(true);
     setError(null);
     try {
@@ -95,12 +97,12 @@ export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, ini
         days: [...days].sort(),
       };
       if (existing) {
-        await updateCity(user.uid, tripId, existing.id, data);
+        await updateCity(uid, tripId, existing.id, data);
       } else {
-        await createCity(user.uid, tripId, data);
+        await createCity(uid, tripId, data);
       }
       // Sync color to global city_settings — all trips show the same color
-      await upsertCitySetting(user.uid, normalizeCity(name.trim()), {
+      await upsertCitySetting(uid, normalizeCity(name.trim()), {
         name: name.trim(),
         color,
       });
@@ -113,11 +115,12 @@ export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, ini
   }
 
   async function handleDelete() {
-    if (!user || !existing) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !existing) return;
     setSaving(true);
     setError(null);
     try {
-      await deleteCity(user.uid, tripId, existing.id);
+      await deleteCity(uid, tripId, existing.id);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

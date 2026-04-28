@@ -54,7 +54,7 @@ function nightsBetween(a?: string, b?: string): number {
 // ─── page ────────────────────────────────────────────────────────────────────
 
 export function CatalogPage() {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [tab, setTab] = useState<Tab>("flights");
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -86,9 +86,9 @@ export function CatalogPage() {
           <TabBtn active={tab === "cities"} onClick={() => setTab("cities")} icon={<Globe size={14} />} label="Ciudades" />
         </div>
 
-        {user && tab === "flights" && <FlightsList uid={user.uid} />}
-        {user && tab === "hotels" && <HotelsList uid={user.uid} />}
-        {user && tab === "transports" && <TransportsList uid={user.uid} />}
+        {ownerUid && tab === "flights" && <FlightsList uid={ownerUid} />}
+        {ownerUid && tab === "hotels" && <HotelsList uid={ownerUid} />}
+        {ownerUid && tab === "transports" && <TransportsList uid={ownerUid} />}
         {tab === "cities" && <CitiesCatalog />}
       </div>
 

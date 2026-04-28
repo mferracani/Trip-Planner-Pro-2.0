@@ -274,7 +274,7 @@ function nightsBetween(a: string, b: string): number {
 }
 
 export function ManualHotelForm({ tripId, onCreated, onBack }: { tripId: string; onCreated: () => void; onBack: () => void }) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [cities, setCities] = useState<City[]>([]);
 
   const [name, setName] = useState("");
@@ -293,8 +293,9 @@ export function ManualHotelForm({ tripId, onCreated, onBack }: { tripId: string;
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) getCities(user.uid, tripId).then(setCities);
-  }, [user, tripId]);
+    const uid = ownerUid ?? user?.uid;
+    if (uid) getCities(uid, tripId).then(setCities);
+  }, [ownerUid, user?.uid, tripId]);
 
   const nights = nightsBetween(checkIn, checkOut);
 
@@ -339,7 +340,8 @@ export function ManualHotelForm({ tripId, onCreated, onBack }: { tripId: string;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !canSubmit) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !canSubmit) return;
     setSaving(true);
     setErr(null);
     try {
@@ -358,7 +360,7 @@ export function ManualHotelForm({ tripId, onCreated, onBack }: { tripId: string;
         room_type: roomType.trim() || undefined,
       };
       if (address.trim()) (data as unknown as { address: string }).address = address.trim();
-      await createHotel(user.uid, tripId, data);
+      await createHotel(uid, tripId, data);
       onCreated();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -452,7 +454,7 @@ const TRANSPORT_LABELS: Record<TransportMode, { label: string; color: string; pl
 };
 
 export function ManualTransportForm({ tripId, mode, onCreated, onBack }: { tripId: string; mode: TransportMode; onCreated: () => void; onBack: () => void }) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const defaultTz = guessTimezone();
   const meta = TRANSPORT_LABELS[mode];
 
@@ -481,7 +483,8 @@ export function ManualTransportForm({ tripId, mode, onCreated, onBack }: { tripI
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !canSubmit) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !canSubmit) return;
     setSaving(true);
     setErr(null);
     try {
@@ -516,7 +519,7 @@ export function ManualTransportForm({ tripId, mode, onCreated, onBack }: { tripI
         paid_amount: paid ? Number(paid) : undefined,
       };
       if (notes) (data as unknown as { notes?: string }).notes = notes;
-      await createTransport(user.uid, tripId, data);
+      await createTransport(uid, tripId, data);
       onCreated();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -608,7 +611,7 @@ export function ManualTransportForm({ tripId, mode, onCreated, onBack }: { tripI
 // ─── City form ───────────────────────────────────────────────────────────────
 
 export function ManualCityForm({ tripId, onCreated, onBack }: { tripId: string; onCreated: () => void; onBack: () => void }) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [name, setName] = useState("");
   const [country, setCountry] = useState("");
   const [lat, setLat] = useState("");
@@ -622,11 +625,12 @@ export function ManualCityForm({ tripId, onCreated, onBack }: { tripId: string; 
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !canSubmit) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !canSubmit) return;
     setSaving(true);
     setErr(null);
     try {
-      await createCity(user.uid, tripId, {
+      await createCity(uid, tripId, {
         trip_id: tripId,
         name: name.trim(),
         lat: lat ? Number(lat) : 0,
