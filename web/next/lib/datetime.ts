@@ -33,8 +33,23 @@ export function localToUtcTimestamp(localTime: string, timezone: string): Timest
   return Timestamp.fromDate(dt.toUTC().toJSDate());
 }
 
-export function minutesBetween(a: Timestamp, b: Timestamp): number {
-  const ms = b.toMillis() - a.toMillis();
+// Firestore timestamps inside array fields can come back as plain {seconds, nanoseconds}
+// objects instead of proper Timestamp instances. This helper normalizes either form.
+export function normalizeTimestamp(t: unknown): Timestamp | null {
+  if (!t || typeof t !== "object") return null;
+  if (typeof (t as Timestamp).toMillis === "function") return t as Timestamp;
+  const obj = t as Record<string, unknown>;
+  const s = (obj.seconds ?? obj._seconds) as number | undefined;
+  const ns = (obj.nanoseconds ?? obj._nanoseconds) as number | undefined;
+  if (typeof s === "number") return new Timestamp(s, ns ?? 0);
+  return null;
+}
+
+export function minutesBetween(a: unknown, b: unknown): number {
+  const ta = normalizeTimestamp(a);
+  const tb = normalizeTimestamp(b);
+  if (!ta || !tb) return 0;
+  const ms = tb.toMillis() - ta.toMillis();
   return Math.max(0, Math.round(ms / 60000));
 }
 

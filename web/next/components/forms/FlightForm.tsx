@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { createFlight, updateFlight, deleteFlight, recalcTripAggregates } from "@/lib/firestore";
 import type { Flight, FlightLeg } from "@/lib/types";
 import { Timestamp } from "firebase/firestore";
-import { COMMON_TIMEZONES, localToUtcTimestamp, minutesBetween, guessTimezone } from "@/lib/datetime";
+import { COMMON_TIMEZONES, localToUtcTimestamp, minutesBetween, normalizeTimestamp, guessTimezone } from "@/lib/datetime";
 import { FormSheet } from "./FormSheet";
 import { Field, TextInput, NumberInput, SelectInput } from "./fields";
 
@@ -719,7 +719,17 @@ export function FlightForm({ tripId, existing, initialDate: _initialDate, onClos
 
       if (!firstLeg || !lastLeg) throw new Error("Agregá al menos un tramo");
 
-      const totalDuration = minutesBetween(firstLeg.departure_utc, lastLeg.arrival_utc);
+      // Normalize legs — Firestore can return nested array timestamps as plain
+      // {seconds, nanoseconds} objects instead of proper Timestamp instances.
+      const normalizedLegs = legs.map((l) => ({
+        ...l,
+        departure_utc: normalizeTimestamp(l.departure_utc) ?? l.departure_utc,
+        arrival_utc: normalizeTimestamp(l.arrival_utc) ?? l.arrival_utc,
+      }));
+      const normFirst = normalizedLegs.find((l) => l.direction === "outbound") ?? normalizedLegs[0];
+      const normLast = [...normalizedLegs].reverse().find((l) => l.direction === "outbound") ?? normalizedLegs[normalizedLegs.length - 1];
+
+      const totalDuration = minutesBetween(normFirst.departure_utc, normLast.arrival_utc);
 
       // Legacy mono-leg summary fields — derive from legs array
       const summaryAirline = firstLeg.airline;
@@ -734,10 +744,10 @@ export function FlightForm({ tripId, existing, initialDate: _initialDate, onClos
         destination_iata: lastLeg.destination_iata,
         departure_local_time: firstLeg.departure_local_time,
         departure_timezone: firstLeg.departure_timezone,
-        departure_utc: firstLeg.departure_utc,
+        departure_utc: normFirst.departure_utc,
         arrival_local_time: lastLeg.arrival_local_time,
         arrival_timezone: lastLeg.arrival_timezone,
-        arrival_utc: lastLeg.arrival_utc,
+        arrival_utc: normLast.arrival_utc,
         duration_minutes: totalDuration,
         // optional shared fields
         booking_ref: bookingRef.trim() || undefined,
@@ -745,8 +755,8 @@ export function FlightForm({ tripId, existing, initialDate: _initialDate, onClos
         currency: price != null ? currency : undefined,
         price_usd: priceUsd ?? undefined,
         paid_amount: paidAmount ?? undefined,
-        // multi-leg array
-        legs,
+        // multi-leg array (with normalized timestamps)
+        legs: normalizedLegs,
       };
 
       if (existing) {
