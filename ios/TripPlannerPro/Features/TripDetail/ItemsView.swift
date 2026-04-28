@@ -421,7 +421,7 @@ private struct ExpensesBlock: View {
     let onTap: (Expense) -> Void
 
     private var sorted: [Expense] {
-        expenses.sorted { $0.date > $1.date }
+        expenses.sorted { $0.date < $1.date }
     }
 
     private var totalUSD: Double {

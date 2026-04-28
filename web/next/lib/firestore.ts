@@ -110,9 +110,10 @@ export async function deleteCity(uid: string, tripId: string, id: string) {
 
 // Flights
 export async function getFlights(uid: string, tripId: string): Promise<Flight[]> {
-  const q = query(flightsRef(uid, tripId), orderBy("departure_utc"));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Flight));
+  const snap = await getDocs(flightsRef(uid, tripId));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() } as Flight))
+    .sort((a, b) => (a.departure_local_time ?? "").localeCompare(b.departure_local_time ?? ""));
 }
 
 export async function createFlight(uid: string, tripId: string, data: Omit<Flight, "id">) {
@@ -150,9 +151,10 @@ export async function deleteHotel(uid: string, tripId: string, id: string) {
 
 // Transports
 export async function getTransports(uid: string, tripId: string): Promise<Transport[]> {
-  const q = query(transportsRef(uid, tripId), orderBy("departure_utc"));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Transport));
+  const snap = await getDocs(transportsRef(uid, tripId));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() } as Transport))
+    .sort((a, b) => (a.departure_local_time ?? "").localeCompare(b.departure_local_time ?? ""));
 }
 
 export async function createTransport(uid: string, tripId: string, data: Omit<Transport, "id">) {
@@ -294,9 +296,10 @@ export async function recalcTripAggregates(uid: string, tripId: string) {
 
 // Expenses
 export async function getExpenses(uid: string, tripId: string): Promise<Expense[]> {
-  const q = query(expensesRef(uid, tripId), orderBy("date", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
+  const snap = await getDocs(expensesRef(uid, tripId));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() } as Expense))
+    .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
 }
 
 export async function createExpense(uid: string, tripId: string, data: Omit<Expense, "id">) {

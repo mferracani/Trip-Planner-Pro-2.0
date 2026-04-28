@@ -777,7 +777,7 @@ private struct ExpensesBlock: View {
     @State private var expandedId: String?
 
     private var sorted: [Expense] {
-        expenses.sorted { $0.date > $1.date }
+        expenses.sorted { $0.date < $1.date }
     }
 
     private var totalUSD: Double {

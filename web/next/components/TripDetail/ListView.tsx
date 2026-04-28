@@ -566,7 +566,7 @@ function ExpensesBlock({
   onEdit: (e: Expense) => void;
   onDelete: (e: Expense) => void;
 }) {
-  const sorted = [...expenses].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  const sorted = [...expenses].sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
   const totalUSD = expenses.reduce((s, e) => s + (e.amount_usd ?? 0), 0);
 
   return (
