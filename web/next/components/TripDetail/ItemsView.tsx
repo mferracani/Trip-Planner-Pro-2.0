@@ -6,6 +6,7 @@ import { CityForm } from "../forms/CityForm";
 import { FlightForm } from "../forms/FlightForm";
 import { HotelForm } from "../forms/HotelForm";
 import { TransportForm } from "../forms/TransportForm";
+import { FlightStatusBadge } from "../FlightStatusBadge";
 
 type SubTab = "flights" | "hotels" | "transports" | "cities";
 
@@ -218,9 +219,12 @@ function FlightRow({ flight }: { flight: Flight }) {
     <>
       <div className="w-10 h-10 rounded-full bg-[#0A84FF]/15 flex items-center justify-center text-xl flex-shrink-0">✈️</div>
       <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-semibold text-white truncate">
-          {flight.airline} {flight.flight_number} · {flight.origin_iata}→{flight.destination_iata}
-        </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-[15px] font-semibold text-white truncate">
+            {flight.airline} {flight.flight_number} · {flight.origin_iata}→{flight.destination_iata}
+          </p>
+          <FlightStatusBadge flight={flight} />
+        </div>
         <p className="text-[13px] text-[#A0A0A0]">
           {depDate} {dep}
           {flight.duration_minutes ? ` · ${Math.floor(flight.duration_minutes / 60)}h ${flight.duration_minutes % 60}m` : ""}

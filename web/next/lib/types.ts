@@ -45,6 +45,8 @@ export interface FlightLeg {
   seat?: string;
 }
 
+export type FlightStatus = "Scheduled" | "Active" | "Landed" | "Delayed" | "Canceled";
+
 export interface Flight {
   id: string;
   trip_id: string;
@@ -67,6 +69,15 @@ export interface Flight {
   price_usd?: number;
   paid_amount?: number;  // paid so far in original currency
   legs?: FlightLeg[];   // undefined on legacy mono-leg docs
+  // v1.1 flight tracking fields (populated by trackFlights Cloud Function)
+  current_status?: FlightStatus | null;
+  current_gate_departure?: string | null;
+  current_gate_arrival?: string | null;
+  current_terminal_departure?: string | null;
+  current_terminal_arrival?: string | null;
+  estimated_departure_utc?: Timestamp | null;
+  estimated_arrival_utc?: Timestamp | null;
+  last_tracking_update?: Timestamp | null;
 }
 
 export interface Hotel {

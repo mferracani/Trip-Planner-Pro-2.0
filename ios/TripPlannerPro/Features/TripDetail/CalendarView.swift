@@ -1096,6 +1096,7 @@ private struct FlightCard: View {
                     .tracking(-0.4)
                     .foregroundStyle(Tokens.Color.textPrimary)
                 Spacer()
+                FlightStatusBadge(status: flight.currentStatus)
                 MonoLabel(
                     text: "\(displayAirline) \(displayFlightNumber)",
                     color: Tokens.Color.textSecondary,
@@ -1134,6 +1135,38 @@ private struct FlightCard: View {
                     if let usd = flight.priceUSD, usd > 0 {
                         priceBlock(currency: flight.currency, price: flight.price, priceUSD: usd)
                     }
+                }
+            }
+
+            // Gate and terminal info — populated by trackFlights Cloud Function
+            let hasGateOrTerminal = flight.currentGateDeparture != nil
+                || flight.currentGateArrival != nil
+                || flight.currentTerminalDeparture != nil
+                || flight.currentTerminalArrival != nil
+            if hasGateOrTerminal {
+                Hairline()
+                HStack(spacing: 16) {
+                    if let terminal = flight.currentTerminalDeparture, !terminal.isEmpty {
+                        Label("Terminal \(terminal)", systemImage: "building.2")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color(hex: 0x81786A))
+                    }
+                    if let gate = flight.currentGateDeparture, !gate.isEmpty {
+                        Label("Puerta \(gate)", systemImage: "door.right.hand.open")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color(hex: 0x81786A))
+                    }
+                    if let terminalArr = flight.currentTerminalArrival, !terminalArr.isEmpty {
+                        Label("Term. llegada \(terminalArr)", systemImage: "building.2.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color(hex: 0x81786A))
+                    }
+                    if let gateArr = flight.currentGateArrival, !gateArr.isEmpty {
+                        Label("Puerta arr. \(gateArr)", systemImage: "door.left.hand.open")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color(hex: 0x81786A))
+                    }
+                    Spacer(minLength: 0)
                 }
             }
 

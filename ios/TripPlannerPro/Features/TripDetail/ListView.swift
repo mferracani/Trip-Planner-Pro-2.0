@@ -172,6 +172,7 @@ private struct FlightRowCompact: View {
                     color: Tokens.Color.textTertiary,
                     size: .xs
                 )
+                FlightStatusBadge(status: flight.currentStatus)
             }
 
             Spacer(minLength: 8)

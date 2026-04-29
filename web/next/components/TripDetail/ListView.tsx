@@ -8,6 +8,7 @@ import { TransportForm } from "../forms/TransportForm";
 import { ExpenseForm } from "../forms/ExpenseForm";
 import { useAuth } from "@/context/AuthContext";
 import { deleteFlight, deleteHotel, deleteTransport, deleteExpense, recalcTripAggregates } from "@/lib/firestore";
+import { FlightStatusBadge } from "../FlightStatusBadge";
 
 interface Props {
   trip: Trip;
@@ -228,7 +229,10 @@ function FlightCard({
           ✈️
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[15px] font-semibold text-white">{route}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-[15px] font-semibold text-white">{route}</p>
+            <FlightStatusBadge flight={f} />
+          </div>
           <p className="text-[13px] text-[#A0A0A0]">
             {f.airline} {f.flight_number}
             {compactDep ? ` · ${compactDep}` : ""}
@@ -274,6 +278,30 @@ function FlightCard({
               <DetailField label="Duración" value={fmtDuration(f.duration_minutes)} />
               {f.cabin_class && <DetailField label="Clase" value={CABIN_LABEL[f.cabin_class] ?? f.cabin_class} />}
               {f.seat && <DetailField label="Asiento" value={f.seat} />}
+            </div>
+          )}
+
+          {/* Gate / Terminal info (v1.1 tracking) */}
+          {(f.current_terminal_departure || f.current_gate_departure || f.current_terminal_arrival || f.current_gate_arrival) && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2 border-t border-[#2A2A2A]">
+              {(f.current_terminal_departure || f.current_gate_departure) && (
+                <span className="text-[12px] text-[#A0A0A0]">
+                  <span className="text-[#555]">Salida</span>{" "}
+                  {[
+                    f.current_terminal_departure ? `Terminal ${f.current_terminal_departure}` : null,
+                    f.current_gate_departure ? `Puerta ${f.current_gate_departure}` : null,
+                  ].filter(Boolean).join(" · ")}
+                </span>
+              )}
+              {(f.current_terminal_arrival || f.current_gate_arrival) && (
+                <span className="text-[12px] text-[#A0A0A0]">
+                  <span className="text-[#555]">Llegada</span>{" "}
+                  {[
+                    f.current_terminal_arrival ? `Terminal ${f.current_terminal_arrival}` : null,
+                    f.current_gate_arrival ? `Puerta ${f.current_gate_arrival}` : null,
+                  ].filter(Boolean).join(" · ")}
+                </span>
+              )}
             </div>
           )}
 

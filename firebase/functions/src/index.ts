@@ -50,6 +50,7 @@ setGlobalOptions({
 const CLAUDE_API_KEY = defineSecret("CLAUDE_API_KEY");
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 const FX_RATES_API_KEY = defineSecret("FX_RATES_API_KEY");
+const AERODATABOX_API_KEY = defineSecret("AERODATABOX_API_KEY");
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -645,6 +646,156 @@ export const cleanParseAttachments = onSchedule(
       logger.info("cleanParseAttachments completed", { deletedCount, errorCount });
     } catch (err) {
       logger.error("cleanParseAttachments failed", { error: String(err) });
+      throw err;
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// trackFlights — Cloud Scheduler every 15 minutes (v1.1)
+// Polls AeroDataBox for flights departing within the next 24h or departed
+// within the last 2h and writes live status back to Firestore.
+// ---------------------------------------------------------------------------
+
+export const trackFlights = onSchedule(
+  {
+    schedule: "every 15 minutes",
+    secrets: [AERODATABOX_API_KEY],
+  },
+  async () => {
+    try {
+      const now = new Date();
+      const windowStart = new Date(now.getTime() - 2 * 60 * 60 * 1000); // now - 2h
+      const windowEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);  // now + 24h
+
+      const snapshot = await db
+        .collectionGroup("flights")
+        .where("departure_utc", ">=", Timestamp.fromDate(windowStart))
+        .where("departure_utc", "<=", Timestamp.fromDate(windowEnd))
+        .get();
+
+      if (snapshot.empty) {
+        logger.info("trackFlights: no flights in tracking window");
+        return;
+      }
+
+      let processed = 0;
+      let updated = 0;
+      let skipped = 0;
+      let errors = 0;
+
+      // Firestore batch limit is 500 ops; commit every 400 to stay safe.
+      const BATCH_LIMIT = 400;
+      let batch = db.batch();
+      let batchCount = 0;
+
+      for (const doc of snapshot.docs) {
+        processed++;
+        const data = doc.data();
+
+        const flightNumber: string | undefined = data["flight_number"];
+        if (!flightNumber) {
+          skipped++;
+          continue;
+        }
+
+        // Derive the departure date string for the AeroDataBox query.
+        // Prefer the stored local time string (e.g. "2026-03-15T21:35") for
+        // accuracy; fall back to the UTC timestamp converted to a date string.
+        let dateStr: string;
+        if (typeof data["departure_local_time"] === "string" && data["departure_local_time"].length >= 10) {
+          dateStr = (data["departure_local_time"] as string).slice(0, 10);
+        } else {
+          const depUtc: Timestamp = data["departure_utc"] as Timestamp;
+          dateStr = DateTime.fromJSDate(depUtc.toDate(), { zone: "utc" }).toFormat("yyyy-MM-dd");
+        }
+
+        try {
+          const url = `https://aerodatabox.p.rapidapi.com/flights/number/${encodeURIComponent(flightNumber)}/${dateStr}`;
+          const response = await axios.get(url, {
+            headers: {
+              "X-RapidAPI-Key": AERODATABOX_API_KEY.value(),
+              "X-RapidAPI-Host": "aerodatabox.p.rapidapi.com",
+            },
+            timeout: 8000,
+            validateStatus: (status) => status < 500,
+          });
+
+          // 404 or empty array means AeroDataBox does not have the flight yet.
+          if (response.status === 404) {
+            skipped++;
+            continue;
+          }
+
+          const items: unknown[] = Array.isArray(response.data) ? (response.data as unknown[]) : [];
+          if (items.length === 0) {
+            skipped++;
+            continue;
+          }
+
+          const item = items[0] as Record<string, unknown>;
+          const departure = item["departure"] as Record<string, unknown> | undefined;
+          const arrival = item["arrival"] as Record<string, unknown> | undefined;
+
+          const statusUpdate: Record<string, unknown> = {
+            last_tracking_update: Timestamp.fromDate(new Date()),
+          };
+
+          if (typeof item["status"] === "string") {
+            statusUpdate["current_status"] = item["status"];
+          }
+
+          statusUpdate["current_gate_departure"] =
+            typeof departure?.["gate"] === "string" ? departure["gate"] : null;
+          statusUpdate["current_gate_arrival"] =
+            typeof arrival?.["gate"] === "string" ? arrival["gate"] : null;
+          statusUpdate["current_terminal_departure"] =
+            typeof departure?.["terminal"] === "string" ? departure["terminal"] : null;
+          statusUpdate["current_terminal_arrival"] =
+            typeof arrival?.["terminal"] === "string" ? arrival["terminal"] : null;
+
+          const depRevisedRaw = departure?.["revisedTimeUtc"] ?? departure?.["scheduledTimeUtc"];
+          if (typeof depRevisedRaw === "string" && depRevisedRaw.length > 0) {
+            statusUpdate["estimated_departure_utc"] = Timestamp.fromDate(new Date(depRevisedRaw));
+          }
+
+          const arrRevisedRaw = arrival?.["revisedTimeUtc"] ?? arrival?.["scheduledTimeUtc"];
+          if (typeof arrRevisedRaw === "string" && arrRevisedRaw.length > 0) {
+            statusUpdate["estimated_arrival_utc"] = Timestamp.fromDate(new Date(arrRevisedRaw));
+          }
+
+          batch.update(doc.ref, statusUpdate);
+          batchCount++;
+          updated++;
+
+          // Commit and start a fresh batch before hitting the 500-op limit.
+          if (batchCount >= BATCH_LIMIT) {
+            await batch.commit();
+            batch = db.batch();
+            batchCount = 0;
+          }
+        } catch (flightErr) {
+          errors++;
+          // Parse the userId from the doc path: users/{userId}/trips/{tripId}/flights/{flightId}
+          const parts = doc.ref.path.split("/");
+          const userId = parts[1] ?? "unknown";
+          logger.warn("trackFlights: error processing flight", {
+            flightId: doc.id,
+            userId,
+            flightNumber,
+            error: String(flightErr),
+          });
+        }
+      }
+
+      // Commit any remaining writes.
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      logger.info("trackFlights completed", { processed, updated, skipped, errors });
+    } catch (err) {
+      logger.error("trackFlights failed", { error: String(err) });
       throw err;
     }
   }

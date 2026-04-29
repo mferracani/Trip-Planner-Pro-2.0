@@ -228,6 +228,16 @@ struct Flight: Identifiable, Codable, Sendable {
     var paidAmount: Double?
     var legs: [FlightLeg]?
 
+    // MARK: - v1.1 Flight Tracking fields (populated by `trackFlights` Cloud Function)
+    var currentStatus: String?
+    var currentGateDeparture: String?
+    var currentGateArrival: String?
+    var currentTerminalDeparture: String?
+    var currentTerminalArrival: String?
+    var estimatedDepartureUTC: Date?
+    var estimatedArrivalUTC: Date?
+    var lastTrackingUpdate: Date?
+
     enum CodingKeys: String, CodingKey {
         case id
         case tripId = "trip_id"
@@ -250,6 +260,14 @@ struct Flight: Identifiable, Codable, Sendable {
         case priceUSD = "price_usd"
         case paidAmount = "paid_amount"
         case legs
+        case currentStatus = "current_status"
+        case currentGateDeparture = "current_gate_departure"
+        case currentGateArrival = "current_gate_arrival"
+        case currentTerminalDeparture = "current_terminal_departure"
+        case currentTerminalArrival = "current_terminal_arrival"
+        case estimatedDepartureUTC = "estimated_departure_utc"
+        case estimatedArrivalUTC = "estimated_arrival_utc"
+        case lastTrackingUpdate = "last_tracking_update"
     }
 
     /// "YYYY-MM-DD" of departure — extracted from departure_local_time.
