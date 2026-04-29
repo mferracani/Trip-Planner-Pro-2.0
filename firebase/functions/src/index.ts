@@ -628,12 +628,12 @@ export const cleanParseAttachments = onSchedule(
       for (const file of attachmentFiles) {
         try {
           const [metadata] = await file.getMetadata();
-          const updatedMs = new Date(metadata.updated as string).getTime();
+          const createdMs = new Date(metadata.timeCreated as string).getTime();
 
-          if (updatedMs < cutoffMs) {
+          if (createdMs < cutoffMs) {
             await file.delete();
             deletedCount++;
-            logger.info("Deleted old attachment", { path: file.name, updatedAt: metadata.updated });
+            logger.info("Deleted old attachment", { path: file.name, createdAt: metadata.timeCreated });
           }
         } catch (fileErr) {
           errorCount++;

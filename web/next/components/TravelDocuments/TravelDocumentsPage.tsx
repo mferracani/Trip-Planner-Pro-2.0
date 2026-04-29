@@ -59,27 +59,29 @@ function fmtDate(d: string) {
 // MARK: - Page
 
 export function TravelDocumentsPage() {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
+  // Use ownerUid so household members (Agustina) access the owner's documents, not their own empty collection
+  const effectiveUid = ownerUid ?? user?.uid ?? null;
   const [docs, setDocs] = useState<TravelDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [viewingDoc, setViewingDoc] = useState<TravelDocument | null>(null);
 
   useEffect(() => {
-    if (!user) return;
-    getTravelDocuments(user.uid).then((d) => {
+    if (!effectiveUid) return;
+    getTravelDocuments(effectiveUid).then((d) => {
       setDocs(d);
       setLoading(false);
     });
-  }, [user]);
+  }, [effectiveUid]);
 
   async function handleDelete(doc: TravelDocument) {
-    if (!user) return;
+    if (!effectiveUid) return;
     if (!confirm(`¿Eliminar "${doc.title}"?`)) return;
     try {
       const storageRef = ref(getFirebaseStorage(), doc.storage_ref);
       await deleteObject(storageRef).catch(() => {});
-      await deleteTravelDocumentDoc(user.uid, doc.id);
+      await deleteTravelDocumentDoc(effectiveUid, doc.id);
       setDocs((prev) => prev.filter((d) => d.id !== doc.id));
       if (viewingDoc?.id === doc.id) setViewingDoc(null);
     } catch {
@@ -150,19 +152,19 @@ export function TravelDocumentsPage() {
       </main>
 
       {/* Add sheet */}
-      {showAdd && user && (
+      {showAdd && effectiveUid && (
         <AddDocumentSheet
-          uid={user.uid}
+          uid={effectiveUid}
           onClose={() => setShowAdd(false)}
           onAdded={handleAdded}
         />
       )}
 
       {/* Viewer sheet */}
-      {viewingDoc && user && (
+      {viewingDoc && effectiveUid && (
         <DocumentViewerSheet
           doc={viewingDoc}
-          uid={user.uid}
+          uid={effectiveUid}
           onClose={() => setViewingDoc(null)}
           onDelete={() => handleDelete(viewingDoc)}
           onUpdated={handleUpdated}

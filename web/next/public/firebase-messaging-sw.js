@@ -10,6 +10,8 @@ importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-com
 let firebaseConfig = null;
 
 self.addEventListener("message", (event) => {
+  // Only accept config messages from the same origin
+  if (event.origin && !event.origin.startsWith(self.location.origin)) return;
   if (event.data?.type === "FIREBASE_CONFIG") {
     if (firebaseConfig) return; // already initialized
     firebaseConfig = event.data.config;

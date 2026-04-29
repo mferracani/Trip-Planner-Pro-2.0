@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getAuth, OAuthProvider, GoogleAuthProvider } from "firebase/auth";
+import { getAuth, OAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getMessaging, isSupported } from "firebase/messaging";
@@ -65,6 +65,3 @@ export async function getFirebaseMessaging() {
   return getMessaging(getFirebaseApp());
 }
 
-export function getGoogleProvider() {
-  return new GoogleAuthProvider();
-}
