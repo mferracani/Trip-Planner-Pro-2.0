@@ -1,5 +1,5 @@
 # Project State — Trip Planner Pro 2
-_Última actualización: 2026-04-29_
+_Última actualización: 2026-04-29 (flight tracking v1.1 completado)_
 
 ---
 
@@ -38,6 +38,7 @@ Antes de tocar cualquier cosa, leer en este orden:
 | Cloud Function `parseWithAI` | ✅ Deployada — Claude + Gemini |
 | Cloud Function `updateFxRates` | ✅ Deployada — cron diario |
 | Cloud Function `cleanParseAttachments` | ✅ Deployada — cron diario |
+| Cloud Function `trackFlights` | ✅ Deployada — cron cada 15min (AeroDataBox, secret configurado) |
 | Seed airports (~1500 IATA) | ✅ Ejecutado |
 | iOS — TestFlight | ✅ Build activa |
 | Web — Vercel | ✅ Deployada |
@@ -79,7 +80,7 @@ Ver tabla completa en `.project/feature-parity.md` (64 items auditados al 2026-0
 
 | Issue | Feature | Valor |
 |-------|---------|-------|
-| TPP-? | **Flight Tracking en tiempo real** (AeroDataBox) | "Wow moment" viajando. Schema ya definido en Firestore (`current_status`, gates, ETA). Solo falta Cloud Function `trackFlights` + UI de badge. |
+| ~~TPP-?~~ | ~~**Flight Tracking en tiempo real** (AeroDataBox)~~ | ✅ **COMPLETADO** — `trackFlights` deployada, badges + estimated times en iOS + web |
 | TPP-? | **Push notifications de vuelos** (FCM/APNS) | Sin esto el tracking vale la mitad. Necesario para que la app sea proactiva. |
 
 ### 🟡 P2 — Alta prioridad

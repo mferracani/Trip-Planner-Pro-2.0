@@ -81,9 +81,12 @@ _Última actualización: 2026-04-29_
 ## 🚧 Fase 6 — v1.1 (en curso)
 
 ### Flight Tracking con AeroDataBox ★ (P1)
-- [ ] Cloud Function `trackFlights` (cron cada 15min)
-- [ ] Campos de tracking en `flights/` ya definidos en schema (`current_status`, `current_gate_*`, `estimated_*_utc`, `last_tracking_update`)
-- [ ] Badge de vuelo en calendario con estados visuales (delayed/cancelled/en vuelo)
+- [x] Cloud Function `trackFlights` (cron cada 15min) — deployada en producción
+- [x] Campos de tracking en `flights/` (`current_status`, `current_gate_*`, `estimated_*_utc`, `last_tracking_update`)
+- [x] Badge de estado en ListView + day-detail sheet (iOS + web) con Unknown/Diverted
+- [x] Horario estimado visible en detalle de vuelo (iOS + web)
+- [x] "Actualizado hace X min" indicator (iOS + web)
+- [x] Retry con backoff en HTTP 429 de AeroDataBox
 - [ ] Push notifications via FCM/APNS
 
 ### Widget iOS del próximo vuelo (P2)
