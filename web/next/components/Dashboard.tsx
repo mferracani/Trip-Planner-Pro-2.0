@@ -14,6 +14,7 @@ import { MapPin, CalendarDays, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { getTheme } from "@/lib/themes";
 import { createDemoTrip } from "@/lib/demo";
+import { EarthHero } from "./EarthHero";
 
 type Filter = "all" | "future" | "active" | "past" | "draft";
 
@@ -198,11 +199,22 @@ export function Dashboard() {
 
         {/* Hero */}
         <div className="animate-spring-up stagger-2">
-          {heroTrip ? (
-            <HeroTripCard trip={heroTrip} status={classifyTrip(heroTrip) as "active" | "future" | "past"} />
-          ) : (
-            <EmptyHeroCard onCreateTrip={() => setCreateOpen(true)} onLoadDemo={handleLoadDemo} loadingDemo={loadingDemo} />
-          )}
+          {/* Desktop: EarthHero as background layer behind the hero card */}
+          <div className="relative rounded-2xl overflow-hidden">
+            {/* EarthHero only renders as background on md+ screens */}
+            <div className="hidden md:block absolute inset-0 rounded-2xl overflow-hidden">
+              <EarthHero />
+            </div>
+
+            {/* Hero card — sits above EarthHero on desktop, standalone on mobile */}
+            <div className="relative md:z-10 md:p-4">
+              {heroTrip ? (
+                <HeroTripCard trip={heroTrip} status={classifyTrip(heroTrip) as "active" | "future" | "past"} />
+              ) : (
+                <EmptyHeroCard onCreateTrip={() => setCreateOpen(true)} onLoadDemo={handleLoadDemo} loadingDemo={loadingDemo} />
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Mis viajes */}
