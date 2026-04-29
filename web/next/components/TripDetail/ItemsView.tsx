@@ -16,6 +16,11 @@ function fmtISODate(iso?: string | null): string {
   return d ? `${d}-${m}-${y}` : iso;
 }
 
+function fmtTimestampTime(ts?: { seconds: number } | null): string {
+  if (!ts) return "";
+  return new Date(ts.seconds * 1000).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
 const SUBTABS: { value: SubTab; label: string; emoji: string }[] = [
   { value: "flights", label: "Vuelos", emoji: "✈️" },
   { value: "hotels", label: "Hoteles", emoji: "🏨" },
@@ -228,6 +233,9 @@ function FlightRow({ flight }: { flight: Flight }) {
         <p className="text-[13px] text-[#A0A0A0]">
           {depDate} {dep}
           {flight.duration_minutes ? ` · ${Math.floor(flight.duration_minutes / 60)}h ${flight.duration_minutes % 60}m` : ""}
+          {flight.estimated_departure_utc && (
+            <span className="text-[#F29E7D]"> · est. {fmtTimestampTime(flight.estimated_departure_utc)} UTC</span>
+          )}
         </p>
       </div>
       <span className="text-[#707070] text-[16px]">›</span>

@@ -712,14 +712,28 @@ export const trackFlights = onSchedule(
 
         try {
           const url = `https://aerodatabox.p.rapidapi.com/flights/number/${encodeURIComponent(flightNumber)}/${dateStr}`;
-          const response = await axios.get(url, {
-            headers: {
-              "X-RapidAPI-Key": AERODATABOX_API_KEY.value(),
-              "X-RapidAPI-Host": "aerodatabox.p.rapidapi.com",
-            },
-            timeout: 8000,
-            validateStatus: (status) => status < 500,
-          });
+
+          // Retry up to 3 times on 429 (rate limit) with exponential backoff.
+          let response;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            response = await axios.get(url, {
+              headers: {
+                "X-RapidAPI-Key": AERODATABOX_API_KEY.value(),
+                "X-RapidAPI-Host": "aerodatabox.p.rapidapi.com",
+              },
+              timeout: 8000,
+              validateStatus: (s) => s < 500,
+            });
+            if (response.status !== 429) break;
+            const backoff = 2000 * Math.pow(2, attempt); // 2s, 4s, 8s
+            logger.warn("trackFlights: 429 from AeroDataBox, backing off", { flightNumber, attempt, backoff });
+            await new Promise((r) => setTimeout(r, backoff));
+          }
+          if (!response || response.status === 429) {
+            logger.warn("trackFlights: rate-limited after retries, skipping flight", { flightNumber });
+            skipped++;
+            continue;
+          }
 
           // 404 or empty array means AeroDataBox does not have the flight yet.
           if (response.status === 404) {

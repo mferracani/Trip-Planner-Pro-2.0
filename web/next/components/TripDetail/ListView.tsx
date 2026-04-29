@@ -53,6 +53,22 @@ function fmtDuration(minutes?: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
+function fmtTimestampTime(ts?: { seconds: number } | null): string {
+  if (!ts) return "";
+  const d = new Date(ts.seconds * 1000);
+  return d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+function fmtRelativeMinutes(ts?: { seconds: number } | null): string {
+  if (!ts) return "";
+  const diffMs = Date.now() - ts.seconds * 1000;
+  const mins = Math.round(diffMs / 60000);
+  if (mins < 1) return "ahora";
+  if (mins < 60) return `hace ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  return `hace ${hrs}h`;
+}
+
 function nightsLabel(checkIn: string, checkOut: string): string {
   const msPerDay = 86400000;
   const n = Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / msPerDay);
@@ -301,6 +317,36 @@ function FlightCard({
                     f.current_gate_arrival ? `Puerta ${f.current_gate_arrival}` : null,
                   ].filter(Boolean).join(" · ")}
                 </span>
+              )}
+            </div>
+          )}
+
+          {/* Estimated times (v1.1 tracking — shown when delayed or active) */}
+          {(f.estimated_departure_utc || f.estimated_arrival_utc) && (
+            <div className="pt-2 border-t border-[#2A2A2A] space-y-1">
+              <p className="text-[11px] font-semibold text-[#555] uppercase tracking-wider">Horario estimado</p>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {f.estimated_departure_utc && (
+                  <span className="text-[12px] text-[#F29E7D]">
+                    <span className="text-[#555]">Salida</span>{" "}
+                    {fmtTimestampTime(f.estimated_departure_utc)}
+                    {" "}
+                    <span className="text-[#555] text-[11px]">(UTC)</span>
+                  </span>
+                )}
+                {f.estimated_arrival_utc && (
+                  <span className="text-[12px] text-[#F29E7D]">
+                    <span className="text-[#555]">Llegada</span>{" "}
+                    {fmtTimestampTime(f.estimated_arrival_utc)}
+                    {" "}
+                    <span className="text-[#555] text-[11px]">(UTC)</span>
+                  </span>
+                )}
+              </div>
+              {f.last_tracking_update && (
+                <p className="text-[11px] text-[#555]">
+                  Actualizado {fmtRelativeMinutes(f.last_tracking_update)}
+                </p>
               )}
             </div>
           )}

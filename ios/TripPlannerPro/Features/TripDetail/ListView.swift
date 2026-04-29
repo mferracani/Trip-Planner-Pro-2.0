@@ -253,6 +253,41 @@ private struct FlightRowDetail: View {
                 }
             }
 
+            // Estimated times (v1.1 tracking)
+            if flight.estimatedDepartureUTC != nil || flight.estimatedArrivalUTC != nil {
+                VStack(alignment: .leading, spacing: 6) {
+                    Hairline()
+                    MonoLabel(text: "Horario estimado", color: Tokens.Color.textTertiary, size: .xs)
+                    HStack(spacing: 16) {
+                        if let dep = flight.estimatedDepartureUTC {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Salida")
+                                    .font(Tokens.Typo.caption)
+                                    .foregroundStyle(Tokens.Color.textTertiary)
+                                Text("\(fmtUTCTime(dep)) UTC")
+                                    .font(Tokens.Typo.strongS)
+                                    .foregroundStyle(Color(hex: 0xF29E7D))
+                            }
+                        }
+                        if let arr = flight.estimatedArrivalUTC {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Llegada")
+                                    .font(Tokens.Typo.caption)
+                                    .foregroundStyle(Tokens.Color.textTertiary)
+                                Text("\(fmtUTCTime(arr)) UTC")
+                                    .font(Tokens.Typo.strongS)
+                                    .foregroundStyle(Color(hex: 0xF29E7D))
+                            }
+                        }
+                    }
+                    if let upd = flight.lastTrackingUpdate {
+                        Text("Actualizado \(fmtRelativeMinutes(upd))")
+                            .font(Tokens.Typo.caption)
+                            .foregroundStyle(Tokens.Color.textTertiary)
+                    }
+                }
+            }
+
             // Edit / Delete row
             HStack(spacing: 8) {
                 Button(action: onEdit) {
@@ -1053,4 +1088,20 @@ private func cabinLabel(_ cabin: String) -> String {
     case "first": return "Primera"
     default: return cabin
     }
+}
+
+private func fmtUTCTime(_ date: Date?) -> String {
+    guard let date else { return "" }
+    let f = DateFormatter()
+    f.dateFormat = "HH:mm"
+    f.timeZone = TimeZone(identifier: "UTC")
+    return f.string(from: date)
+}
+
+private func fmtRelativeMinutes(_ date: Date?) -> String {
+    guard let date else { return "" }
+    let mins = Int(-date.timeIntervalSinceNow / 60)
+    if mins < 1 { return "ahora" }
+    if mins < 60 { return "hace \(mins) min" }
+    return "hace \(mins / 60)h"
 }

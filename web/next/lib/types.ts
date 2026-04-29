@@ -45,7 +45,7 @@ export interface FlightLeg {
   seat?: string;
 }
 
-export type FlightStatus = "Scheduled" | "Active" | "Landed" | "Delayed" | "Canceled";
+export type FlightStatus = "Scheduled" | "Active" | "Landed" | "Delayed" | "Canceled" | "Unknown" | "Diverted";
 
 export interface Flight {
   id: string;

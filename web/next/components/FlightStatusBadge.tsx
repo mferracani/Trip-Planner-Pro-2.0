@@ -7,6 +7,8 @@ const STATUS_CONFIG: Record<FlightStatus, { label: string; color: string; bg: st
   Landed:    { label: "Aterrizó",   color: "#71D3A6", bg: "rgba(113,211,166,0.12)" },
   Delayed:   { label: "Demorado",   color: "#F29E7D", bg: "rgba(242,158,125,0.12)" },
   Canceled:  { label: "Cancelado",  color: "#E54B4B", bg: "rgba(229,75,75,0.12)" },
+  Unknown:   { label: "Sin datos",  color: "#81786A", bg: "rgba(129,120,106,0.12)" },
+  Diverted:  { label: "Desviado",   color: "#F2C84B", bg: "rgba(242,200,75,0.12)" },
 };
 
 export function FlightStatusBadge({ flight }: { flight: Pick<Flight, "current_status"> }) {

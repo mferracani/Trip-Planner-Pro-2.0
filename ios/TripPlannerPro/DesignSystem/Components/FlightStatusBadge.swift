@@ -27,6 +27,10 @@ struct FlightStatusBadge: View {
             return StatusAppearance(label: "Demorado",   color: Color(hex: 0xF29E7D))
         case "Canceled":
             return StatusAppearance(label: "Cancelado",  color: Color(hex: 0xE54B4B))
+        case "Unknown":
+            return StatusAppearance(label: "Sin datos",  color: Color(hex: 0x81786A))
+        case "Diverted":
+            return StatusAppearance(label: "Desviado",   color: Color(hex: 0xF2C84B))
         default:
             return StatusAppearance(label: status,       color: Color(hex: 0x81786A))
         }
