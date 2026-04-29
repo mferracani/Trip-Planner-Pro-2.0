@@ -287,27 +287,38 @@ function AddDocumentSheet({
     if (!file || !title.trim()) return;
     setSaving(true);
     setError(null);
+
+    // Sanitize filename and resolve MIME type
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const uniqueName = `${crypto.randomUUID()}_${safeName}`;
+    const storagePath = `users/${uid}/documents/${uniqueName}`;
+    const mimeType = file.type || (safeName.endsWith(".pdf") ? "application/pdf" : "image/jpeg");
+
+    let uploadedToStorage = false;
     try {
-      const uniqueName = `${crypto.randomUUID()}_${file.name}`;
-      const storagePath = `users/${uid}/documents/${uniqueName}`;
       const storageRef = ref(getFirebaseStorage(), storagePath);
-      const metadata = { contentType: file.type };
-      await uploadBytes(storageRef, file, metadata);
+      await uploadBytes(storageRef, file, { contentType: mimeType });
+      uploadedToStorage = true;
 
       const data: Omit<TravelDocument, "id"> = {
         type: docType,
         title: title.trim(),
         storage_ref: storagePath,
         file_name: file.name,
-        mime_type: file.type,
+        mime_type: mimeType,
         expires_at: expiresAt || undefined,
         notes: notes || undefined,
         created_at: serverTimestamp() as TravelDocument["created_at"],
       };
       const newId = await createTravelDocument(uid, data);
       onAdded({ ...data, id: newId });
-    } catch {
-      setError("No se pudo guardar el documento. Intentá de nuevo.");
+    } catch (err) {
+      // Clean up orphaned Storage file if Firestore write failed
+      if (uploadedToStorage) {
+        deleteObject(ref(getFirebaseStorage(), storagePath)).catch(() => null);
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`No se pudo guardar el documento: ${msg}`);
       setSaving(false);
     }
   }
