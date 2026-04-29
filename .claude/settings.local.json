@@ -3,7 +3,10 @@
     "allow": [
       "Bash(firebase --version)",
       "Bash(gh auth *)",
-      "Bash(npm --version)"
+      "Bash(npm --version)",
+      "mcp__7c79720a-410c-4529-a71e-760f779d94f9__list_teams",
+      "mcp__7c79720a-410c-4529-a71e-760f779d94f9__list_issue_statuses",
+      "mcp__7c79720a-410c-4529-a71e-760f779d94f9__list_issues"
     ]
   }
 }
