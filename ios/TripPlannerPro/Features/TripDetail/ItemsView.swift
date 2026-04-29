@@ -9,8 +9,16 @@ struct ItemsView: View {
     let vm: TripDetailViewModel
     @State private var selected: SelectedItem?
 
+    private var regularTransports: [Transport] {
+        vm.transports.filter { $0.type != "car_rental" }
+    }
+
+    private var carRentals: [Transport] {
+        vm.transports.filter { $0.type == "car_rental" }
+    }
+
     private var hasAny: Bool {
-        !vm.flights.isEmpty || !vm.hotels.isEmpty || !vm.transports.isEmpty || !vm.expenses.isEmpty
+        !vm.flights.isEmpty || !vm.hotels.isEmpty || !vm.transports.isEmpty || !vm.expenses.isEmpty || !vm.cities.isEmpty
     }
 
     var body: some View {
@@ -25,12 +33,18 @@ struct ItemsView: View {
                     if !vm.hotels.isEmpty {
                         HotelsBlock(hotels: vm.hotels) { selected = .hotel($0) }
                     }
-                    if !vm.transports.isEmpty {
-                        TransportsBlock(transports: vm.transports) { selected = .transport($0) }
+                    if !regularTransports.isEmpty {
+                        TransportsBlock(transports: regularTransports) { selected = .transport($0) }
+                    }
+                    if !carRentals.isEmpty {
+                        CarRentalsBlock(rentals: carRentals) { selected = .transport($0) }
                     }
                     let unlinkedExpenses = vm.expenses.filter { $0.linkedItemId == nil }
                     if !unlinkedExpenses.isEmpty {
                         ExpensesBlock(expenses: unlinkedExpenses) { selected = .expense($0) }
+                    }
+                    if !vm.cities.isEmpty {
+                        CitiesBlock(cities: vm.cities) { selected = .city($0) }
                     }
                 }
             }
@@ -102,9 +116,15 @@ private struct FlightCompactRow: View {
                 .frame(width: 22)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(flight.originIATA) → \(flight.destinationIATA)")
-                    .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(Tokens.Color.textPrimary)
+                if let inbound = flight.legs?.first(where: { $0.direction == "inbound" }) {
+                    Text("\(flight.originIATA) → \(flight.destinationIATA) ⇄ \(inbound.destinationIATA)")
+                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Tokens.Color.textPrimary)
+                } else {
+                    Text("\(flight.originIATA) → \(flight.destinationIATA)")
+                        .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Tokens.Color.textPrimary)
+                }
                 MonoLabel(
                     text: "\(shortDate(flight.departureDate)) · \(flight.airline) \(flight.flightNumber)",
                     color: Tokens.Color.textTertiary,
@@ -229,6 +249,7 @@ private struct TransportsBlock: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             BlockHeader(
+                icon: "tram.fill",
                 color: Tokens.Color.Category.transit,
                 label: "Transportes · \(transports.count)",
                 totalUSD: totalUSD
@@ -246,12 +267,115 @@ private struct TransportsBlock: View {
     }
 }
 
-private struct TransportCompactRow: View {
-    let transport: Transport
+// MARK: - CarRentalsBlock
+
+private struct CarRentalsBlock: View {
+    let rentals: [Transport]
+    let onTap: (Transport) -> Void
+
+    private var sorted: [Transport] {
+        rentals.sorted { $0.departureLocalTime < $1.departureLocalTime }
+    }
+
+    private var totalUSD: Double {
+        rentals.reduce(0) { $0 + ($1.priceUSD ?? 0) }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            BlockHeader(
+                icon: "car.circle.fill",
+                color: Tokens.Color.accentOrange,
+                label: "Alquileres de auto · \(rentals.count)",
+                totalUSD: totalUSD
+            )
+
+            VStack(spacing: 0) {
+                ForEach(Array(sorted.enumerated()), id: \.element.id) { idx, t in
+                    Button { onTap(t) } label: { CarRentalCompactRow(rental: t) }
+                        .buttonStyle(RowButtonStyle())
+                    if idx < sorted.count - 1 { Hairline() }
+                }
+            }
+            .background(blockBackground)
+        }
+    }
+}
+
+private struct CarRentalCompactRow: View {
+    let rental: Transport
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "tram.fill")
+            Image(systemName: "car.circle.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Tokens.Color.accentOrange)
+                .frame(width: 22)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(rental.origin) → \(rental.destination)")
+                    .font(Tokens.Typo.strongS)
+                    .foregroundStyle(Tokens.Color.textPrimary)
+                    .lineLimit(1)
+                MonoLabel(
+                    text: shortDate(rental.departureDate) + (rental.operator.map { " · \($0)" } ?? ""),
+                    color: Tokens.Color.textTertiary,
+                    size: .xs
+                )
+            }
+
+            Spacer(minLength: 8)
+
+            if let usd = rental.priceUSD, usd > 0 {
+                Text("$\(Int(usd.rounded()))")
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .tracking(-0.2)
+                    .foregroundStyle(Tokens.Color.textPrimary)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+    }
+
+    private func shortDate(_ iso: String) -> String {
+        guard let d = Trip.isoDateFormatter.date(from: iso) else { return iso }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es-AR")
+        f.dateFormat = "dd MMM"
+        return f.string(from: d)
+    }
+}
+
+private struct TransportCompactRow: View {
+    let transport: Transport
+
+    private var typeIcon: String {
+        switch transport.type {
+        case "train": return "train.side.front.car"
+        case "bus": return "bus"
+        case "ferry": return "ferry"
+        case "car": return "car.fill"
+        case "taxi": return "car.fill"
+        case "subway": return "tram.fill.tunnel"
+        default: return "tram.fill"
+        }
+    }
+
+    private var typeLabel: String {
+        switch transport.type {
+        case "train": return "Tren"
+        case "bus": return "Bus"
+        case "ferry": return "Ferry"
+        case "car": return "Auto"
+        case "taxi": return "Taxi"
+        case "subway": return "Metro"
+        default: return "Transporte"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: typeIcon)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Tokens.Color.Category.transit)
                 .frame(width: 22)
@@ -262,7 +386,7 @@ private struct TransportCompactRow: View {
                     .foregroundStyle(Tokens.Color.textPrimary)
                     .lineLimit(1)
                 MonoLabel(
-                    text: "\(shortDate(transport.departureDate)) · \(transport.type)",
+                    text: "\(shortDate(transport.departureDate)) · \(typeLabel)",
                     color: Tokens.Color.textTertiary,
                     size: .xs
                 )
@@ -297,7 +421,7 @@ private struct ExpensesBlock: View {
     let onTap: (Expense) -> Void
 
     private var sorted: [Expense] {
-        expenses.sorted { $0.date > $1.date }
+        expenses.sorted { $0.date < $1.date }
     }
 
     private var totalUSD: Double {
@@ -383,9 +507,72 @@ private struct ExpenseCompactRow: View {
     }
 }
 
+// MARK: - CitiesBlock
+
+private struct CitiesBlock: View {
+    let cities: [TripCity]
+    let onTap: (TripCity) -> Void
+
+    private var sorted: [TripCity] {
+        cities.sorted { $0.name < $1.name }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            BlockHeader(
+                color: Tokens.Color.accentPurple,
+                label: "Ciudades · \(cities.count)",
+                totalUSD: 0
+            )
+
+            VStack(spacing: 0) {
+                ForEach(Array(sorted.enumerated()), id: \.element.id) { idx, city in
+                    Button { onTap(city) } label: { CityCompactRow(city: city) }
+                        .buttonStyle(RowButtonStyle())
+                    if idx < sorted.count - 1 { Hairline() }
+                }
+            }
+            .background(blockBackground)
+        }
+    }
+}
+
+private struct CityCompactRow: View {
+    let city: TripCity
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(city.swiftColor)
+                .frame(width: 7, height: 7)
+                .padding(.leading, 7)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(city.name)
+                    .font(Tokens.Typo.strongS)
+                    .foregroundStyle(Tokens.Color.textPrimary)
+                    .lineLimit(1)
+                if let country = city.country, !country.isEmpty {
+                    MonoLabel(text: country, color: Tokens.Color.textTertiary, size: .xs)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            Text("\(city.days.count)d")
+                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                .tracking(-0.2)
+                .foregroundStyle(Tokens.Color.textSecondary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+    }
+}
+
 // MARK: - BlockHeader
 
 private struct BlockHeader: View {
+    var icon: String? = nil
     let color: Color
     let label: String
     let totalUSD: Double
@@ -393,7 +580,13 @@ private struct BlockHeader: View {
     var body: some View {
         HStack {
             HStack(spacing: 8) {
-                Circle().fill(color).frame(width: 6, height: 6)
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(color)
+                } else {
+                    Circle().fill(color).frame(width: 6, height: 6)
+                }
                 MonoLabel(text: label, color: Tokens.Color.textSecondary, size: .s)
             }
             Spacer()

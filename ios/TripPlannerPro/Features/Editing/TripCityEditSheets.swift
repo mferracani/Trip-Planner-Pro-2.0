@@ -1,5 +1,28 @@
 import SwiftUI
 
+// MARK: - City color palette (shared by CityEditSheet and CreateCitySheet)
+
+fileprivate struct ColorSwatch: Identifiable {
+    let id: String  // hex "#RRGGBB"
+    let color: Color
+}
+
+// Sincronizado con Tokens.City.cityPalette y web CITY_COLORS (types.ts).
+// Índices 0-7 son los originales — no reordenar.
+fileprivate let cityPaletteHexStrings: [String] = [
+    // — originales (índices 0-7) —
+    "#71D3A6", "#74ACDF", "#FFD16A", "#F29E7D",
+    "#A891E8", "#E98A9A", "#6BCB77", "#6CAFE8",
+    // — nuevos (índices 8-15) —
+    "#FF6B6B", "#4ECDC4", "#FFB347", "#48DBFB",
+    "#A29BFE", "#FD79A8", "#55EFC4", "#FDCB6E",
+]
+
+fileprivate let citySwatches: [ColorSwatch] = cityPaletteHexStrings.map { hex in
+    let val = UInt32(hex.dropFirst(), radix: 16)!
+    return ColorSwatch(id: hex, color: Color(hex: val))
+}
+
 // MARK: - TripEditSheet
 
 struct TripEditSheet: View {
@@ -11,8 +34,11 @@ struct TripEditSheet: View {
     @State private var name: String
     @State private var startDate: Date
     @State private var endDate: Date
+    @State private var selectedCoverUrl: String?
+    @State private var showThemePicker = false
     @State private var saving = false
     @State private var error: String?
+    @State private var confirmDelete = false
 
     init(trip: Trip, onClose: @escaping () -> Void) {
         self.trip = trip
@@ -20,10 +46,16 @@ struct TripEditSheet: View {
         _name = State(initialValue: trip.name)
         _startDate = State(initialValue: trip.startDate)
         _endDate = State(initialValue: trip.endDate)
+        _selectedCoverUrl = State(initialValue: trip.coverURL)
     }
 
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty && endDate >= startDate
+    }
+
+    // Preview of currently selected theme
+    private var selectedTheme: TripTheme? {
+        TripTheme.getTheme(coverUrl: selectedCoverUrl)
     }
 
     var body: some View {
@@ -35,7 +67,7 @@ struct TripEditSheet: View {
             error: error,
             onCancel: onClose,
             onSave: save,
-            onDelete: nil
+            onDelete: { confirmDelete = true }
         ) {
             VStack(spacing: 12) {
                 EditField(label: "Nombre del viaje") {
@@ -56,8 +88,100 @@ struct TripEditSheet: View {
                         .font(.system(size: 11))
                         .foregroundStyle(Tokens.Color.accentOrange)
                 }
+
+                // Theme picker trigger row + Sin tema button
+                EditField(label: "Tema visual") {
+                    VStack(spacing: 8) {
+                        // "Sin tema" clear button — shown when a theme is selected
+                        if selectedCoverUrl != nil && !selectedCoverUrl!.isEmpty {
+                            Button {
+                                selectedCoverUrl = nil
+                            } label: {
+                                HStack {
+                                    Image(systemName: "xmark.circle")
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(Tokens.Color.textTertiary)
+                                    Text("Sin tema")
+                                        .font(Tokens.Typo.strongS)
+                                        .foregroundStyle(Tokens.Color.textTertiary)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                                        .fill(Tokens.Color.elevated)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                                                .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
+                                        )
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        themePickerRow
+                    }
+                }
             }
         }
+        .sheet(isPresented: $showThemePicker) {
+            ThemePickerView(selectedCoverUrl: $selectedCoverUrl)
+                .presentationBackground(Tokens.Color.bgPrimary)
+                .presentationDetents([.large])
+        }
+        .alert("¿Eliminar viaje?", isPresented: $confirmDelete) {
+            Button("Eliminar", role: .destructive) { deleteTrip() }
+            Button("Cancelar", role: .cancel) { }
+        } message: {
+            Text("Se eliminará \"\(trip.name)\" y todos sus datos. Esta acción no se puede deshacer.")
+        }
+    }
+
+    private var themePickerRow: some View {
+        Button {
+            showThemePicker = true
+        } label: {
+            HStack(spacing: 12) {
+                if let theme = selectedTheme {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(theme.gradientBackground)
+                        .frame(width: 44, height: 28)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
+                        )
+                    Text(theme.emoji + " " + theme.label)
+                        .font(Tokens.Typo.strongS)
+                        .foregroundStyle(Tokens.Color.textPrimary)
+                } else {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Tokens.Color.elevated)
+                        .frame(width: 44, height: 28)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
+                        )
+                    Text("Sin tema")
+                        .font(Tokens.Typo.bodyS)
+                        .foregroundStyle(Tokens.Color.textTertiary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Tokens.Color.textTertiary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                    .fill(Tokens.Color.elevated)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                            .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private func save() {
@@ -65,6 +189,7 @@ struct TripEditSheet: View {
         updated.name = name.trimmingCharacters(in: .whitespaces)
         updated.startDateString = Trip.isoDateFormatter.string(from: startDate)
         updated.endDateString = Trip.isoDateFormatter.string(from: endDate)
+        updated.coverURL = selectedCoverUrl
         saving = true
         error = nil
         Task {
@@ -74,6 +199,18 @@ struct TripEditSheet: View {
             } catch {
                 self.error = error.localizedDescription
                 saving = false
+            }
+        }
+    }
+
+    private func deleteTrip() {
+        guard let id = trip.id else { return }
+        Task {
+            do {
+                try await client.deleteTrip(id: id)
+                onClose()
+            } catch {
+                self.error = error.localizedDescription
             }
         }
     }
@@ -95,30 +232,13 @@ struct CityEditSheet: View {
     @State private var saving = false
     @State private var error: String?
 
-    // Struct avoids Swift 6 key-path restriction on named tuples
-    private struct ColorSwatch: Identifiable {
-        let id: String  // hex value
-        let color: Color
-    }
-
-    private let swatches: [ColorSwatch] = [
-        ColorSwatch(id: "#FF6B6B", color: Color(hex: 0xFF6B6B)),
-        ColorSwatch(id: "#4ECDC4", color: Color(hex: 0x4ECDC4)),
-        ColorSwatch(id: "#FFD93D", color: Color(hex: 0xFFD93D)),
-        ColorSwatch(id: "#95E1D3", color: Color(hex: 0x95E1D3)),
-        ColorSwatch(id: "#C77DFF", color: Color(hex: 0xC77DFF)),
-        ColorSwatch(id: "#FF8FA3", color: Color(hex: 0xFF8FA3)),
-        ColorSwatch(id: "#6BCB77", color: Color(hex: 0x6BCB77)),
-        ColorSwatch(id: "#4D96FF", color: Color(hex: 0x4D96FF)),
-    ]
-
     init(city: TripCity, tripID: String, onClose: @escaping () -> Void) {
         self.city = city
         self.tripID = tripID
         self.onClose = onClose
         _name = State(initialValue: city.name)
         _country = State(initialValue: city.country ?? "")
-        _selectedColorHex = State(initialValue: city.color ?? "#4D96FF")
+        _selectedColorHex = State(initialValue: city.color ?? "#74ACDF")
         _timezone = State(initialValue: city.timezone ?? TimeZone.current.identifier)
     }
 
@@ -161,8 +281,9 @@ struct CityEditSheet: View {
     }
 
     private var colorSwatchRow: some View {
-        HStack(spacing: 10) {
-            ForEach(swatches) { swatch in
+        let columns = Array(repeating: GridItem(.fixed(36), spacing: 10), count: 8)
+        return LazyVGrid(columns: columns, spacing: 10) {
+            ForEach(citySwatches) { swatch in
                 let isSelected = selectedColorHex.uppercased() == swatch.id.uppercased()
                 Button {
                     selectedColorHex = swatch.id
@@ -183,7 +304,6 @@ struct CityEditSheet: View {
                 }
                 .buttonStyle(.plain)
             }
-            Spacer()
         }
         .padding(.vertical, 6)
     }
@@ -215,6 +335,179 @@ struct CityEditSheet: View {
                 onClose()
             } catch {
                 self.error = error.localizedDescription
+            }
+        }
+    }
+}
+
+// MARK: - CreateCitySheet
+
+struct CreateCitySheet: View {
+    let tripID: String
+    /// Cities already in this trip — used to prevent duplicate names on save.
+    var existingCities: [TripCity] = []
+    /// All cities across all user trips — shown as quick-fill catalog.
+    /// Falls back to `existingCities` when empty.
+    var catalogCities: [TripCity] = []
+    let onClose: () -> Void
+
+    @Environment(FirestoreClient.self) private var client
+
+    @State private var name = ""
+    @State private var country = ""
+    @State private var selectedColorHex = "#74ACDF"
+    @State private var timezone = TimeZone.current.identifier
+    @State private var saving = false
+    @State private var error: String?
+
+    /// Deduplicated city list for the quick-fill chips.
+    private var catalogItems: [TripCity] {
+        var seen = Set<String>()
+        let pool = catalogCities.isEmpty ? existingCities : catalogCities
+        return pool.filter { city in
+            let key = city.name.lowercased()
+            guard !seen.contains(key) else { return false }
+            seen.insert(key)
+            return true
+        }
+    }
+
+    private var canSave: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    var body: some View {
+        EditSheetShell(
+            title: "Nueva ciudad",
+            isEditing: false,
+            canSave: canSave,
+            isSaving: saving,
+            error: error,
+            onCancel: onClose,
+            onSave: save,
+            onDelete: nil
+        ) {
+            VStack(spacing: 12) {
+                // Catalog of existing cities (quick-fill)
+                if !catalogItems.isEmpty {
+                    EditField(label: catalogCities.isEmpty ? "Ciudades en este viaje" : "Mis ciudades") {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(catalogItems) { existing in
+                                    Button {
+                                        name = existing.name
+                                        country = existing.country ?? ""
+                                        if let hex = existing.color {
+                                            selectedColorHex = hex
+                                        }
+                                        if let tz = existing.timezone {
+                                            timezone = tz
+                                        }
+                                    } label: {
+                                        HStack(spacing: 6) {
+                                            Circle()
+                                                .fill(existing.swiftColor)
+                                                .frame(width: 7, height: 7)
+                                            Text(existing.name)
+                                                .font(Tokens.Typo.strongS)
+                                                .foregroundStyle(Tokens.Color.textPrimary)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            Capsule()
+                                                .fill(existing.swiftColor.opacity(0.15))
+                                                .overlay(
+                                                    Capsule()
+                                                        .strokeBorder(existing.swiftColor.opacity(0.35), lineWidth: 0.5)
+                                                )
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                }
+
+                EditField(label: "Ciudad") {
+                    TextFieldInput(text: $name, placeholder: "Madrid")
+                }
+
+                EditField(label: "País (opcional)") {
+                    TextFieldInput(text: $country, placeholder: "España")
+                }
+
+                EditField(label: "Color") {
+                    colorSwatchRow
+                }
+
+                EditField(label: "Timezone") {
+                    PickerInput(
+                        selection: $timezone,
+                        options: CommonTimezones.options.map { ($0, $0) }
+                    )
+                }
+            }
+        }
+    }
+
+    private var colorSwatchRow: some View {
+        let columns = Array(repeating: GridItem(.fixed(36), spacing: 10), count: 8)
+        return LazyVGrid(columns: columns, spacing: 10) {
+            ForEach(citySwatches) { swatch in
+                let isSelected = selectedColorHex.uppercased() == swatch.id.uppercased()
+                Button {
+                    selectedColorHex = swatch.id
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(swatch.color)
+                            .frame(width: 34, height: 34)
+                        if isSelected {
+                            Circle()
+                                .strokeBorder(Color.white.opacity(0.9), lineWidth: 2.5)
+                                .frame(width: 34, height: 34)
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 6)
+    }
+
+    private func save() {
+        let normalizedName = name.trimmingCharacters(in: .whitespaces).lowercased()
+        if existingCities.contains(where: { $0.name.lowercased() == normalizedName }) {
+            error = "Esta ciudad ya existe en el viaje"
+            return
+        }
+        saving = true
+        error = nil
+        let city = TripCity(
+            id: nil,
+            tripId: tripID,
+            name: name.trimmingCharacters(in: .whitespaces),
+            country: country.isEmpty ? nil : country,
+            countryCode: nil,
+            color: selectedColorHex,
+            days: [],
+            lat: nil,
+            lng: nil,
+            timezone: timezone
+        )
+        Task {
+            do {
+                try await client.createCity(city, tripID: tripID)
+                onClose()
+            } catch {
+                self.error = error.localizedDescription
+                saving = false
             }
         }
     }

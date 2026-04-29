@@ -3,11 +3,15 @@ import { Timestamp } from "firebase/firestore";
 export interface Trip {
   id: string;
   name: string;
+  status?: "draft" | "planned" | "active" | "past"; // optional for backward compatibility
+  is_tentative_dates?: boolean;
   start_date: string; // "2026-03-15"
   end_date: string;
   cover_url?: string;
   total_usd: number;
+  paid_usd?: number;     // denormalized: sum of paid_amount across all items
   cities_count?: number; // denormalized from cities subcollection
+  flights_count?: number; // denormalized from flights subcollection
   created_at: Timestamp;
   updated_at: Timestamp;
 }
@@ -22,6 +26,23 @@ export interface City {
   timezone: string; // IANA
   days: string[]; // ["2026-03-15", "2026-03-16"]
   country_code?: string; // ISO 3166-1 alpha-2, e.g. "ES", "AR"
+}
+
+export interface FlightLeg {
+  direction: "outbound" | "inbound";
+  airline: string;
+  flight_number: string;
+  origin_iata: string;
+  destination_iata: string;
+  departure_local_time: string;
+  departure_timezone: string;
+  departure_utc: Timestamp;
+  arrival_local_time: string;
+  arrival_timezone: string;
+  arrival_utc: Timestamp;
+  duration_minutes: number;
+  cabin_class?: "economy" | "premium_economy" | "business" | "first";
+  seat?: string;
 }
 
 export interface Flight {
@@ -45,6 +66,7 @@ export interface Flight {
   currency?: string;
   price_usd?: number;
   paid_amount?: number;  // paid so far in original currency
+  legs?: FlightLeg[];   // undefined on legacy mono-leg docs
 }
 
 export interface Hotel {
@@ -67,7 +89,7 @@ export interface Hotel {
 export interface Transport {
   id: string;
   trip_id: string;
-  type: "train" | "bus" | "ferry" | "car" | "taxi" | "subway" | "other";
+  type: "train" | "bus" | "ferry" | "car" | "car_rental" | "taxi" | "subway" | "other";
   origin: string;
   destination: string;
   departure_local_time: string;
@@ -151,7 +173,7 @@ export interface ParsedHotel {
 export interface ParsedTransport {
   type: "transport";
   confidence: number;
-  mode: "train" | "bus" | "ferry" | "car" | "other" | null;
+  mode: "train" | "bus" | "ferry" | "car" | "car_rental" | "other" | null;
   origin: string | null;
   destination: string | null;
   departure_local_time: string | null;
@@ -162,6 +184,21 @@ export interface ParsedTransport {
 
 export type ParsedItem = ParsedFlight | ParsedHotel | ParsedTransport;
 
+export type TravelDocumentType = "passport" | "visa" | "insurance" | "other";
+
+export interface TravelDocument {
+  id: string;
+  type: TravelDocumentType;
+  title: string;
+  storage_ref: string;       // Firebase Storage path
+  file_name: string;
+  mime_type: string;
+  expires_at?: string;       // "YYYY-MM-DD"
+  notes?: string;
+  created_at: Timestamp;
+  updated_at?: Timestamp;
+}
+
 export interface CitySetting {
   normalized_name: string; // document ID — lowercase, no accents
   name: string;            // display name (e.g. "Madrid")
@@ -170,15 +207,26 @@ export interface CitySetting {
 }
 
 // Design system constants
+// 16 colores — índices 0-7 son los originales (no cambiar order para no romper ciudades existentes)
 export const CITY_COLORS = [
-  "#FF6B6B", // coral
-  "#4ECDC4", // turquesa
-  "#FFD93D", // amarillo
-  "#95E1D3", // menta
-  "#C77DFF", // lavanda
-  "#FF8FA3", // rosa salmón
+  // — originales (índices 0-7) —
+  "#71D3A6", // menta viaje
+  "#74ACDF", // cielo
+  "#FFD16A", // sol
+  "#F29E7D", // coral cálido
+  "#A891E8", // lavanda IA
+  "#E98A9A", // rosa atardecer
   "#6BCB77", // verde fresco
-  "#4D96FF", // azul eléctrico
+  "#6CAFE8", // azul costa
+  // — nuevos (índices 8-15) —
+  "#FF6B6B", // coral rojo
+  "#4ECDC4", // teal
+  "#FFB347", // naranja durazno
+  "#48DBFB", // celeste eléctrico
+  "#A29BFE", // lavanda brillante
+  "#FD79A8", // rosa chicle
+  "#55EFC4", // menta neón
+  "#FDCB6E", // dorado cálido
 ];
 
 // Representative color per country (ISO 3166-1 alpha-2) — drawn from flag palettes

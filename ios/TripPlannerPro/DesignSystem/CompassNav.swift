@@ -49,7 +49,7 @@ struct AtlasTabBar: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: 58)
-        .padding(.bottom, 18)
+        .padding(.bottom, 4)
         .background(
             Rectangle()
                 .fill(Tokens.Color.surface)
@@ -101,8 +101,8 @@ struct AtlasTabBar: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color(hex: 0xB19CD9),
-                                Color(hex: 0x8C74BA)
+                                Tokens.Color.accentPurple,
+                                Tokens.Color.accentPurpleDeep
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -186,7 +186,7 @@ private struct AtlasFABButtonStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.9 : 1.0)
             .shadow(
-                color: Color(hex: 0x8C74BA).opacity(0.5),
+                color: Tokens.Color.accentPurpleDeep.opacity(0.5),
                 radius: configuration.isPressed ? 8 : 16,
                 x: 0,
                 y: configuration.isPressed ? 4 : 8
@@ -214,6 +214,17 @@ extension View {
     func hideCompassNav(_ hidden: Bool = true) -> some View {
         hideTabBar(hidden)
     }
+}
+
+// MARK: - FAB context
+
+/// Shared observable that lets any child view override the global FAB action.
+/// Inject via `.environment(fabContext)` in MainTabView.
+/// Child views read it with `@Environment(FABContext.self)` and set/clear
+/// `overrideAction` in `.onAppear` / `.onDisappear`.
+@Observable
+final class FABContext {
+    var overrideAction: (() -> Void)? = nil
 }
 
 // MARK: - Atlas tab set

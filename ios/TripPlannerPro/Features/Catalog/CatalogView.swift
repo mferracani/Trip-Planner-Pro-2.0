@@ -6,12 +6,14 @@ private enum CatalogTab: String, CaseIterable {
     case flights = "Vuelos"
     case hotels = "Hoteles"
     case transports = "Traslados"
+    case cities = "Ciudades"
 
     var icon: String {
         switch self {
         case .flights: return "airplane"
         case .hotels: return "bed.double"
         case .transports: return "tram"
+        case .cities: return "mappin.and.ellipse"
         }
     }
 
@@ -20,6 +22,7 @@ private enum CatalogTab: String, CaseIterable {
         case .flights: return Tokens.Color.Category.flight
         case .hotels: return Tokens.Color.Category.hotel
         case .transports: return Tokens.Color.Category.transit
+        case .cities: return Tokens.Color.accentGreen
         }
     }
 }
@@ -27,55 +30,93 @@ private enum CatalogTab: String, CaseIterable {
 // MARK: - CatalogView
 
 struct CatalogView: View {
-    @Environment(FirestoreClient.self) private var client
-    @State private var loadState: LoadState = .loading
-    @State private var activeTab: CatalogTab = .flights
+    var cache: CacheManager? = nil
 
-    private enum LoadState {
-        case loading
-        case loaded(CatalogItems)
-        case error(String)
-    }
+    @Environment(FirestoreClient.self) private var client
+    @State private var vm: CatalogViewModel?
+    @State private var activeTab: CatalogTab = .flights
 
     var body: some View {
         NavigationStack {
             ZStack {
                 Tokens.Color.bgPrimary.ignoresSafeArea()
 
-                switch loadState {
-                case .loading:
-                    CatalogSkeletonView()
-                case .error(let msg):
-                    CatalogErrorView(message: msg)
-                case .loaded(let items):
-                    loadedContent(items)
+                if let vm {
+                    mainContent(vm)
                 }
             }
             .navigationTitle("Catálogo")
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(Tokens.Color.bgPrimary, for: .navigationBar)
         }
-        .task {
-            await loadItems()
+        .onAppear {
+            let viewModel = CatalogViewModel(client: client, cache: cache)
+            vm = viewModel
+            viewModel.start()
+        }
+        .onDisappear { vm?.stop() }
+    }
+
+    // MARK: - Main content dispatcher
+
+    @ViewBuilder
+    private func mainContent(_ vm: CatalogViewModel) -> some View {
+        if vm.isLoading {
+            CatalogSkeletonView()
+        } else if let err = vm.error {
+            CatalogErrorView(message: err.localizedDescription)
+        } else {
+            loadedContent(vm)
         }
     }
 
     // MARK: - Loaded content
 
-    private func loadedContent(_ items: CatalogItems) -> some View {
+    private func loadedContent(_ vm: CatalogViewModel) -> some View {
         VStack(spacing: 0) {
+            if vm.isOffline {
+                offlineBanner
+            }
+
             tabSelector
+
             Divider().background(Tokens.Color.border)
 
             switch activeTab {
             case .flights:
-                FlightsTab(entries: items.flights)
+                FlightsTab(entries: vm.items.flights)
             case .hotels:
-                HotelsTab(entries: items.hotels)
+                HotelsTab(entries: vm.items.hotels)
             case .transports:
-                TransportsTab(entries: items.transports)
+                TransportsTab(entries: vm.items.transports)
+            case .cities:
+                CitiesTab(entries: vm.items.cities)
             }
         }
+    }
+
+    // MARK: - Offline banner
+
+    private var offlineBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 11, weight: .medium))
+            Text("Sin conexión · mostrando datos guardados")
+                .font(.system(size: 12, weight: .medium).monospaced())
+            Spacer()
+        }
+        .foregroundStyle(Tokens.Color.textTertiary)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .background(
+            Tokens.Color.surface.opacity(0.6)
+                .overlay(
+                    Rectangle()
+                        .fill(Tokens.Color.borderSoft)
+                        .frame(height: 0.5),
+                    alignment: .bottom
+                )
+        )
     }
 
     // MARK: - Tab selector
@@ -111,18 +152,6 @@ struct CatalogView: View {
         .background(Tokens.Color.surface)
     }
 
-    // MARK: - Load
-
-    private func loadItems() async {
-        do {
-            let stream = try client.allItemsStream()
-            for try await items in stream {
-                loadState = .loaded(items)
-            }
-        } catch {
-            loadState = .error(error.localizedDescription)
-        }
-    }
 }
 
 // MARK: - FlightsTab
@@ -218,6 +247,7 @@ private struct TransportsTab: View {
         ("bus", "Bus", "bus"),
         ("ferry", "Ferry", "ferry"),
         ("car", "Auto", "car"),
+        ("car_rental", "Alquiler", "car.circle"),
         ("other", "Otro", "questionmark.circle"),
     ]
 
@@ -282,6 +312,132 @@ private struct TransportsTab: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - CitiesTab
+
+private struct CitiesTab: View {
+    let entries: [(trip: Trip, city: TripCity)]
+    @State private var search = ""
+    @State private var selectedCity: TripCity? = nil
+    @State private var selectedTripID: String = ""
+
+    private var filtered: [(trip: Trip, city: TripCity)] {
+        guard !search.trimmingCharacters(in: .whitespaces).isEmpty else { return entries }
+        let q = search.lowercased()
+        return entries.filter { entry in
+            [entry.city.name, entry.city.country, entry.trip.name]
+                .compactMap { $0 }
+                .contains { $0.lowercased().contains(q) }
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            SearchBar(text: $search, placeholder: "Ciudad, país, viaje...")
+                .padding(.horizontal, Tokens.Spacing.base)
+                .padding(.vertical, Tokens.Spacing.sm)
+
+            if filtered.isEmpty {
+                EmptyCatalogState(tab: .cities, hasSearch: !search.isEmpty)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: Tokens.Spacing.sm) {
+                        ForEach(filtered, id: \.city.id) { entry in
+                            CityCatalogCard(trip: entry.trip, city: entry.city) {
+                                selectedCity = entry.city
+                                selectedTripID = entry.trip.id ?? ""
+                            }
+                        }
+                    }
+                    .padding(.horizontal, Tokens.Spacing.base)
+                    .padding(.vertical, Tokens.Spacing.sm)
+                }
+            }
+        }
+        .sheet(item: $selectedCity) { city in
+            CityEditSheet(city: city, tripID: selectedTripID, onClose: { selectedCity = nil })
+                .presentationBackground(Tokens.Color.bgPrimary)
+        }
+    }
+}
+
+// MARK: - CityCatalogCard
+
+private struct CityCatalogCard: View {
+    let trip: Trip
+    let city: TripCity
+    let onEdit: () -> Void
+
+    var body: some View {
+        Button(action: onEdit) {
+            HStack(alignment: .center, spacing: Tokens.Spacing.md) {
+                Circle()
+                    .fill(city.swiftColor)
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Text(String(city.name.prefix(1)).uppercased())
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(.white)
+                    )
+
+                VStack(alignment: .leading, spacing: Tokens.Spacing.xs) {
+                    Text(trip.name)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Tokens.Color.textTertiary)
+                        .textCase(.uppercase)
+                        .tracking(0.5)
+
+                    HStack(spacing: Tokens.Spacing.xs) {
+                        Text(city.name)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Tokens.Color.textPrimary)
+                        if let flag = countryFlag {
+                            Text(flag)
+                                .font(.system(size: 14))
+                        }
+                    }
+
+                    if let country = city.country {
+                        Text(country)
+                            .font(.system(size: 12))
+                            .foregroundStyle(Tokens.Color.textTertiary)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                if !city.days.isEmpty {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("\(city.days.count)")
+                            .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(Tokens.Color.textPrimary)
+                        Text("días")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Tokens.Color.textTertiary)
+                    }
+                }
+
+                Image(systemName: "pencil")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Tokens.Color.textTertiary)
+            }
+            .padding(Tokens.Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                    .fill(Tokens.Color.surface)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var countryFlag: String? {
+        guard let code = city.countryCode, code.count == 2 else { return nil }
+        let base: UInt32 = 127397
+        return code.uppercased().unicodeScalars.compactMap {
+            UnicodeScalar(base + $0.value)
+        }.map { String($0) }.joined()
     }
 }
 
@@ -458,6 +614,9 @@ private struct TransportCatalogCard: View {
         case "bus": return "bus"
         case "ferry": return "ferry"
         case "car": return "car"
+        case "car_rental": return "car.circle.fill"
+        case "taxi": return "car.fill"
+        case "subway": return "tram.fill.tunnel"
         default: return "tram"
         }
     }
@@ -468,8 +627,17 @@ private struct TransportCatalogCard: View {
         case "bus": return "Bus"
         case "ferry": return "Ferry"
         case "car": return "Auto"
+        case "car_rental": return "Alquiler de auto"
+        case "taxi": return "Taxi"
+        case "subway": return "Metro"
         default: return "Otro"
         }
+    }
+
+    private var iconColor: Color {
+        transport.type == "car_rental"
+            ? Tokens.Color.accentOrange
+            : Tokens.Color.Category.transit
     }
 
     var body: some View {
@@ -477,11 +645,11 @@ private struct TransportCatalogCard: View {
             // Icon
             ZStack {
                 Circle()
-                    .fill(Tokens.Color.Category.transit.opacity(0.15))
+                    .fill(iconColor.opacity(0.15))
                     .frame(width: 40, height: 40)
                 Image(systemName: typeIcon)
                     .font(.system(size: 16))
-                    .foregroundStyle(Tokens.Color.Category.transit)
+                    .foregroundStyle(iconColor)
             }
 
             // Main content
@@ -493,7 +661,7 @@ private struct TransportCatalogCard: View {
                     .tracking(0.5)
 
                 HStack(spacing: Tokens.Spacing.xs) {
-                    Text(transport.destination)
+                    Text(transport.origin.isEmpty ? transport.destination : "\(transport.origin) → \(transport.destination)")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(Tokens.Color.textPrimary)
                     Text("·")

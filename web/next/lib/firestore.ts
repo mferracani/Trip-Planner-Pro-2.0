@@ -12,7 +12,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { getFirebaseDb } from "./firebase";
-import type { Trip, City, Flight, Hotel, Transport, Expense, CitySetting } from "./types";
+import type { Trip, City, Flight, Hotel, Transport, Expense, CitySetting, TravelDocument } from "./types";
 
 // Base path helpers
 const tripsRef = (uid: string) => collection(getFirebaseDb(), "users", uid, "trips");
@@ -29,14 +29,23 @@ const expensesRef = (uid: string, tripId: string) => collection(getFirebaseDb(),
 const expenseRef = (uid: string, tripId: string, id: string) => doc(getFirebaseDb(), "users", uid, "trips", tripId, "expenses", id);
 export const citySettingsRef = (uid: string) => collection(getFirebaseDb(), "users", uid, "city_settings");
 const citySettingRef = (uid: string, normalizedName: string) => doc(getFirebaseDb(), "users", uid, "city_settings", normalizedName);
+const travelDocsRef = (uid: string) => collection(getFirebaseDb(), "users", uid, "travel_documents");
+const travelDocRef = (uid: string, id: string) => doc(getFirebaseDb(), "users", uid, "travel_documents", id);
 
-// Firestore rejects undefined values; strip them before writing.
-function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (v !== undefined) out[k] = v;
+// Firestore rejects undefined values; strip them recursively before writing.
+// Shallow strip is not enough — nested objects (e.g. legs[].cabin_class) also cause errors.
+function stripUndefined<T>(obj: T): T {
+  if (Array.isArray(obj)) {
+    return obj.map(stripUndefined) as unknown as T;
   }
-  return out as T;
+  if (obj !== null && typeof obj === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      if (v !== undefined) out[k] = stripUndefined(v);
+    }
+    return out as T;
+  }
+  return obj;
 }
 
 // Trips
@@ -70,6 +79,18 @@ export async function deleteTrip(uid: string, tripId: string) {
   await deleteDoc(tripRef(uid, tripId));
 }
 
+export async function updateTripStatus(
+  uid: string,
+  tripId: string,
+  status: "draft" | "planned"
+) {
+  await updateDoc(tripRef(uid, tripId), {
+    status,
+    is_tentative_dates: status === "draft",
+    updated_at: serverTimestamp(),
+  });
+}
+
 // Cities
 export async function getCities(uid: string, tripId: string): Promise<City[]> {
   const snap = await getDocs(citiesRef(uid, tripId));
@@ -91,9 +112,10 @@ export async function deleteCity(uid: string, tripId: string, id: string) {
 
 // Flights
 export async function getFlights(uid: string, tripId: string): Promise<Flight[]> {
-  const q = query(flightsRef(uid, tripId), orderBy("departure_utc"));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Flight));
+  const snap = await getDocs(flightsRef(uid, tripId));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() } as Flight))
+    .sort((a, b) => (a.departure_local_time ?? "").localeCompare(b.departure_local_time ?? ""));
 }
 
 export async function createFlight(uid: string, tripId: string, data: Omit<Flight, "id">) {
@@ -131,9 +153,10 @@ export async function deleteHotel(uid: string, tripId: string, id: string) {
 
 // Transports
 export async function getTransports(uid: string, tripId: string): Promise<Transport[]> {
-  const q = query(transportsRef(uid, tripId), orderBy("departure_utc"));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Transport));
+  const snap = await getDocs(transportsRef(uid, tripId));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() } as Transport))
+    .sort((a, b) => (a.departure_local_time ?? "").localeCompare(b.departure_local_time ?? ""));
 }
 
 export async function createTransport(uid: string, tripId: string, data: Omit<Transport, "id">) {
@@ -260,17 +283,25 @@ export async function recalcTripAggregates(uid: string, tripId: string) {
     hotels.reduce((s, h) => s + (h.total_price_usd ?? 0), 0) +
     transports.reduce((s, t) => s + (t.price_usd ?? 0), 0) +
     expenses.reduce((s, e) => s + (e.amount_usd ?? 0), 0);
+  const paid =
+    flights.reduce((s, f) => s + (f.paid_amount ?? 0), 0) +
+    hotels.reduce((s, h) => s + (h.paid_amount ?? 0), 0) +
+    transports.reduce((s, t) => s + (t.paid_amount ?? 0), 0) +
+    expenses.reduce((s, e) => s + (e.paid_amount ?? 0), 0);
   await updateTrip(uid, tripId, {
     total_usd: Math.round(total),
+    paid_usd: Math.round(paid),
     cities_count: cities.length,
+    flights_count: flights.length,
   } as Partial<Trip>);
 }
 
 // Expenses
 export async function getExpenses(uid: string, tripId: string): Promise<Expense[]> {
-  const q = query(expensesRef(uid, tripId), orderBy("date", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
+  const snap = await getDocs(expensesRef(uid, tripId));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() } as Expense))
+    .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
 }
 
 export async function createExpense(uid: string, tripId: string, data: Omit<Expense, "id">) {
@@ -284,4 +315,20 @@ export async function updateExpense(uid: string, tripId: string, id: string, dat
 
 export async function deleteExpense(uid: string, tripId: string, id: string) {
   await deleteDoc(expenseRef(uid, tripId, id));
+}
+
+// Travel Documents
+export async function getTravelDocuments(uid: string): Promise<TravelDocument[]> {
+  const q = query(travelDocsRef(uid), orderBy("created_at", "desc"));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as TravelDocument));
+}
+
+export async function createTravelDocument(uid: string, data: Omit<TravelDocument, "id">): Promise<string> {
+  const ref = await addDoc(travelDocsRef(uid), stripUndefined({ ...data, created_at: serverTimestamp() }));
+  return ref.id;
+}
+
+export async function deleteTravelDocumentDoc(uid: string, id: string): Promise<void> {
+  await deleteDoc(travelDocRef(uid, id));
 }

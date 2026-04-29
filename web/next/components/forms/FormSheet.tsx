@@ -45,34 +45,48 @@ export function FormSheet({
   if (!mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] md:flex md:items-center md:justify-center">
-      {/* Backdrop (desktop only) */}
+    <div className="fixed inset-0 z-[60] flex items-end md:items-stretch md:justify-end">
+      <style>{`
+        @keyframes _sheet-up  { from { transform: translateY(100%) } to { transform: translateY(0) } }
+        @keyframes _drawer-in { from { transform: translateX(100%) } to { transform: translateX(0) } }
+        ._form-panel { animation: _sheet-up 0.32s cubic-bezier(0.32, 0.72, 0, 1) both }
+        @media (min-width: 768px) {
+          ._form-panel { animation: _drawer-in 0.28s cubic-bezier(0.32, 0.72, 0, 1) both }
+        }
+      `}</style>
+
+      {/* Backdrop */}
       <div
-        className="hidden md:block absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Panel */}
+      {/* Panel — mobile: bottom sheet · desktop: right drawer */}
       <div
         className="
-          relative flex flex-col bg-[#0D0D0D]
-          w-full h-full
-          md:w-[92vw] md:max-w-[560px] md:h-auto md:max-h-[86vh]
-          md:rounded-[20px] md:border md:border-[#262626]
-          md:shadow-[0_24px_64px_rgba(0,0,0,0.55)]
-          md:overflow-hidden
+          relative flex flex-col bg-[#0D0D0D] overflow-hidden
+          w-full max-h-[92vh] rounded-t-[20px]
+          md:w-[460px] md:max-w-[48vw] md:h-full md:max-h-none md:rounded-none md:rounded-l-[20px]
+          md:border-l md:border-[#262626]
+          md:shadow-[-32px_0_80px_rgba(0,0,0,0.6)]
+          _form-panel
         "
       >
+        {/* Mobile drag handle */}
+        <div className="md:hidden flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-[#333]" />
+        </div>
+
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-12 md:pt-5 pb-4 border-b border-[#1E1E1E]">
+        <div className="flex items-center justify-between px-6 pt-3 md:pt-5 pb-4 border-b border-[#1E1E1E]">
           <button
             onClick={onClose}
-            className="text-[#0A84FF] md:text-[#A0A0A0] md:hover:text-white md:transition-colors text-[17px] md:text-[14px] font-medium"
+            className="text-[#0A84FF] md:text-[#A0A0A0] md:hover:text-white transition-colors text-[17px] md:text-[14px] font-medium"
           >
             Cancelar
           </button>
           <h2 className="text-[17px] md:text-[16px] font-semibold text-white tracking-tight">{title}</h2>
-          <div className="w-16 md:w-16" />
+          <div className="w-16" />
         </div>
 
         {/* Body */}
@@ -107,7 +121,7 @@ export function FormSheet({
         </div>
 
         {/* Footer CTA */}
-        <div className="px-6 md:px-7 pb-10 md:pb-5 pt-4 border-t border-[#1E1E1E]">
+        <div className="px-6 md:px-7 pb-10 md:pb-6 pt-4 border-t border-[#1E1E1E]">
           <button
             onClick={onSubmit}
             disabled={!canSubmit || submitting}

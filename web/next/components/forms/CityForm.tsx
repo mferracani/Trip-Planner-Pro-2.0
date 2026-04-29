@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { createCity, updateCity, deleteCity } from "@/lib/firestore";
-import { CITY_COLORS, type City } from "@/lib/types";
+import { createCity, updateCity, deleteCity, getCitySettings, upsertCitySetting, getAllCities } from "@/lib/firestore";
+import { CITY_COLORS, type City, type CitySetting } from "@/lib/types";
 import { COMMON_TIMEZONES } from "@/lib/datetime";
 import { FormSheet } from "./FormSheet";
 import { Field, TextInput, NumberInput, SelectInput } from "./fields";
@@ -15,6 +15,7 @@ interface Props {
   usedColors: string[];
   existing?: City;
   initialDay?: string;
+  initialDays?: string[];
   onClose: () => void;
   onSaved: () => void;
 }
@@ -28,8 +29,13 @@ function* dateRange(start: string, end: string): Generator<string> {
   }
 }
 
-export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, initialDay, onClose, onSaved }: Props) {
-  const { user } = useAuth();
+function normalizeCity(name: string): string {
+  return name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+
+export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, initialDay, initialDays, onClose, onSaved }: Props) {
+  const { user, ownerUid } = useAuth();
   const [name, setName] = useState(existing?.name ?? "");
   const [lat, setLat] = useState<number | null>(existing?.lat ?? null);
   const [lng, setLng] = useState<number | null>(existing?.lng ?? null);
@@ -37,16 +43,47 @@ export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, ini
   const [color, setColor] = useState(
     existing?.color ?? CITY_COLORS.find((c) => !usedColors.includes(c)) ?? CITY_COLORS[0]
   );
-  const [days, setDays] = useState<string[]>(existing?.days ?? (initialDay ? [initialDay] : []));
+  const [days, setDays] = useState<string[]>(existing?.days ?? (initialDays?.length ? initialDays : initialDay ? [initialDay] : []));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Catalog chips — cities from all user trips, shown as horizontal scrollable chips
+  const [catalogCities, setCatalogCities] = useState<CitySetting[]>([]);
+
+  useEffect(() => {
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || existing) return;
+    Promise.all([getCitySettings(uid), getAllCities(uid)]).then(
+      ([settings, tripCities]) => {
+        const seen = new Map(settings.map((s) => [s.normalized_name, s]));
+        const merged: CitySetting[] = [...settings];
+        for (const c of tripCities) {
+          const key = normalizeCity(c.name);
+          if (!seen.has(key)) {
+            seen.set(key, { normalized_name: key, name: c.name, color: c.color, country_code: c.country_code });
+            merged.push({ normalized_name: key, name: c.name, color: c.color, country_code: c.country_code });
+          }
+        }
+        merged.sort((a, b) => a.name.localeCompare(b.name));
+        setCatalogCities(merged);
+      }
+    ).catch(() => {
+      // Error silencioso — no mostrar sugerencias si falla la query
+    });
+  }, [ownerUid, user?.uid, existing]);
+
+  function pickCatalogCity(cs: CitySetting) {
+    setName(cs.name);
+    if (cs.color) setColor(cs.color);
+  }
 
   function toggleDay(d: string) {
     setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
   }
 
   async function handleSubmit() {
-    if (!user || !name.trim()) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !name.trim()) return;
     setSaving(true);
     setError(null);
     try {
@@ -60,10 +97,15 @@ export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, ini
         days: [...days].sort(),
       };
       if (existing) {
-        await updateCity(user.uid, tripId, existing.id, data);
+        await updateCity(uid, tripId, existing.id, data);
       } else {
-        await createCity(user.uid, tripId, data);
+        await createCity(uid, tripId, data);
       }
+      // Sync color to global city_settings — all trips show the same color
+      await upsertCitySetting(uid, normalizeCity(name.trim()), {
+        name: name.trim(),
+        color,
+      });
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -73,11 +115,12 @@ export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, ini
   }
 
   async function handleDelete() {
-    if (!user || !existing) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !existing) return;
     setSaving(true);
     setError(null);
     try {
-      await deleteCity(user.uid, tripId, existing.id);
+      await deleteCity(uid, tripId, existing.id);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -97,6 +140,40 @@ export function CityForm({ tripId, tripStart, tripEnd, usedColors, existing, ini
       canSubmit={!!name.trim()}
       error={error}
     >
+      {/* Catalog chips — only when creating new and there are previous cities */}
+      {!existing && catalogCities.length > 0 && (
+        <div className="mb-1">
+          <p className="text-[11px] font-medium text-[#707070] uppercase tracking-wide mb-2">
+            Mis ciudades
+          </p>
+          <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+            <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
+              {catalogCities.map((cs) => (
+                <button
+                  key={cs.normalized_name}
+                  onClick={() => pickCatalogCity(cs)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-medium transition-colors hover:border-[#555]"
+                  style={{
+                    background: cs.color ? `${cs.color}1A` : "#1A1A1A",
+                    border: `1px solid ${cs.color ? `${cs.color}59` : "#333"}`,
+                    color: "#A0A0A0",
+                    whiteSpace: "nowrap",
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#FFFFFF"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#A0A0A0"; }}
+                >
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: cs.color ?? "#555" }}
+                  />
+                  {cs.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <Field label="Nombre">
         <TextInput value={name} onChange={setName} placeholder="Buenos Aires" />
       </Field>

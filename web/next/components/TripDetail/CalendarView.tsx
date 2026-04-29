@@ -1,7 +1,9 @@
 "use client";
 
 import { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Trip, City, Flight, Hotel, Transport, CITY_TO_COUNTRY, COUNTRY_COLORS } from "@/lib/types";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "motion/react";
+import { Trip, City, Flight, FlightLeg, Hotel, Transport, CITY_TO_COUNTRY, COUNTRY_COLORS } from "@/lib/types";
 import { useAuth } from "@/context/AuthContext";
 import { updateTrip, citySettingsRef } from "@/lib/firestore";
 import { onSnapshot } from "firebase/firestore";
@@ -9,6 +11,8 @@ import { CityForm } from "../forms/CityForm";
 import { FlightForm } from "../forms/FlightForm";
 import { HotelForm } from "../forms/HotelForm";
 import { TransportForm } from "../forms/TransportForm";
+
+type SelectionAddType = "city" | "hotel";
 
 interface Props {
   trip: Trip;
@@ -98,25 +102,52 @@ function buildDayItemsMap(
   }
 
   for (const f of flights) {
-    const depDate = f.departure_local_time?.split("T")[0];
-    const arrDate = f.arrival_local_time?.split("T")[0];
-    const depTime = f.departure_local_time?.split("T")[1]?.slice(0, 5) ?? "";
-    const arrTime = f.arrival_local_time?.split("T")[1]?.slice(0, 5) ?? "";
-    if (depDate) {
-      ensure(depDate);
-      map[depDate].flights.push({
-        id: f.id,
-        time: depTime,
-        label: `${depTime} ${f.destination_iata ?? ""}`.trim(),
-      });
-    }
-    if (arrDate && arrDate !== depDate) {
-      ensure(arrDate);
-      map[arrDate].flights.push({
-        id: f.id + "_arr",
-        time: arrTime,
-        label: `${arrTime} ${f.destination_iata ?? ""}`.trim(),
-      });
+    if (f.legs && f.legs.length > 0) {
+      // Leg-aware: one grid entry per leg departure / arrival day
+      for (const leg of f.legs) {
+        const legDepDate = leg.departure_local_time?.split("T")[0];
+        const legArrDate = leg.arrival_local_time?.split("T")[0];
+        const legDepTime = leg.departure_local_time?.split("T")[1]?.slice(0, 5) ?? "";
+        const legArrTime = leg.arrival_local_time?.split("T")[1]?.slice(0, 5) ?? "";
+        if (legDepDate) {
+          ensure(legDepDate);
+          map[legDepDate].flights.push({
+            id: `${f.id}_dep_${leg.flight_number}`,
+            time: legDepTime,
+            label: `${legDepTime} ${leg.destination_iata}`.trim(),
+          });
+        }
+        if (legArrDate && legArrDate !== legDepDate) {
+          ensure(legArrDate);
+          map[legArrDate].flights.push({
+            id: `${f.id}_arr_${leg.flight_number}`,
+            time: legArrTime,
+            label: `${legArrTime} ${leg.destination_iata}`.trim(),
+          });
+        }
+      }
+    } else {
+      // Legacy mono-leg: use top-level fields
+      const depDate = f.departure_local_time?.split("T")[0];
+      const arrDate = f.arrival_local_time?.split("T")[0];
+      const depTime = f.departure_local_time?.split("T")[1]?.slice(0, 5) ?? "";
+      const arrTime = f.arrival_local_time?.split("T")[1]?.slice(0, 5) ?? "";
+      if (depDate) {
+        ensure(depDate);
+        map[depDate].flights.push({
+          id: f.id,
+          time: depTime,
+          label: `${depTime} ${f.destination_iata ?? ""}`.trim(),
+        });
+      }
+      if (arrDate && arrDate !== depDate) {
+        ensure(arrDate);
+        map[arrDate].flights.push({
+          id: f.id + "_arr",
+          time: arrTime,
+          label: `${arrTime} ${f.destination_iata ?? ""}`.trim(),
+        });
+      }
     }
   }
 
@@ -155,10 +186,11 @@ interface SelectionStats {
 }
 
 export function CalendarView({ trip, cities, flights, hotels, transports, onChanged }: Props) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [filterCity, setFilterCity] = useState<City | null>(null);
+  const [addingFromSelection, setAddingFromSelection] = useState<SelectionAddType | null>(null);
 
   const longPressTimer = useRef<number | null>(null);
   const dragStartDate = useRef<string | null>(null);
@@ -167,14 +199,15 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
   // Global city settings — realtime listener so Catalog changes propagate instantly
   const [citySettingsMap, setCitySettingsMap] = useState<Record<string, { color?: string; country_code?: string }>>({});
   useEffect(() => {
-    if (!user) return;
-    const unsub = onSnapshot(citySettingsRef(user.uid), (snap) => {
+    const uid = ownerUid ?? user?.uid;
+    if (!uid) return;
+    const unsub = onSnapshot(citySettingsRef(uid), (snap) => {
       const map: Record<string, { color?: string; country_code?: string }> = {};
       snap.docs.forEach((d) => { map[d.id] = d.data() as { color?: string; country_code?: string }; });
       setCitySettingsMap(map);
     });
     return unsub;
-  }, [user]);
+  }, [ownerUid, user?.uid]);
 
   // Apply global settings on top of per-trip city data
   const enhancedCities = useMemo(
@@ -190,10 +223,11 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
   const weeks = buildWeeks(trip.start_date, trip.end_date);
   const dayItemsMap = buildDayItemsMap(flights, hotels, transports);
 
-  const dateCityMap: Record<string, City> = {};
+  const dateCitiesMap: Record<string, City[]> = {};
   for (const city of enhancedCities) {
     for (const d of city.days ?? []) {
-      dateCityMap[d] = city;
+      if (!dateCitiesMap[d]) dateCitiesMap[d] = [];
+      dateCitiesMap[d].push(city);
     }
   }
 
@@ -286,14 +320,15 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
   }, []);
 
   async function adjustDate(edge: "start" | "end", delta: number) {
-    if (!user) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid) return;
     const base = edge === "start" ? trip.start_date : trip.end_date;
     const d = new Date(base + "T00:00:00");
     d.setDate(d.getDate() + delta);
     const newDate = d.toISOString().split("T")[0];
     if (edge === "start" && newDate >= trip.end_date) return;
     if (edge === "end" && newDate <= trip.start_date) return;
-    await updateTrip(user.uid, trip.id, edge === "start" ? { start_date: newDate } : { end_date: newDate });
+    await updateTrip(uid, trip.id, edge === "start" ? { start_date: newDate } : { end_date: newDate });
     onChanged();
   }
 
@@ -303,11 +338,11 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
     let hasCity = false;
     const cityIds = new Set<string>();
     for (const d of selection) {
-      const city = dateCityMap[d];
-      if (!city) hasEmpty = true;
+      const citiesOnDay = dateCitiesMap[d] ?? [];
+      if (citiesOnDay.length === 0) hasEmpty = true;
       else {
         hasCity = true;
-        cityIds.add(city.id);
+        citiesOnDay.forEach((c) => cityIds.add(c.id));
       }
     }
     return {
@@ -324,7 +359,7 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
     <div className="px-3 md:px-8 pb-32 md:pb-8" style={{ userSelect: inSelectionMode ? "none" : "auto" }}>
       {/* Hint bar — selection mode */}
       {inSelectionMode && (
-        <div className="mb-3 px-3 py-2 bg-[#0A84FF]/12 border border-[#0A84FF]/30 rounded-[10px] text-[12px] text-[#0A84FF] font-medium text-center animate-fade-slide-up">
+        <div className="mb-3 px-3 py-2 bg-[#71D3A6]/12 border border-[#71D3A6]/30 rounded-[10px] text-[12px] text-[#71D3A6] font-medium text-center animate-fade-slide-up">
           {selection.size} día{selection.size === 1 ? "" : "s"} · mantené y arrastrá para extender
         </div>
       )}
@@ -332,7 +367,7 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
       {/* Filter city hint */}
       {filterCity && !inSelectionMode && (() => {
         const fc = filterCity;
-        const fcColor = cityColor(fc);
+        const fcColor = fc.color;
         const fcCode = detectCountryCode(fc);
         return (
           <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-[10px] animate-fade-slide-up" style={{ backgroundColor: `${fcColor}15`, border: `1px solid ${fcColor}40` }}>
@@ -349,10 +384,29 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
         );
       })()}
 
+      {/* Countdown banner — only for future trips */}
+      {!inSelectionMode && (() => {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const tripStart = new Date(trip.start_date + "T00:00:00");
+        const d = Math.ceil((tripStart.getTime() - today.getTime()) / 86400000);
+        if (d <= 0) return null;
+        return (
+          <div
+            className="mb-3 flex items-center gap-2.5 px-3 py-2 rounded-[10px] animate-fade-slide-up"
+            style={{ background: "rgba(10,132,255,0.07)", border: "1px solid rgba(10,132,255,0.22)" }}
+          >
+            <span className="text-[15px]">✈️</span>
+            <span className="text-[12px] font-semibold text-[#0A84FF] flex-1">
+              {d === 1 ? "Mañana empieza el viaje" : `Faltan ${d} días para que empiece el viaje`}
+            </span>
+          </div>
+        );
+      })()}
+
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 mb-1.5">
         {WEEKDAYS.map((day) => (
-          <div key={day} className="text-center text-[10px] font-semibold text-[#4D4D4D] uppercase tracking-wide py-1.5">
+          <div key={day} className="text-center text-[10px] font-bold text-[#707070] uppercase tracking-wide py-1.5">
             {day}
           </div>
         ))}
@@ -364,15 +418,16 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
           <div key={wi} className="grid grid-cols-7 gap-1">
             {week.map((dateStr) => {
               const inRange = dateStr >= trip.start_date && dateStr <= trip.end_date;
-              const city = dateCityMap[dateStr];
+              const citiesOnDay = dateCitiesMap[dateStr] ?? [];
+              const primaryCity = citiesOnDay[0];
               const items = dayItemsMap[dateStr];
               const isSelected = selection.has(dateStr);
               const isToday = dateStr === todayStr;
               const [, mm, dd] = dateStr.split("-");
               const dateLabel = `${dd}/${mm}`;
-              const dayIndex = city ? (city.days ?? []).indexOf(dateStr) : -1;
-              const totalDays = city ? (city.days ?? []).length : 0;
-              const dimmed = !!filterCity && (!city || city.id !== filterCity.id);
+              const dayIndex = primaryCity ? (primaryCity.days ?? []).indexOf(dateStr) : -1;
+              const totalDays = primaryCity ? (primaryCity.days ?? []).length : 0;
+              const dimmed = !!filterCity && !citiesOnDay.some((c) => c.id === filterCity.id);
 
               return (
                 <DayCell
@@ -382,7 +437,7 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
                   dayIndex={dayIndex}
                   totalDays={totalDays}
                   inRange={inRange}
-                  city={city}
+                  cities={citiesOnDay}
                   items={items}
                   isSelected={isSelected}
                   isToday={isToday}
@@ -403,24 +458,24 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
           {enhancedCities.map((c) => {
             const isActive = filterCity?.id === c.id;
             const cc = detectCountryCode(c);
-            const color = cityColor(c);
+            const color = c.color;
             return (
               <button
                 key={c.id}
                 onClick={() => setFilterCity(isActive ? null : c)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wide press-feedback transition-all"
-                style={{
-                  backgroundColor: isActive ? `${color}40` : `${color}20`,
-                  color: color,
-                  boxShadow: isActive ? `0 0 0 1px ${color}` : undefined,
-                }}
+                className="flex items-center gap-1.5 press-feedback transition-all"
+                style={{ opacity: isActive ? 1 : 0.65 }}
               >
-                {cc ? (
-                  <span className="text-[13px] leading-none">{countryFlag(cc)}</span>
-                ) : (
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+                <div
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: color }}
+                />
+                {cc && (
+                  <span className="text-[12px] leading-none">{countryFlag(cc)}</span>
                 )}
-                {c.name}
+                <span className="text-[12px] font-medium" style={{ color: "#C6BDAE" }}>
+                  {c.name}
+                </span>
               </button>
             );
           })}
@@ -474,19 +529,22 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
       )}
 
       {/* Day detail sheet */}
-      {selectedDay && !inSelectionMode && (
-        <DayDetailSheet
-          dateStr={selectedDay}
-          city={dateCityMap[selectedDay]}
-          flights={flights}
-          hotels={hotels}
-          transports={transports}
-          trip={trip}
-          cities={enhancedCities}
-          onChanged={onChanged}
-          onClose={() => setSelectedDay(null)}
-        />
-      )}
+      <AnimatePresence>
+        {selectedDay && !inSelectionMode && (
+          <DayDetailSheet
+            key="day-detail"
+            dateStr={selectedDay}
+            cities={dateCitiesMap[selectedDay] ?? []}
+            flights={flights}
+            hotels={hotels}
+            transports={transports}
+            trip={trip}
+            allCities={enhancedCities}
+            onChanged={onChanged}
+            onClose={() => setSelectedDay(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Selection action bar */}
       {inSelectionMode && (
@@ -497,6 +555,30 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
             setFilterCity(c);
             clearSelection();
           }}
+          onAddCity={() => setAddingFromSelection("city")}
+          onAddHotel={() => setAddingFromSelection("hotel")}
+        />
+      )}
+
+      {/* Forms triggered from selection */}
+      {addingFromSelection === "city" && (
+        <CityForm
+          tripId={trip.id}
+          tripStart={trip.start_date}
+          tripEnd={trip.end_date}
+          usedColors={cities.map((c) => c.color)}
+          initialDays={Array.from(selection).sort()}
+          onClose={() => setAddingFromSelection(null)}
+          onSaved={() => { setAddingFromSelection(null); clearSelection(); onChanged(); }}
+        />
+      )}
+      {addingFromSelection === "hotel" && (
+        <HotelForm
+          tripId={trip.id}
+          cities={cities}
+          initialDate={Array.from(selection).sort()[0]}
+          onClose={() => setAddingFromSelection(null)}
+          onSaved={() => { setAddingFromSelection(null); clearSelection(); onChanged(); }}
         />
       )}
     </div>
@@ -509,7 +591,7 @@ interface DayCellProps {
   dayIndex: number;
   totalDays: number;
   inRange: boolean;
-  city?: City;
+  cities: City[];
   items?: DayItems;
   isSelected: boolean;
   isToday: boolean;
@@ -525,7 +607,7 @@ function DayCell({
   dayIndex,
   totalDays,
   inRange,
-  city,
+  cities,
   items,
   isSelected,
   isToday,
@@ -534,30 +616,44 @@ function DayCell({
   onPointerEnter,
   onPointerUp,
 }: DayCellProps) {
-  const resolvedColor = city ? cityColor(city) : null;
-  const bg = resolvedColor ? `${resolvedColor}20` : "#1A1A1A";
+  const primaryCity = cities[0];
+  const isSplit = cities.length >= 2;
+  const resolvedColor = primaryCity?.color ?? null;
   const selectionColor = resolvedColor ?? "#0A84FF";
+
+  // Background: split diagonal when two cities share the day
+  const bg = isSplit
+    ? `linear-gradient(135deg, ${cities[0].color}35 0% 50%, ${cities[1].color}35 50% 100%)`
+    : resolvedColor
+    ? `linear-gradient(145deg, ${resolvedColor}42 0%, ${resolvedColor}14 100%)`
+    : inRange
+    ? "#1A1A1A"
+    : "#0D0D0D";
+
+  // Border: city color at 40%, default #333333
   const borderColor = isSelected
     ? selectionColor
     : isToday
-    ? "#0A84FF"
+    ? "#FFD16A"
     : resolvedColor
-    ? `${resolvedColor}50`
-    : "#262626";
-  const borderWidth = isSelected ? 2 : isToday ? 2 : 1;
+    ? `${resolvedColor}66`
+    : "#333333";
+  const borderWidth = isSelected || isToday ? 2 : 1;
 
-  const countryCode = city ? detectCountryCode(city) : undefined;
-  const flag = countryCode ? countryFlag(countryCode) : null;
-  const hasHotel = (items?.hotels.length ?? 0) > 0;
-  const showProgress = city && totalDays > 0 && dayIndex >= 0;
-  const progressPct = showProgress ? ((dayIndex + 1) / totalDays) * 100 : 0;
+  const showProgress = !isSplit && primaryCity && totalDays > 0 && dayIndex >= 0;
 
-  // Max 2 badges to leave room for progress + city tag
-  const badges = [
+  // Just the day number, not DD/MM
+  const dayNumber = dateStr.split("-")[2];
+  void dayNumber; // used in aria-label only
+
+  // Flights + transports first (time-critical), hotels last
+  const allBadges = [
     ...(items?.flights ?? []).map((f) => ({ key: f.id, label: f.label, type: "flight" as const })),
-    ...(items?.hotels ?? []).map((h) => ({ key: h.id, label: h.label, type: "hotel" as const })),
     ...(items?.transports ?? []).map((t) => ({ key: t.id, label: t.label, type: "transport" as const })),
-  ].slice(0, 2);
+    ...(items?.hotels ?? []).map((h) => ({ key: h.id, label: h.label, type: "hotel" as const })),
+  ];
+  const badges = allBadges.slice(0, 3);
+  const overflowCount = Math.max(allBadges.length - badges.length, 0);
 
   return (
     <div
@@ -566,106 +662,127 @@ function DayCell({
       onPointerUp={onPointerUp}
       data-date={dateStr}
       aria-disabled={!inRange}
-      aria-label={`${dateStr}${city ? ` — ${city.name}` : ""}`}
+      aria-label={`${dateStr}${primaryCity ? ` — ${primaryCity.name}` : ""}`}
       className={`
-        relative flex flex-col rounded-[10px] px-1 pt-1 pb-1
-        min-h-[96px] md:min-h-[116px] w-full text-left
+        relative flex flex-col rounded-[10px] p-1.5 md:rounded-[12px] md:p-2
+        min-h-[120px] md:min-h-[140px] w-full text-left
         transition-all
-        ${inRange ? "cursor-pointer active:scale-[0.94]" : "opacity-25 cursor-default"}
+        ${inRange ? "cursor-pointer active:scale-[0.94]" : "opacity-20 cursor-default"}
         ${dimmed ? "opacity-30" : ""}
         ${isSelected ? "scale-[0.96]" : ""}
         focus:outline-none
       `}
       style={{
-        backgroundColor: inRange ? bg : "#0D0D0D",
+        background: bg,
         border: `${borderWidth}px solid ${borderColor}`,
         boxShadow: isSelected ? `0 0 0 3px ${selectionColor}33, 0 4px 12px ${selectionColor}22` : undefined,
         overflow: "hidden",
         touchAction: "none",
       }}
     >
-      {/* Top row: date DD/MM + flag (or today dot if no city) */}
-      <div className="flex items-start justify-between px-0.5 mb-0.5">
+      {/* Row 1: DD/MM date + badge */}
+      <div className="flex items-start justify-between mb-1">
         <span
-          className="text-[11px] md:text-[13px] font-bold leading-none tabular-nums"
-          style={{ color: isToday ? "#0A84FF" : "#FFFFFF" }}
+          className="text-[11px] md:text-[12px] font-bold leading-none tabular-nums"
+          style={{ color: isToday ? "#FFD16A" : inRange ? "#A0A0A0" : "#444" }}
         >
           {dateLabel}
         </span>
-        {flag && !isSelected ? (
-          <span className="text-[11px] leading-none" style={{ lineHeight: 1 }}>{flag}</span>
-        ) : !flag && isToday && !isSelected ? (
-          <div className="w-1.5 h-1.5 rounded-full bg-[#0A84FF] mt-0.5" />
+        {isSelected ? (
+          <div
+            className="w-[15px] h-[15px] rounded-full flex items-center justify-center text-white text-[8px] font-bold animate-pop-in flex-shrink-0"
+            style={{ backgroundColor: selectionColor }}
+          >
+            ✓
+          </div>
+        ) : isToday ? (
+          <div className="w-[15px] h-[15px] rounded-full bg-[#30D158] flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0">
+            ✓
+          </div>
         ) : null}
       </div>
 
-      {/* Selection checkmark */}
-      {isSelected && (
-        <div
-          className="absolute top-1 right-1 w-4 h-4 rounded-full flex items-center justify-center text-white text-[10px] font-bold animate-pop-in"
-          style={{ backgroundColor: selectionColor }}
-        >
-          ✓
-        </div>
-      )}
-
-      {/* Badges */}
-      <div className="flex flex-col gap-[3px] flex-1 w-full overflow-hidden">
-        {badges.map((b) => (
-          <ItemBadge key={b.key} label={b.label} type={b.type} />
-        ))}
-      </div>
-
-      {/* City tag + day counter */}
-      {city && resolvedColor && (
-        <div className="mt-auto w-full px-0.5 pb-0.5">
-          <div className="flex items-end justify-between gap-1">
-            <span
-              className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest truncate leading-none"
-              style={{ color: resolvedColor }}
-            >
-              {city.name}
+      {/* City block */}
+      {inRange && cities.length > 0 && (
+        isSplit ? (
+          // Split: two cities share the day
+          <div className="mb-1 flex flex-col gap-[2px]">
+            {cities.slice(0, 2).map((c) => {
+              const code = detectCountryCode(c);
+              const flag = code ? countryFlag(code) : null;
+              return (
+                <div key={c.id} className="flex items-center gap-[3px]">
+                  {flag && <span className="text-[9px] leading-none">{flag}</span>}
+                  <p className="text-[10px] md:text-[11px] font-bold leading-none truncate" style={{ color: c.color }}>
+                    {c.name.substring(0, 3).toUpperCase()}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          // Single city
+          <div className="mb-2">
+            <span className="text-[12px] md:text-[13px] leading-none block mb-0.5">
+              {(() => {
+                const code = detectCountryCode(primaryCity!);
+                return code ? countryFlag(code) : "";
+              })()}
             </span>
+            <p
+              className="text-[14px] font-bold leading-none tracking-tight md:hidden"
+              style={{ color: "#FFFFFF" }}
+            >
+              {primaryCity!.name.substring(0, 3).toUpperCase()}
+            </p>
+            <p
+              className="hidden md:block text-[15px] font-bold leading-tight truncate"
+              style={{ color: "#FFFFFF" }}
+            >
+              {primaryCity!.name}
+            </p>
             {showProgress && (
-              <span
-                className="text-[10px] md:text-[11px] font-bold leading-none flex-shrink-0 tabular-nums"
-                style={{ color: resolvedColor }}
+              <p
+                className="text-[10px] md:text-[11px] font-semibold leading-none tabular-nums mt-0.5"
+                style={{ color: `${resolvedColor}B0` }}
               >
                 {dayIndex + 1}/{totalDays}
-              </span>
+              </p>
             )}
           </div>
-        </div>
+        )
       )}
 
-      {/* Hotel continued strip */}
-      {hasHotel && (
-        <div
-          className="absolute bottom-0 left-0 right-0 h-[2px] rounded-b-[8px]"
-          style={{ backgroundColor: "#FF9F0A" }}
-        />
+      {/* Items */}
+      {inRange && (
+        <div className="flex flex-col gap-[3px] mt-auto overflow-hidden">
+          {badges.map((b) => (
+            <ItemRow key={b.key} label={b.label} type={b.type} />
+          ))}
+          {overflowCount > 0 && (
+            <span className="text-[8px] text-[#555] font-semibold">+{overflowCount}</span>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
-function ItemBadge({ label, type }: { label: string; type: "flight" | "hotel" | "transport" }) {
-  const styles: Record<typeof type, { bg: string; text: string }> = {
-    flight: { bg: "#0A84FF22", text: "#0A84FF" },
-    hotel: { bg: "#FF9F0A22", text: "#FF9F0A" },
-    transport: { bg: "#BF5AF222", text: "#BF5AF2" },
-  };
-  const { bg, text } = styles[type];
-  const icon = type === "flight" ? "✈" : type === "hotel" ? "🏨" : "🚆";
+function ItemRow({ label, type }: { label: string; type: "flight" | "hotel" | "transport" }) {
+  const icon = type === "flight" ? "✈" : type === "hotel" ? "🏨" : "🚌";
+  // Design system: vuelo #60A5FA · hotel #FBBF24 · transit #D8B4FE
+  const color = type === "flight" ? "#60A5FA" : type === "hotel" ? "#FBBF24" : "#D8B4FE";
 
   return (
-    <span
-      className="text-[9px] md:text-[10px] font-semibold px-1 py-[2px] rounded-[4px] truncate leading-tight flex items-center gap-0.5"
-      style={{ backgroundColor: bg, color: text }}
-    >
-      <span className="text-[8px]">{icon}</span>
-      <span className="truncate">{label}</span>
-    </span>
+    <div className="flex items-center gap-[3px] min-w-0 overflow-hidden">
+      <span className="text-[9px] md:text-[10px] flex-shrink-0 leading-none">{icon}</span>
+      <span
+        className="text-[9px] md:text-[11px] font-medium truncate leading-tight"
+        style={{ color }}
+      >
+        {label}
+      </span>
+    </div>
   );
 }
 
@@ -673,10 +790,14 @@ function SelectionActionBar({
   stats,
   onClose,
   onFilterCity,
+  onAddCity,
+  onAddHotel,
 }: {
   stats: SelectionStats;
   onClose: () => void;
   onFilterCity: (c: City) => void;
+  onAddCity: () => void;
+  onAddHotel: () => void;
 }) {
   return (
     <div
@@ -718,12 +839,14 @@ function SelectionActionBar({
           {stats.hasEmpty && (
             <>
               <button
+                onClick={onAddCity}
                 className="px-3 py-2.5 text-white text-[12px] font-semibold rounded-full press-feedback whitespace-nowrap flex items-center gap-1"
                 style={{ background: "linear-gradient(135deg, #FF6B6B, #E85959)" }}
               >
                 + Ciudad
               </button>
               <button
+                onClick={onAddHotel}
                 className="px-3 py-2.5 text-white text-[12px] font-semibold rounded-full press-feedback whitespace-nowrap flex items-center gap-1"
                 style={{ background: "linear-gradient(135deg, #FF9F0A, #E68908)" }}
               >
@@ -838,31 +961,47 @@ function dayLabelShort(dateStr: string): string {
 
 // ─── the sheet ───────────────────────────────────────────────────────────────
 
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isDesktop;
+}
+
 type AddingType = "city" | "flight" | "hotel" | "transport";
 
 function DayDetailSheet({
   dateStr,
-  city,
+  cities,
   flights,
   hotels,
   transports,
   trip,
-  cities,
+  allCities,
   onChanged,
   onClose,
 }: {
   dateStr: string;
-  city?: City;
+  cities: City[];
   flights: Flight[];
   hotels: Hotel[];
   transports: Transport[];
   trip: Trip;
-  cities: City[];
+  allCities: City[];
   onChanged: () => void;
   onClose: () => void;
 }) {
+  const isDesktop = useIsDesktop();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [showPicker, setShowPicker] = useState(false);
   const [addingType, setAddingType] = useState<AddingType | null>(null);
+  const [editingCity, setEditingCity] = useState<City | null>(null);
 
   function handleSaved() {
     setAddingType(null);
@@ -880,6 +1019,13 @@ function DayDetailSheet({
 
   // Filter items relevant to this day
   const dayFlights = flights.filter((f) => {
+    if (f.legs && f.legs.length > 0) {
+      return f.legs.some(
+        (l) =>
+          extractDate(l.departure_local_time) === dateStr ||
+          extractDate(l.arrival_local_time) === dateStr
+      );
+    }
     const dep = extractDate(f.departure_local_time);
     const arr = extractDate(f.arrival_local_time);
     return dep === dateStr || arr === dateStr;
@@ -889,121 +1035,168 @@ function DayDetailSheet({
 
   const totalCount = dayFlights.length + dayHotels.length + dayTransports.length;
 
-  return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-[12px]" onClick={onClose} />
-      <div
-        className="relative w-full max-w-lg bg-[#161616] rounded-t-[24px] px-5 pt-5 pb-10 animate-slide-up max-h-[85vh] overflow-y-auto"
-        style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
-      >
-        <div className="w-9 h-1 bg-[#333] rounded-full mx-auto mb-5" />
+  if (!mounted) return null;
 
-        <div className="flex items-start justify-between mb-5">
-          <div>
-            <h3 className="text-[20px] font-semibold text-white capitalize leading-tight">{label}</h3>
-            {city && (() => {
-              const sheetColor = cityColor(city);
-              const sheetCode = detectCountryCode(city);
-              return (
-                <div className="flex items-center gap-1.5 mt-1.5">
-                  {sheetCode ? (
-                    <span className="text-[15px] leading-none">{countryFlag(sheetCode)}</span>
-                  ) : (
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sheetColor }} />
-                  )}
-                  <span
-                    className="text-[12px] font-semibold uppercase tracking-wide"
-                    style={{ color: sheetColor }}
-                  >
-                    {city.name}
-                  </span>
-                </div>
-              );
-            })()}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-[#707070] hover:text-white transition-colors text-[24px] leading-none mt-0.5 press-feedback"
-          >
-            ×
-          </button>
+  return createPortal(
+    <div className="fixed inset-0 z-40">
+      {/* Backdrop */}
+      <motion.div
+        className="absolute inset-0 bg-black/70 backdrop-blur-[12px]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18 }}
+        onClick={onClose}
+      />
+
+      {/* Panel */}
+      <motion.div
+        className="
+          absolute flex flex-col bg-[#161616] overflow-hidden
+          bottom-0 left-0 right-0 max-h-[90vh] rounded-t-[24px]
+          md:inset-y-0 md:right-0 md:left-auto md:w-[460px] md:max-h-none
+          md:rounded-l-[20px] md:rounded-tr-none md:rounded-br-none
+          md:border-l md:border-[#262626]
+        "
+        initial={isDesktop ? { x: "100%" } : { y: "100%" }}
+        animate={isDesktop ? { x: 0 } : { y: 0 }}
+        exit={isDesktop ? { x: "100%" } : { y: "100%" }}
+        transition={{ type: "spring", damping: 28, stiffness: 300, mass: 0.8 }}
+        style={{ boxShadow: isDesktop ? "-32px 0 80px rgba(0,0,0,0.6)" : "inset 0 1px 0 rgba(255,255,255,0.06)" }}
+      >
+        {/* Drag handle — mobile only */}
+        <div className="md:hidden flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-[#333]" />
         </div>
 
-        {totalCount === 0 ? (
-          <div className="text-center py-12 px-6">
-            <div className="text-[42px] mb-2 opacity-60">🗓️</div>
-            <p className="text-[#707070] text-[14px]">Día libre.</p>
-            <p className="text-[#4D4D4D] text-[12px] mt-1">Sin vuelos, hoteles ni transportes.</p>
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {dayFlights.map((f, i) => (
-              <FlightCard key={f.id} flight={f} dateStr={dateStr} delay={i * 60} />
-            ))}
-            {dayTransports.map((t, i) => (
-              <TransportCard key={t.id} transport={t} delay={(dayFlights.length + i) * 60} />
-            ))}
-            {dayHotels.map((h, i) => (
-              <HotelCard
-                key={h.id}
-                hotel={h}
-                dateStr={dateStr}
-                delay={(dayFlights.length + dayTransports.length + i) * 60}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Add to day — type picker */}
-        {!showPicker ? (
-          <button
-            onClick={() => setShowPicker(true)}
-            className="w-full mt-5 rounded-[14px] py-3.5 text-[15px] font-semibold text-white press-feedback"
-            style={{
-              background: "linear-gradient(135deg, #BF5AF2, #9B3FD6)",
-              boxShadow: "0 4px 16px rgba(191,90,242,0.3)",
-            }}
-          >
-            ✨ Agregar al día
-          </button>
-        ) : (
-          <div className="mt-5 space-y-2">
-            <p className="text-center text-[12px] text-[#707070] mb-3">¿Qué querés agregar?</p>
-            <div className="grid grid-cols-2 gap-2">
-              {([
-                { type: "city" as AddingType, label: "Ciudad", emoji: "🏙️", color: "#FF6B6B" },
-                { type: "flight" as AddingType, label: "Vuelo", emoji: "✈️", color: "#4D96FF" },
-                { type: "hotel" as AddingType, label: "Hotel", emoji: "🏨", color: "#FFD93D" },
-                { type: "transport" as AddingType, label: "Transporte", emoji: "🚆", color: "#4ECDC4" },
-              ] as const).map(({ type, label, emoji, color }) => (
-                <button
-                  key={type}
-                  onClick={() => { setShowPicker(false); setAddingType(type); }}
-                  className="flex flex-col items-center gap-1.5 py-3.5 rounded-[14px] font-semibold text-[13px] press-feedback transition-all"
-                  style={{ background: `${color}18`, border: `1px solid ${color}40`, color }}
-                >
-                  <span className="text-[22px]">{emoji}</span>
-                  {label}
-                </button>
-              ))}
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-5 pb-10">
+          <div className="flex items-start justify-between mb-5 pt-4 md:pt-6">
+            <div>
+              <h3 className="text-[20px] font-semibold text-white capitalize leading-tight">{label}</h3>
+              {cities.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                  {cities.map((c) => {
+                    const sheetCode = detectCountryCode(c);
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => setEditingCity(c)}
+                        className="flex items-center gap-1.5 press-feedback"
+                      >
+                        {sheetCode ? (
+                          <span className="text-[15px] leading-none">{countryFlag(sheetCode)}</span>
+                        ) : (
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />
+                        )}
+                        <span
+                          className="text-[12px] font-semibold uppercase tracking-wide"
+                          style={{ color: c.color }}
+                        >
+                          {c.name}
+                        </span>
+                        <span className="text-[14px]" style={{ color: "#FFD16A" }}>✎</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <button
-              onClick={() => setShowPicker(false)}
-              className="w-full py-2.5 text-[13px] text-[#707070] hover:text-white transition-colors"
+              onClick={onClose}
+              className="text-[#707070] hover:text-white transition-colors text-[24px] leading-none mt-0.5 press-feedback"
             >
-              Cancelar
+              ×
             </button>
           </div>
-        )}
-      </div>
+
+          {totalCount === 0 ? (
+            <div className="text-center py-12 px-6">
+              <div className="text-[42px] mb-2 opacity-60">🗓️</div>
+              <p className="text-[#707070] text-[14px]">Día libre.</p>
+              <p className="text-[#4D4D4D] text-[12px] mt-1">Sin vuelos, hoteles ni transportes.</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {dayFlights.map((f, i) => (
+                <FlightCard key={f.id} flight={f} dateStr={dateStr} delay={i * 60} />
+              ))}
+              {dayTransports.map((t, i) => (
+                <TransportCard key={t.id} transport={t} delay={(dayFlights.length + i) * 60} />
+              ))}
+              {dayHotels.map((h, i) => (
+                <HotelCard
+                  key={h.id}
+                  hotel={h}
+                  dateStr={dateStr}
+                  delay={(dayFlights.length + dayTransports.length + i) * 60}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Add to day — type picker */}
+          {!showPicker ? (
+            <button
+              onClick={() => setShowPicker(true)}
+              className="w-full mt-5 rounded-[14px] py-3.5 text-[15px] font-semibold text-white press-feedback"
+              style={{
+                background: "linear-gradient(135deg, #BF5AF2, #9B3FD6)",
+                boxShadow: "0 4px 16px rgba(191,90,242,0.3)",
+              }}
+            >
+              ✨ Agregar al día
+            </button>
+          ) : (
+            <div className="mt-5 space-y-2">
+              <p className="text-center text-[12px] text-[#707070] mb-3">¿Qué querés agregar?</p>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { type: "city" as AddingType, label: "Ciudad", emoji: "🏙️", color: "#FF6B6B" },
+                  { type: "flight" as AddingType, label: "Vuelo", emoji: "✈️", color: "#4D96FF" },
+                  { type: "hotel" as AddingType, label: "Hotel", emoji: "🏨", color: "#FFD93D" },
+                  { type: "transport" as AddingType, label: "Transporte", emoji: "🚆", color: "#4ECDC4" },
+                ] as const).map(({ type, label, emoji, color }) => (
+                  <button
+                    key={type}
+                    onClick={() => { setShowPicker(false); setAddingType(type); }}
+                    className="flex flex-col items-center gap-1.5 py-3.5 rounded-[14px] font-semibold text-[13px] press-feedback transition-all"
+                    style={{ background: `${color}18`, border: `1px solid ${color}40`, color }}
+                  >
+                    <span className="text-[22px]">{emoji}</span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowPicker(false)}
+                className="w-full py-2.5 text-[13px] text-[#707070] hover:text-white transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+        </div>
+      </motion.div>
 
       {/* Forms — rendered via createPortal inside each component */}
+      {editingCity && (
+        <CityForm
+          tripId={trip.id}
+          tripStart={trip.start_date}
+          tripEnd={trip.end_date}
+          usedColors={allCities.map((c) => c.color)}
+          existing={editingCity}
+          onClose={() => setEditingCity(null)}
+          onSaved={handleSaved}
+        />
+      )}
       {addingType === "city" && (
         <CityForm
           tripId={trip.id}
           tripStart={trip.start_date}
           tripEnd={trip.end_date}
-          usedColors={cities.map((c) => c.color)}
+          usedColors={allCities.map((c) => c.color)}
           initialDay={dateStr}
           onClose={() => setAddingType(null)}
           onSaved={handleSaved}
@@ -1020,7 +1213,7 @@ function DayDetailSheet({
       {addingType === "hotel" && (
         <HotelForm
           tripId={trip.id}
-          cities={cities}
+          cities={allCities}
           initialDate={dateStr}
           onClose={() => setAddingType(null)}
           onSaved={handleSaved}
@@ -1034,6 +1227,123 @@ function DayDetailSheet({
           onSaved={handleSaved}
         />
       )}
+    </div>,
+    document.body
+  );
+}
+
+// ─── Leg flight card (for multi-leg flights) ────────────────────────────────
+
+function LegFlightCard({
+  leg,
+  flight: f,
+  dateStr,
+  delay,
+  showBookingInfo,
+}: {
+  leg: FlightLeg;
+  flight: Flight;
+  dateStr: string;
+  delay: number;
+  showBookingInfo: boolean;
+}) {
+  const depDate = extractDate(leg.departure_local_time);
+  const arrDate = extractDate(leg.arrival_local_time);
+  const depTime = extractTime(leg.departure_local_time);
+  const arrTime = extractTime(leg.arrival_local_time);
+  const isArrival = depDate !== dateStr && arrDate === dateStr;
+  const dayOffset = arrDate && depDate ? daysBetweenDates(depDate, arrDate) : 0;
+  const sameDay = dayOffset === 0;
+  const isInbound = leg.direction === "inbound";
+  const accentColor = isInbound ? "#30D158" : "#4D96FF";
+  const bgGradient = isInbound
+    ? "linear-gradient(135deg, #0F2018 0%, #101417 100%)"
+    : "linear-gradient(135deg, #0F1B2E 0%, #101417 100%)";
+  const borderColor = isInbound ? "#1E3028" : "#1E2A40";
+  const dirLabel = isInbound ? "VUELTA" : "IDA";
+
+  return (
+    <div
+      className="relative rounded-[16px] px-4 pt-3.5 pb-3 animate-spring-up overflow-hidden"
+      style={{ background: bgGradient, border: `1px solid ${borderColor}`, animationDelay: `${delay}ms` }}
+    >
+      <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: accentColor }} />
+      <div className="flex items-center gap-2 mb-2.5 pl-1">
+        <span className="text-[14px]">✈️</span>
+        <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+          {isArrival ? "Llegada" : dirLabel}
+        </span>
+        <span className="text-[12px] text-[#A0A0A0]">· {leg.airline} {leg.flight_number}</span>
+      </div>
+
+      {isArrival ? (
+        <div className="pl-1">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[24px] font-bold text-white tabular-nums">{arrTime}</span>
+            <span className="text-[13px] text-[#A0A0A0]">en</span>
+            <span className="text-[18px] font-bold text-white">{leg.destination_iata}</span>
+          </div>
+          {depTime && depDate && (
+            <p className="text-[12px] text-[#707070] mt-1">
+              ← Salió de {leg.origin_iata} el {dayLabelShort(depDate)} a las {depTime}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="pl-1">
+          <div className="flex items-center gap-3">
+            <div>
+              <div className="text-[22px] font-bold text-white tabular-nums leading-none">{depTime}</div>
+              <div className="text-[15px] font-bold text-[#E0E0E0] mt-1">{leg.origin_iata}</div>
+            </div>
+            <div className="flex-1 flex items-center gap-1">
+              <div className="flex-1 h-[1px]" style={{ background: `linear-gradient(to right, ${accentColor}, ${accentColor}60)` }} />
+              <span className="text-[12px]" style={{ color: accentColor }}>✈</span>
+              <div className="flex-1 h-[1px]" style={{ background: `linear-gradient(to right, ${accentColor}60, ${accentColor})` }} />
+            </div>
+            <div className="text-right">
+              <div className="text-[22px] font-bold text-white tabular-nums leading-none relative inline-block">
+                {arrTime}
+                {!sameDay && dayOffset > 0 && (
+                  <span className="absolute -top-1 -right-5 text-[10px] font-bold text-[#FF9F0A]">+{dayOffset}</span>
+                )}
+              </div>
+              <div className="text-[15px] font-bold text-[#E0E0E0] mt-1">{leg.destination_iata}</div>
+            </div>
+          </div>
+          {!sameDay && dayOffset > 0 && (
+            <p className="text-[11px] text-[#FF9F0A] mt-2">
+              Llega el {dayLabelShort(arrDate)} ({dayOffset === 1 ? "mañana" : `+${dayOffset} días`})
+            </p>
+          )}
+        </div>
+      )}
+
+      {showBookingInfo && f.booking_ref && (
+        <div className="mt-3 pl-1">
+          <CopyableBookingRef value={f.booking_ref} color={accentColor} />
+        </div>
+      )}
+
+      {showBookingInfo && (leg.seat || leg.cabin_class || f.price != null) && (
+        <div className="flex items-center gap-2 mt-3 pt-2.5 border-t pl-1 flex-wrap" style={{ borderColor: `${accentColor}33` }}>
+          {leg.seat && (
+            <span className="text-[11.5px] text-[#A0A0A0]">
+              <span className="text-[#4D4D4D]">Asiento</span>{" "}
+              <span className="text-white font-semibold">{leg.seat}</span>
+            </span>
+          )}
+          {leg.cabin_class && (
+            <><span className="text-[#333]">·</span><span className="text-[11.5px] text-[#A0A0A0]">{leg.cabin_class}</span></>
+          )}
+          {f.price != null && (
+            <><span className="text-[#333]">·</span>
+            <span className="text-[11.5px] text-[#30D158] font-semibold">
+              {f.currency ?? "USD"} {f.price.toLocaleString("es-AR")}
+            </span></>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1041,6 +1351,32 @@ function DayDetailSheet({
 // ─── Flight card ────────────────────────────────────────────────────────────
 
 function FlightCard({ flight: f, dateStr, delay }: { flight: Flight; dateStr: string; delay: number }) {
+  // Multi-leg flight: render one card per leg relevant to this date
+  if (f.legs && f.legs.length > 0) {
+    const matchingLegs = f.legs.filter(
+      (l) =>
+        extractDate(l.departure_local_time) === dateStr ||
+        extractDate(l.arrival_local_time) === dateStr
+    );
+    if (matchingLegs.length > 0) {
+      return (
+        <div className="space-y-2">
+          {matchingLegs.map((leg, i) => (
+            <LegFlightCard
+              key={`${f.id}_${leg.flight_number}_${i}`}
+              leg={leg}
+              flight={f}
+              dateStr={dateStr}
+              delay={delay + i * 60}
+              showBookingInfo={i === 0}
+            />
+          ))}
+        </div>
+      );
+    }
+  }
+
+  // Legacy mono-leg rendering
   const depDate = extractDate(f.departure_local_time);
   const arrDate = extractDate(f.arrival_local_time);
   const depTime = extractTime(f.departure_local_time);
@@ -1250,10 +1586,10 @@ function TransportCard({ transport: t, delay }: { transport: Transport; delay: n
   const depTime = extractTime(t.departure_local_time);
   const arrTime = extractTime(t.arrival_local_time);
   const typeEmoji: Record<Transport["type"], string> = {
-    train: "🚆", bus: "🚌", ferry: "⛴️", car: "🚗", taxi: "🚕", subway: "🚇", other: "🚐",
+    train: "🚆", bus: "🚌", ferry: "⛴️", car: "🚗", car_rental: "🚙", taxi: "🚕", subway: "🚇", other: "🚐",
   };
   const typeLabel: Record<Transport["type"], string> = {
-    train: "Tren", bus: "Bus", ferry: "Ferry", car: "Auto / rental", taxi: "Taxi", subway: "Metro", other: "Transporte",
+    train: "Tren", bus: "Bus", ferry: "Ferry", car: "Auto", car_rental: "Alquiler de auto", taxi: "Taxi", subway: "Metro", other: "Transporte",
   };
 
   return (

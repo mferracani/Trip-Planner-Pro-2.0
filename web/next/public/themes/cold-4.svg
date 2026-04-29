@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="cold4_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#020C18"/><stop offset="100%" stop-color="#0A1E30"/></linearGradient>
+    <linearGradient id="cold4_aurora1" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#00FF88" stop-opacity="0"/><stop offset="40%" stop-color="#00FF88" stop-opacity="0.22"/><stop offset="70%" stop-color="#00BBFF" stop-opacity="0.18"/><stop offset="100%" stop-color="#00BBFF" stop-opacity="0"/></linearGradient>
+    <linearGradient id="cold4_aurora2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#8800FF" stop-opacity="0"/><stop offset="50%" stop-color="#8800FF" stop-opacity="0.16"/><stop offset="100%" stop-color="#8800FF" stop-opacity="0"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#cold4_sky)"/>
+  <!-- Stars -->
+  <circle cx="25" cy="18" r="1" fill="white" opacity="0.7"/>
+  <circle cx="90" cy="10" r="1" fill="white" opacity="0.6"/>
+  <circle cx="180" cy="22" r="1.5" fill="white" opacity="0.8"/>
+  <circle cx="280" cy="8" r="1" fill="white" opacity="0.7"/>
+  <circle cx="360" cy="20" r="1" fill="white" opacity="0.6"/>
+  <!-- Aurora streaks -->
+  <rect x="0" y="30" width="400" height="45" fill="url(#cold4_aurora1)" rx="20"/>
+  <rect x="0" y="55" width="400" height="30" fill="url(#cold4_aurora2)" rx="15"/>
+  <!-- Snow-laden pine trees -->
+  <!-- Left cluster -->
+  <polygon points="30,195 48,140 66,195" fill="#0A2015"/>
+  <polygon points="46,145 48,140 50,145 48,143" fill="white" opacity="0.9"/>
+  <polygon points="35,195 50,148 65,195" fill="white" opacity="0.35"/>
+  <polygon points="55,195 70,152 85,195" fill="#0A2015"/>
+  <polygon points="60,157 70,152 80,157 70,155" fill="white" opacity="0.85"/>
+  <!-- Right cluster -->
+  <polygon points="328,195 345,142 362,195" fill="#0A2015"/>
+  <polygon points="335,147 345,142 355,147 345,145" fill="white" opacity="0.9"/>
+  <polygon points="348,195 362,150 376,195" fill="#0A2015"/>
+  <polygon points="355,155 362,150 369,155 362,153" fill="white" opacity="0.85"/>
+  <!-- Snow ground -->
+  <rect x="0" y="195" width="400" height="55" fill="white"/>
+  <path d="M0 197 C70 193 160 200 260 194 C330 190 380 197 400 194" stroke="#C8D8E8" stroke-width="1" fill="none"/>
+</svg>

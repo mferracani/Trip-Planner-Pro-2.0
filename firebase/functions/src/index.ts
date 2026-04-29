@@ -49,6 +49,7 @@ setGlobalOptions({
 // Secrets (stored in Firebase Secret Manager — never exposed to client)
 const CLAUDE_API_KEY = defineSecret("CLAUDE_API_KEY");
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+const FX_RATES_API_KEY = defineSecret("FX_RATES_API_KEY");
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -334,8 +335,17 @@ export const parseWithAI = onRequest(
     invoker: "public",
   },
   async (req, res) => {
-    // CORS headers
-    res.set("Access-Control-Allow-Origin", "*");
+    // CORS — restrict to known app origins; Firebase ID token in Authorization header
+    // prevents credential abuse but explicit origin allowlist is defense-in-depth.
+    const ALLOWED_ORIGINS = [
+      "https://trip-planner-pro-2.vercel.app",
+      "http://localhost:3000",
+    ];
+    const requestOrigin = req.headers.origin ?? "";
+    const allowedOrigin = ALLOWED_ORIGINS.includes(requestOrigin)
+      ? requestOrigin
+      : ALLOWED_ORIGINS[0];
+    res.set("Access-Control-Allow-Origin", allowedOrigin);
     res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
@@ -371,6 +381,11 @@ export const parseWithAI = onRequest(
       res.status(400).json({ error: 'Missing required field "input"' });
       return;
     }
+    const MAX_INPUT_LENGTH = 50_000;
+    if (input.length > MAX_INPUT_LENGTH) {
+      res.status(400).json({ error: `"input" exceeds maximum length of ${MAX_INPUT_LENGTH} characters` });
+      return;
+    }
     if (inputType !== "text" && inputType !== "attachment") {
       res.status(400).json({ error: '"inputType" must be "text" or "attachment"' });
       return;
@@ -378,6 +393,16 @@ export const parseWithAI = onRequest(
     if (!tripId || typeof tripId !== "string") {
       res.status(400).json({ error: 'Missing required field "tripId"' });
       return;
+    }
+    // CRITICO-1: Validate attachmentRef belongs to the authenticated user.
+    // bucket.file() uses admin credentials and bypasses Storage Security Rules.
+    if (attachmentRef) {
+      const expectedPrefix = `users/${userId}/parse_attachments/`;
+      if (!attachmentRef.startsWith(expectedPrefix)) {
+        logger.warn("Rejected attachmentRef outside caller's path", { userId, attachmentRef });
+        res.status(403).json({ error: "attachmentRef path not allowed" });
+        return;
+      }
     }
 
     const selectedProvider: ParseProvider = provider === "gemini" ? "gemini" : "claude";
@@ -531,27 +556,31 @@ export const updateFxRates = onSchedule(
     schedule: "0 0 * * *",
     timeZone: "UTC",
     memory: "256MiB",
+    secrets: [FX_RATES_API_KEY],
   },
   async () => {
     const today = DateTime.now().toUTC().toFormat("yyyy-MM-dd");
 
     try {
-      // Using open.er-api.com — free tier, no API key required
+      const apiKey = FX_RATES_API_KEY.value();
+      // exchangerate-api.com v6 — key in URL path
+      const url = `https://v6.exchangerate-api.com/v6/${apiKey}/latest/USD`;
+
       const response = await axios.get<{
         result: string;
-        rates: Record<string, number>;
+        conversion_rates: Record<string, number>;
         base_code: string;
-      }>("https://open.er-api.com/v6/latest/USD", { timeout: 10000 });
+      }>(url, { timeout: 10000 });
 
       if (response.data.result !== "success") {
         throw new Error(`FX API returned non-success result: ${response.data.result}`);
       }
 
-      const rates = response.data.rates;
+      const rates = response.data.conversion_rates;
 
       await db.collection("fx_rates").doc(today).set({
         rates,
-        source: "open.er-api.com",
+        source: "exchangerate-api.com",
         updated_at: FieldValue.serverTimestamp(),
       });
 

@@ -11,12 +11,12 @@ import { CITY_COLORS } from "@/lib/types";
 import { getFirebaseStorage } from "@/lib/firebase";
 import {
   ManualTypePicker,
-  ManualFlightForm,
   ManualHotelForm,
   ManualTransportForm,
   ManualCityForm,
   type ManualType,
 } from "./ManualItemForms";
+import { FlightForm } from "./forms/FlightForm";
 
 type Mode = "chat" | "file" | "manual";
 
@@ -34,7 +34,7 @@ const PARSE_MESSAGES = [
 ];
 
 export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [mode, setMode] = useState<Mode>("chat");
   const [text, setText] = useState("");
   const [parsing, setParsing] = useState(false);
@@ -43,6 +43,8 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [parseElapsed, setParseElapsed] = useState<number | null>(null);
+  const [usedProvider, setUsedProvider] = useState<"claude" | "gemini" | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Rotate parse messages during loading
@@ -57,19 +59,21 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
   }, [parsing]);
 
   async function handleParse() {
-    if (!user) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!user || !uid) return;
     if (mode === "chat" && !text.trim()) return;
     if (mode === "file" && !selectedFile) return;
     setParsing(true);
     setParseMessage(PARSE_MESSAGES[0]);
     setError(null);
+    const startMs = Date.now();
     try {
       const idToken = await user.getIdToken();
       let body: Record<string, unknown>;
 
       if (mode === "file" && selectedFile) {
         // Upload to Firebase Storage first
-        const path = `users/${user.uid}/parse_attachments/${Date.now()}_${selectedFile.name}`;
+        const path = `users/${uid}/parse_attachments/${Date.now()}_${selectedFile.name}`;
         const fileRef2 = storageRef(getFirebaseStorage(), path);
         await uploadBytes(fileRef2, selectedFile, { contentType: selectedFile.type });
         body = { tripId, inputType: "attachment", input: "", attachmentRef: path, provider: "gemini" };
@@ -91,6 +95,8 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
       }
       const data = await res.json();
       setParsedItems(data.items ?? []);
+      setParseElapsed((Date.now() - startMs) / 1000);
+      setUsedProvider(mode === "file" ? "gemini" : "claude");
     } catch (err) {
       setError(String(err));
     } finally {
@@ -99,7 +105,8 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
   }
 
   async function handleConfirm() {
-    if (!parsedItems || !user) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!parsedItems || !uid) return;
     setConfirming(true);
     const toTs = (v: unknown): Timestamp => {
       if (!v || typeof v !== "object") return Timestamp.now();
@@ -146,7 +153,7 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
           const f = item as ParsedFlight;
           const depUtc = toTs(f.departure_utc);
           const arrUtc = toTs(f.arrival_utc);
-          await createFlight(user.uid, tripId, {
+          await createFlight(uid, tripId, {
             trip_id: tripId,
             airline: f.airline ?? "",
             flight_number: f.flight_number ?? "",
@@ -163,8 +170,8 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
           });
         } else if (item.type === "hotel") {
           const h = item as ParsedHotel;
-          const cityId = h.city ? await ensureCity(user.uid, tripId, h.city) : "";
-          await createHotel(user.uid, tripId, {
+          const cityId = h.city ? await ensureCity(uid, tripId, h.city) : "";
+          await createHotel(uid, tripId, {
             trip_id: tripId,
             city_id: cityId,
             name: h.name ?? "",
@@ -175,9 +182,9 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
         } else if (item.type === "transport") {
           const t = item as ParsedTransport;
           const depUtc = toTs(t.departure_utc);
-          await createTransport(user.uid, tripId, {
+          await createTransport(uid, tripId, {
             trip_id: tripId,
-            type: (t.mode as "train" | "bus" | "ferry" | "car" | "other") ?? "other",
+            type: (t.mode as "train" | "bus" | "ferry" | "car" | "car_rental" | "other") ?? "other",
             origin: t.origin ?? "",
             destination: t.destination ?? "",
             departure_local_time: t.departure_local_time ?? "",
@@ -256,6 +263,8 @@ export function AiParseModal({ tripId, onClose, onConfirmed }: Props) {
             items={parsedItems}
             onEdit={() => setParsedItems(null)}
             onRemove={(idx) => setParsedItems((prev) => prev ? prev.filter((_, i) => i !== idx) : prev)}
+            elapsed={parseElapsed}
+            provider={usedProvider}
           />
         ) : mode === "chat" ? (
           <ChatMode text={text} onChange={setText} />
@@ -457,13 +466,25 @@ function ManualMode({ tripId, onCreated }: { tripId: string; onCreated: () => vo
   }
 
   const back = () => setType(null);
-  if (type === "flight") return <ManualFlightForm tripId={tripId} onCreated={onCreated} onBack={back} />;
+  if (type === "flight") return <FlightForm tripId={tripId} onClose={back} onSaved={onCreated} />;
   if (type === "hotel") return <ManualHotelForm tripId={tripId} onCreated={onCreated} onBack={back} />;
   if (type === "city") return <ManualCityForm tripId={tripId} onCreated={onCreated} onBack={back} />;
   return <ManualTransportForm tripId={tripId} mode={type} onCreated={onCreated} onBack={back} />;
 }
 
-function PreviewSection({ items, onEdit, onRemove }: { items: ParsedItem[]; onEdit: () => void; onRemove: (idx: number) => void }) {
+function PreviewSection({
+  items,
+  onEdit,
+  onRemove,
+  elapsed,
+  provider,
+}: {
+  items: ParsedItem[];
+  onEdit: () => void;
+  onRemove: (idx: number) => void;
+  elapsed?: number | null;
+  provider?: "claude" | "gemini" | null;
+}) {
   if (items.length === 0) {
     return (
       <div className="text-center py-12">
@@ -479,7 +500,7 @@ function PreviewSection({ items, onEdit, onRemove }: { items: ParsedItem[]; onEd
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-[20px] font-semibold text-white">
             {items.length} {items.length === 1 ? "item" : "items"} detectados
@@ -490,6 +511,17 @@ function PreviewSection({ items, onEdit, onRemove }: { items: ParsedItem[]; onEd
         </div>
         <button onClick={onEdit} className="text-[#0A84FF] text-[15px]">Editar</button>
       </div>
+      {elapsed !== null && elapsed !== undefined && (
+        <div
+          className="flex items-center gap-2 rounded-[10px] px-3 py-2 mb-4 text-[12px] font-semibold"
+          style={{ background: "rgba(191,90,242,0.10)", color: "#BF5AF2" }}
+        >
+          <span>✓</span>
+          <span>
+            Parseado en {elapsed.toFixed(1)}s con {provider === "gemini" ? "Gemini" : "Claude"}
+          </span>
+        </div>
+      )}
       <div className="space-y-3">
         {items.map((item, i) => (
           <ParsedItemCard key={i} item={item} onRemove={() => onRemove(i)} />

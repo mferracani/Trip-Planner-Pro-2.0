@@ -1,37 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: 'Inter Tight', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-sans: 'SF Pro Display', 'SF Pro Text', Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', ui-monospace, Menlo, monospace;
 
   /* Backgrounds */
-  --color-bg-base:        #0D0D0D;
-  --color-bg-surface:     #1A1A1A;
-  --color-bg-elevated:    #242424;
-  --color-bg-border:      #333333;
-  --color-bg-border-soft: #262626;
+  --color-bg-base:        #090806;
+  --color-bg-surface:     #171512;
+  --color-bg-elevated:    #242018;
+  --color-bg-border:      #332E25;
+  --color-bg-border-soft: #252119;
 
   /* Text */
   --color-text-primary:    #FFFFFF;
-  --color-text-secondary:  #A0A0A0;
-  --color-text-tertiary:   #707070;
-  --color-text-quaternary: #4D4D4D;
+  --color-text-secondary:  #C6BDAE;
+  --color-text-tertiary:   #81786A;
+  --color-text-quaternary: #564D40;
 
   /* Accents */
-  --color-accent-blue:   #0A84FF;
+  --color-accent-mint:   #71D3A6;
+  --color-accent-gold:   #FFD16A;
+  --color-accent-blue:   #6CAFE8;
   --color-accent-green:  #30D158;
-  --color-accent-orange: #FF9F0A;
+  --color-accent-orange: #FFD16A;
   --color-accent-red:    #FF453A;
-  --color-accent-purple: #BF5AF2;
+  --color-accent-purple: #A891E8;
 
   /* City palette (8 rotativas) */
-  --color-city-coral:   #FF6B6B;
-  --color-city-teal:    #4ECDC4;
-  --color-city-yellow:  #FFD93D;
-  --color-city-mint:    #95E1D3;
-  --color-city-lavender:#C77DFF;
-  --color-city-salmon:  #FF8FA3;
+  --color-city-coral:   #F29E7D;
+  --color-city-teal:    #71D3A6;
+  --color-city-yellow:  #FFD16A;
+  --color-city-mint:    #A7E5C7;
+  --color-city-lavender:#A891E8;
+  --color-city-salmon:  #E98A9A;
   --color-city-green:   #6BCB77;
   --color-city-blue:    #4D96FF;
 
@@ -57,17 +58,17 @@
 * { box-sizing: border-box; }
 
 body {
-  background: #0D0D0D;
+  background: #090806;
   color: #FFFFFF;
-  font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: 'SF Pro Display', 'SF Pro Text', Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
 /* Scrollbar dark (solo en overflow vertical del root) */
 body::-webkit-scrollbar { width: 6px; }
-body::-webkit-scrollbar-track { background: #0D0D0D; }
-body::-webkit-scrollbar-thumb { background: #262626; border-radius: 3px; }
-body::-webkit-scrollbar-thumb:hover { background: #333; }
+body::-webkit-scrollbar-track { background: #090806; }
+body::-webkit-scrollbar-thumb { background: #252119; border-radius: 3px; }
+body::-webkit-scrollbar-thumb:hover { background: #332E25; }
 
 /* Hide scrollbars on horizontal rows / mobile-like surfaces */
 @layer utilities {

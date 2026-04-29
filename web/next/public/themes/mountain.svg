@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0A1628"/><stop offset="100%" stop-color="#1E3A6E"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#sky)"/>
+  <circle cx="40" cy="20" r="1.5" fill="white" opacity="0.8"/>
+  <circle cx="120" cy="12" r="1" fill="white" opacity="0.7"/>
+  <circle cx="200" cy="18" r="1.5" fill="white" opacity="0.9"/>
+  <circle cx="280" cy="8" r="1" fill="white" opacity="0.8"/>
+  <circle cx="350" cy="22" r="1.5" fill="white" opacity="0.7"/>
+  <circle cx="70" cy="35" r="1" fill="white" opacity="0.6"/>
+  <circle cx="320" cy="40" r="1" fill="white" opacity="0.7"/>
+  <polygon points="0,180 80,80 160,180" fill="#1A3060" opacity="0.7"/>
+  <polygon points="120,180 240,60 360,180" fill="#1E3A7A" opacity="0.8"/>
+  <polygon points="260,180 360,90 400,180" fill="#162850" opacity="0.7"/>
+  <polygon points="100,220 200,30 300,220" fill="#2A4A8A"/>
+  <polygon points="170,75 200,30 230,75 215,72 200,55 185,72" fill="white" opacity="0.9"/>
+  <rect x="0" y="200" width="400" height="50" fill="#0E1E3A"/>
+  <polygon points="30,200 42,170 54,200" fill="#0D3318"/>
+  <polygon points="50,200 60,178 70,200" fill="#0A2D14"/>
+  <polygon points="330,200 342,172 354,200" fill="#0D3318"/>
+  <polygon points="350,200 362,180 374,200" fill="#0A2D14"/>
+</svg>

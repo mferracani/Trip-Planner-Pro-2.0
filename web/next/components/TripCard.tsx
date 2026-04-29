@@ -5,13 +5,14 @@ import { Trip } from "@/lib/types";
 
 interface TripCardProps {
   trip: Trip;
-  status: "active" | "future" | "past";
+  status: "active" | "future" | "past" | "draft";
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   active: { label: "En curso", color: "text-[#30D158] bg-[#30D158]/15" },
   future: { label: "Futuro", color: "text-[#0A84FF] bg-[#0A84FF]/15" },
   past: { label: "Pasado", color: "text-[#A0A0A0] bg-[#333]/50" },
+  draft: { label: "Borrador", color: "text-[#A0A0A0] bg-[#333]/30" },
 };
 
 function formatDateRange(start: string, end: string): string {
@@ -25,15 +26,40 @@ function formatDateRange(start: string, end: string): string {
 }
 
 export function TripCard({ trip, status }: TripCardProps) {
-  const badge = STATUS_LABELS[status];
+  const badge = STATUS_LABELS[status] ?? STATUS_LABELS.future;
+  const isDraft = trip.status === "draft";
+
+  const tripStartMs = new Date(trip.start_date + "T00:00:00").getTime();
+  const hoursUntil = (tripStartMs - Date.now()) / 3600000;
+  const daysUntil = Math.ceil((tripStartMs - Date.now()) / 86400000);
+  const isImminent = status === "future" && hoursUntil >= 0 && hoursUntil < 24;
+
+  const badgeLabel =
+    status === "future"
+      ? daysUntil <= 0 ? "Hoy"
+      : daysUntil === 1 ? "Mañana"
+      : `En ${daysUntil} días`
+      : badge.label;
 
   return (
-    <Link href={`/trips/${trip.id}`} className="group">
+    <Link href={`/trips/${trip.id}`} className="group relative block">
+      {isImminent && (
+        <>
+          <style>{`
+            @keyframes _imminent-glow {
+              0%, 100% { box-shadow: 0 0 0 1.5px rgba(10,132,255,0.45), 0 0 20px rgba(10,132,255,0.12) }
+              50% { box-shadow: 0 0 0 2px rgba(10,132,255,0.85), 0 0 28px rgba(10,132,255,0.28) }
+            }
+            ._imminent { animation: _imminent-glow 2s ease-in-out infinite; }
+          `}</style>
+          <div className="_imminent absolute inset-0 rounded-[16px] pointer-events-none z-10" />
+        </>
+      )}
       <div
         className="relative flex items-center gap-4 rounded-[16px] px-4 py-4 md:px-5 md:py-5 transition-all cursor-pointer overflow-hidden"
         style={{
           background: "linear-gradient(180deg, #171717 0%, #131313 100%)",
-          border: "1px solid #232323",
+          border: isImminent ? "1px solid rgba(10,132,255,0.4)" : "1px solid #232323",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
         }}
       >
@@ -72,10 +98,12 @@ export function TripCard({ trip, status }: TripCardProps) {
             <span
               className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 uppercase tracking-wider ${badge.color}`}
             >
-              {badge.label}
+              {badgeLabel}
             </span>
           </div>
-          <p className="text-[#A0A0A0] text-[13px]">{formatDateRange(trip.start_date, trip.end_date)}</p>
+          <p className="text-[#A0A0A0] text-[13px]">
+            {isDraft ? "~ " : ""}{formatDateRange(trip.start_date, trip.end_date)}
+          </p>
           {trip.total_usd > 0 && (
             <p className="text-[#707070] text-[12px] font-mono tabular-nums mt-0.5">
               USD {trip.total_usd.toLocaleString()}

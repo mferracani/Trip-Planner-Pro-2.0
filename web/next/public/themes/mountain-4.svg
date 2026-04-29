@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="mountain4_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#080408"/><stop offset="100%" stop-color="#140818"/></linearGradient>
+    <linearGradient id="mountain4_lava" x1="0.5" y1="0" x2="0.5" y2="1"><stop offset="0%" stop-color="#FF4500" stop-opacity="0.0"/><stop offset="70%" stop-color="#FF4500" stop-opacity="0.55"/><stop offset="100%" stop-color="#FF2000" stop-opacity="0.8"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#mountain4_sky)"/>
+  <!-- Stars -->
+  <circle cx="30" cy="15" r="1" fill="white" opacity="0.6"/>
+  <circle cx="80" cy="8" r="1.5" fill="white" opacity="0.5"/>
+  <circle cx="150" cy="20" r="1" fill="white" opacity="0.7"/>
+  <circle cx="360" cy="12" r="1" fill="white" opacity="0.6"/>
+  <circle cx="310" cy="30" r="1" fill="white" opacity="0.5"/>
+  <!-- Volcano shape -->
+  <polygon points="200,20 310,190 90,190" fill="#1A0818"/>
+  <!-- Lava glow cone at base -->
+  <polygon points="200,20 275,190 125,190" fill="url(#mountain4_lava)"/>
+  <!-- Lava glow ambient circle -->
+  <circle cx="200" cy="190" r="80" fill="#FF3800" opacity="0.18"/>
+  <circle cx="200" cy="190" r="45" fill="#FF6000" opacity="0.20"/>
+  <!-- Ground with lava glow -->
+  <rect x="0" y="190" width="400" height="60" fill="#0A0408"/>
+  <rect x="100" y="190" width="200" height="5" fill="#FF4500" opacity="0.25"/>
+  <!-- Smoke wisps from peak -->
+  <path d="M200 22 C195 10 205 2 198 -5" stroke="#888" stroke-width="3" fill="none" opacity="0.35" stroke-linecap="round"/>
+  <path d="M196 20 C188 8 192 0 185 -4" stroke="#999" stroke-width="2.5" fill="none" opacity="0.28" stroke-linecap="round"/>
+  <path d="M204 21 C212 9 208 1 215 -3" stroke="#888" stroke-width="2.5" fill="none" opacity="0.30" stroke-linecap="round"/>
+</svg>

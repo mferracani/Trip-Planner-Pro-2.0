@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plane, Hotel as HotelIcon, Car, Receipt, Check, X, Trash2, Plus, Pencil } from "lucide-react";
+import { Plane, Hotel as HotelIcon, Car, Receipt, Check, X, Trash2, Plus } from "lucide-react";
 import type { Expense, ExpenseCategory, Flight, Hotel, Transport } from "@/lib/types";
 import {
   updateFlight,
@@ -156,6 +156,7 @@ export function CostView({
 
   // Edit state
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [editingFocus, setEditingFocus] = useState<"total" | "paid" | null>(null);
   const [editValues, setEditValues] = useState({ total: "", paid: "" });
   const [saving, setSaving] = useState(false);
 
@@ -237,8 +238,9 @@ export function CostView({
   const pendingUSDAll = totalUSDAll - paidUSDAll;
 
   // Edit actions
-  function startEdit(row: CostRow) {
+  function startEdit(row: CostRow, focus: "total" | "paid" = "total") {
     setEditingRowId(row.id);
+    setEditingFocus(focus);
     setEditValues({
       total: row.total != null ? String(row.total) : "",
       paid: row.paid > 0 ? String(row.paid) : "",
@@ -247,6 +249,7 @@ export function CostView({
 
   function cancelEdit() {
     setEditingRowId(null);
+    setEditingFocus(null);
     setEditValues({ total: "", paid: "" });
   }
 
@@ -288,6 +291,7 @@ export function CostView({
       await recalcTripAggregates(userId, tripId);
       onChanged();
       setEditingRowId(null);
+      setEditingFocus(null);
     } catch (e) {
       console.error("saveEdit failed", e);
     } finally {
@@ -487,11 +491,19 @@ export function CostView({
                                     if (e.key === "Escape") cancelEdit();
                                   }}
                                   className={INPUT_CLASS}
-                                  autoFocus
+                                  autoFocus={editingFocus === "total"}
                                   placeholder="0"
                                 />
                               ) : (
-                                cellAmt(row.total, c)
+                                <button
+                                  onClick={() => startEdit(row, "total")}
+                                  className="w-full text-right rounded-[4px] px-1 py-0.5 transition-colors hover:bg-[#1E1E1E] cursor-text"
+                                >
+                                  {row.total == null || row.total === 0
+                                    ? <span className="text-[#2A2A2A] text-[12px]">—</span>
+                                    : cellAmt(row.total, c)
+                                  }
+                                </button>
                               )
                             ) : (
                               DASH
@@ -511,10 +523,16 @@ export function CostView({
                                     if (e.key === "Escape") cancelEdit();
                                   }}
                                   className={INPUT_CLASS}
+                                  autoFocus={editingFocus === "paid"}
                                   placeholder="0"
                                 />
                               ) : (
-                                cellAmt(row.paid > 0 ? row.paid : null, c)
+                                <button
+                                  onClick={() => startEdit(row, "paid")}
+                                  className="w-full text-right rounded-[4px] px-1 py-0.5 transition-colors hover:bg-[#1E1E1E] cursor-text"
+                                >
+                                  {cellAmt(row.paid > 0 ? row.paid : null, c)}
+                                </button>
                               )
                             ) : (
                               DASH
@@ -547,17 +565,37 @@ export function CostView({
                           </button>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => startEdit(row)}
-                            className="w-6 h-6 flex items-center justify-center rounded-[4px] bg-[#1E1E1E] text-[#707070] hover:text-white hover:bg-[#2A2A2A] transition-colors"
-                          >
-                            <Pencil size={12} />
-                          </button>
+                        <div className="flex items-center gap-1 justify-end">
+                          {row.total != null && row.total > 0 && row.paid < row.total && (
+                            <button
+                              onClick={async () => {
+                                setSaving(true);
+                                try {
+                                  if (row.type === "flight") {
+                                    await updateFlight(userId, tripId, row.id, { paid_amount: row.total! });
+                                  } else if (row.type === "hotel") {
+                                    await updateHotel(userId, tripId, row.id, { paid_amount: row.total! });
+                                  } else if (row.type === "transport") {
+                                    await updateTransport(userId, tripId, row.id, { paid_amount: row.total! });
+                                  } else if (row.type === "expense") {
+                                    await updateExpense(userId, tripId, row.id, { paid_amount: row.total! });
+                                  }
+                                  await recalcTripAggregates(userId, tripId);
+                                  onChanged();
+                                } catch (e) { console.error(e); }
+                                finally { setSaving(false); }
+                              }}
+                              disabled={saving}
+                              title="Marcar como pagado"
+                              className="w-6 h-6 flex items-center justify-center rounded-[4px] bg-[#30D15815] text-[#30D158] hover:bg-[#30D15830] transition-colors disabled:opacity-40 opacity-0 group-hover:opacity-100"
+                            >
+                              <Check size={12} />
+                            </button>
+                          )}
                           {row.type === "expense" && (
                             <button
                               onClick={() => handleDeleteExpense(row.id)}
-                              className="w-6 h-6 flex items-center justify-center rounded-[4px] bg-[#1E1E1E] text-[#707070] hover:text-[#FF453A] hover:bg-[#FF453A20] transition-colors"
+                              className="w-6 h-6 flex items-center justify-center rounded-[4px] bg-[#1E1E1E] text-[#707070] hover:text-[#FF453A] hover:bg-[#FF453A20] transition-colors opacity-0 group-hover:opacity-100"
                             >
                               <Trash2 size={12} />
                             </button>

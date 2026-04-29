@@ -3,13 +3,12 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import {
-  createFlight,
   createHotel,
   createTransport,
   createCity,
   getCities,
 } from "@/lib/firestore";
-import type { City, Flight, Hotel, Transport } from "@/lib/types";
+import type { City, Hotel, Transport } from "@/lib/types";
 import { CITY_COLORS } from "@/lib/types";
 import { COMMON_TIMEZONES, localToUtcTimestamp, minutesBetween, guessTimezone } from "@/lib/datetime";
 import { ChevronDown, ArrowLeft, Plane, Hotel as HotelIcon, Car, Train, Bus, MapPin, ChevronRight } from "lucide-react";
@@ -265,140 +264,6 @@ function ErrorMsg({ error }: { error: string | null }) {
   );
 }
 
-// ─── Flight form ─────────────────────────────────────────────────────────────
-
-export function ManualFlightForm({ tripId, onCreated, onBack }: { tripId: string; onCreated: () => void; onBack: () => void }) {
-  const { user } = useAuth();
-  const defaultTz = guessTimezone();
-
-  const [airline, setAirline] = useState("");
-  const [flightNumber, setFlightNumber] = useState("");
-  const [originIata, setOriginIata] = useState("");
-  const [destIata, setDestIata] = useState("");
-  const [depLocal, setDepLocal] = useState("");
-  const [depTz, setDepTz] = useState(defaultTz);
-  const [arrLocal, setArrLocal] = useState("");
-  const [arrTz, setArrTz] = useState(defaultTz);
-  const [bookingRef, setBookingRef] = useState("");
-  const [seat, setSeat] = useState("");
-  const [cabinClass, setCabinClass] = useState("");
-  const [price, setPrice] = useState("");
-  const [currency, setCurrency] = useState("USD");
-  const [paid, setPaid] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const canSubmit = !!(
-    airline.trim() && flightNumber.trim() && originIata.trim() &&
-    destIata.trim() && depLocal && arrLocal
-  );
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!user || !canSubmit) return;
-    setSaving(true);
-    setErr(null);
-    try {
-      const depUtc = localToUtcTimestamp(depLocal, depTz);
-      const arrUtc = localToUtcTimestamp(arrLocal, arrTz);
-      if (!depUtc || !arrUtc) throw new Error("Fechas inválidas");
-      const data: Omit<Flight, "id"> = {
-        trip_id: tripId,
-        airline: airline.trim(),
-        flight_number: flightNumber.trim().toUpperCase(),
-        origin_iata: originIata.trim().toUpperCase(),
-        destination_iata: destIata.trim().toUpperCase(),
-        departure_local_time: depLocal,
-        departure_timezone: depTz,
-        departure_utc: depUtc,
-        arrival_local_time: arrLocal,
-        arrival_timezone: arrTz,
-        arrival_utc: arrUtc,
-        duration_minutes: minutesBetween(depUtc, arrUtc),
-        cabin_class: cabinClass.trim() || undefined,
-        seat: seat.trim() || undefined,
-        booking_ref: bookingRef.trim() || undefined,
-        price: price ? Number(price) : undefined,
-        currency: price ? currency : undefined,
-        paid_amount: paid ? Number(paid) : undefined,
-      };
-      await createFlight(user.uid, tripId, data);
-      onCreated();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <BackBar label="Vuelo" onBack={onBack} />
-
-      <Section title="Ruta">
-        <div className="grid grid-cols-2 gap-2.5">
-          <Field label="Origen (IATA)">
-            <TxtInput value={originIata} onChange={setOriginIata} placeholder="EZE" required upper />
-          </Field>
-          <Field label="Destino (IATA)">
-            <TxtInput value={destIata} onChange={setDestIata} placeholder="MAD" required upper />
-          </Field>
-        </div>
-        <div className="grid grid-cols-2 gap-2.5">
-          <Field label="Aerolínea">
-            <TxtInput value={airline} onChange={setAirline} placeholder="Iberia" required />
-          </Field>
-          <Field label="Nº vuelo">
-            <TxtInput value={flightNumber} onChange={setFlightNumber} placeholder="IB6842" required upper />
-          </Field>
-        </div>
-      </Section>
-
-      <Section title="Horarios">
-        <Field label="Salida (local)">
-          <TxtInput value={depLocal} onChange={setDepLocal} type="datetime-local" required />
-          <TzPicker value={depTz} onChange={setDepTz} />
-        </Field>
-        <Field label="Llegada (local)">
-          <TxtInput value={arrLocal} onChange={setArrLocal} type="datetime-local" required />
-          <TzPicker value={arrTz} onChange={setArrTz} />
-        </Field>
-      </Section>
-
-      <Section title="Reserva">
-        <Field label="Código de reserva">
-          <TxtInput value={bookingRef} onChange={setBookingRef} placeholder="NVJCW" upper />
-        </Field>
-        <div className="grid grid-cols-2 gap-2.5">
-          <Field label="Asiento">
-            <TxtInput value={seat} onChange={setSeat} placeholder="12A" upper />
-          </Field>
-          <Field label="Clase">
-            <TxtInput value={cabinClass} onChange={setCabinClass} placeholder="Economy" />
-          </Field>
-        </div>
-      </Section>
-
-      <CollapsibleSection title="Precio">
-        <div className="grid grid-cols-2 gap-2.5">
-          <Field label="Precio total">
-            <NumInput value={price} onChange={setPrice} placeholder="850" />
-          </Field>
-          <Field label="Pagado">
-            <NumInput value={paid} onChange={setPaid} placeholder="0" />
-          </Field>
-        </div>
-        <Field label="Moneda">
-          <CurrencyPills value={currency} onChange={setCurrency} />
-        </Field>
-      </CollapsibleSection>
-
-      <ErrorMsg error={err} />
-      <SubmitBtn loading={saving} label="Guardar vuelo" color="#4D96FF" />
-    </form>
-  );
-}
-
 // ─── Hotel form ──────────────────────────────────────────────────────────────
 
 function nightsBetween(a: string, b: string): number {
@@ -409,7 +274,7 @@ function nightsBetween(a: string, b: string): number {
 }
 
 export function ManualHotelForm({ tripId, onCreated, onBack }: { tripId: string; onCreated: () => void; onBack: () => void }) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [cities, setCities] = useState<City[]>([]);
 
   const [name, setName] = useState("");
@@ -428,8 +293,9 @@ export function ManualHotelForm({ tripId, onCreated, onBack }: { tripId: string;
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) getCities(user.uid, tripId).then(setCities);
-  }, [user, tripId]);
+    const uid = ownerUid ?? user?.uid;
+    if (uid) getCities(uid, tripId).then(setCities);
+  }, [ownerUid, user?.uid, tripId]);
 
   const nights = nightsBetween(checkIn, checkOut);
 
@@ -474,7 +340,8 @@ export function ManualHotelForm({ tripId, onCreated, onBack }: { tripId: string;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !canSubmit) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !canSubmit) return;
     setSaving(true);
     setErr(null);
     try {
@@ -493,7 +360,7 @@ export function ManualHotelForm({ tripId, onCreated, onBack }: { tripId: string;
         room_type: roomType.trim() || undefined,
       };
       if (address.trim()) (data as unknown as { address: string }).address = address.trim();
-      await createHotel(user.uid, tripId, data);
+      await createHotel(uid, tripId, data);
       onCreated();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -587,7 +454,7 @@ const TRANSPORT_LABELS: Record<TransportMode, { label: string; color: string; pl
 };
 
 export function ManualTransportForm({ tripId, mode, onCreated, onBack }: { tripId: string; mode: TransportMode; onCreated: () => void; onBack: () => void }) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const defaultTz = guessTimezone();
   const meta = TRANSPORT_LABELS[mode];
 
@@ -616,7 +483,8 @@ export function ManualTransportForm({ tripId, mode, onCreated, onBack }: { tripI
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !canSubmit) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !canSubmit) return;
     setSaving(true);
     setErr(null);
     try {
@@ -651,7 +519,7 @@ export function ManualTransportForm({ tripId, mode, onCreated, onBack }: { tripI
         paid_amount: paid ? Number(paid) : undefined,
       };
       if (notes) (data as unknown as { notes?: string }).notes = notes;
-      await createTransport(user.uid, tripId, data);
+      await createTransport(uid, tripId, data);
       onCreated();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -743,7 +611,7 @@ export function ManualTransportForm({ tripId, mode, onCreated, onBack }: { tripI
 // ─── City form ───────────────────────────────────────────────────────────────
 
 export function ManualCityForm({ tripId, onCreated, onBack }: { tripId: string; onCreated: () => void; onBack: () => void }) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [name, setName] = useState("");
   const [country, setCountry] = useState("");
   const [lat, setLat] = useState("");
@@ -757,11 +625,12 @@ export function ManualCityForm({ tripId, onCreated, onBack }: { tripId: string; 
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !canSubmit) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid || !canSubmit) return;
     setSaving(true);
     setErr(null);
     try {
-      await createCity(user.uid, tripId, {
+      await createCity(uid, tripId, {
         trip_id: tripId,
         name: name.trim(),
         lat: lat ? Number(lat) : 0,

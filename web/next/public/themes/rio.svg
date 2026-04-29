@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="rio_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0066AA"/><stop offset="100%" stop-color="#55AAEE"/></linearGradient>
+    <linearGradient id="rio_bay" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#008866"/><stop offset="100%" stop-color="#005544"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#rio_sky)"/>
+  <!-- Sun -->
+  <circle cx="60" cy="50" r="32" fill="#FFE566" opacity="0.9"/>
+  <circle cx="60" cy="50" r="44" fill="#FFE566" opacity="0.15"/>
+  <!-- Bay / Guanabara -->
+  <path d="M0 160 C80 145 180 165 280 150 C340 140 380 155 400 148 L400 250 L0 250Z" fill="url(#rio_bay)"/>
+  <!-- Ground strip -->
+  <rect x="0" y="215" width="400" height="35" fill="#1A4028"/>
+  <!-- Urca hill (left, smaller) -->
+  <path d="M0 215 C20 190 55 175 80 175 C105 175 120 190 130 215Z" fill="#2A4A30"/>
+  <!-- Sugarloaf: trapezoid + dome top, center-right -->
+  <path d="M240 215 C250 195 265 182 285 178 C305 174 320 182 335 195 C345 205 350 215 352 215Z" fill="#2A4A30"/>
+  <!-- Dome top circle of Sugarloaf -->
+  <circle cx="295" cy="170" r="28" fill="#2A4A30"/>
+  <!-- Palm trees foreground -->
+  <line x1="50" y1="218" x2="55" y2="185" stroke="#1A2810" stroke-width="5"/>
+  <ellipse cx="55" cy="182" rx="20" ry="7" fill="#1A7830" transform="rotate(-25 55 182)"/>
+  <ellipse cx="55" cy="182" rx="20" ry="7" fill="#22A844" transform="rotate(30 55 182)"/>
+  <line x1="165" y1="220" x2="170" y2="188" stroke="#1A2810" stroke-width="5"/>
+  <ellipse cx="170" cy="185" rx="20" ry="7" fill="#1A7830" transform="rotate(-20 170 185)"/>
+  <ellipse cx="170" cy="185" rx="20" ry="7" fill="#22A844" transform="rotate(35 170 185)"/>
+</svg>

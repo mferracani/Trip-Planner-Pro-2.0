@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="beach4_deep" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#025A8A"/><stop offset="40%" stop-color="#00B8CC"/><stop offset="65%" stop-color="#E8C84A"/><stop offset="100%" stop-color="#E0B84A"/></linearGradient>
+  </defs>
+  <!-- Aerial overhead view: ocean → shallow → sandbar → dry sand -->
+  <rect width="400" height="250" fill="#025A8A"/>
+  <!-- Deep ocean top band -->
+  <rect x="0" y="0" width="400" height="70" fill="#024A78"/>
+  <!-- Shallow turquoise -->
+  <rect x="0" y="70" width="400" height="70" fill="#00B8CC"/>
+  <!-- Sandbar strip -->
+  <rect x="0" y="140" width="400" height="35" fill="#E8C84A"/>
+  <!-- Dry sand bottom -->
+  <rect x="0" y="175" width="400" height="75" fill="#E0B84A"/>
+  <!-- Foam line as white stroke between ocean and shallow -->
+  <path d="M0 72 C60 68 140 76 220 70 C300 64 360 74 400 70" stroke="white" stroke-width="2.5" fill="none" opacity="0.7"/>
+  <!-- Foam between shallow and sandbar -->
+  <path d="M0 142 C80 138 160 146 250 140 C320 135 370 143 400 140" stroke="white" stroke-width="2" fill="none" opacity="0.55"/>
+  <!-- Boat shadow ellipse (top-down) -->
+  <ellipse cx="280" cy="45" rx="28" ry="10" fill="#013A58" opacity="0.5" transform="rotate(-15 280 45)"/>
+  <!-- Small boat mast shadow (line) -->
+  <line x1="280" y1="30" x2="280" y2="60" stroke="#013A58" stroke-width="2" opacity="0.4"/>
+  <!-- Wave ripple patterns in shallow -->
+  <path d="M20 90 C80 86 150 94 230 88 C300 82 360 90 400 86" stroke="white" stroke-width="1" fill="none" opacity="0.25"/>
+  <path d="M0 108 C70 104 155 112 240 106 C320 100 380 108 400 104" stroke="white" stroke-width="1" fill="none" opacity="0.20"/>
+  <!-- Small fish shadow shapes -->
+  <ellipse cx="100" cy="95" rx="8" ry="4" fill="#014A6A" opacity="0.35"/>
+  <ellipse cx="340" cy="112" rx="7" ry="3.5" fill="#014A6A" opacity="0.30"/>
+</svg>

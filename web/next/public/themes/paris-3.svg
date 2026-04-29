@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="paris3_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1A0808"/><stop offset="100%" stop-color="#704020"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#paris3_sky)"/>
+  <!-- Sacre-Coeur basilica -->
+  <!-- Base rectangle -->
+  <rect x="120" y="155" width="160" height="55" fill="#C8B890"/>
+  <!-- Steps cascading down: horizontal trapezoid strips -->
+  <polygon points="115,210 285,210 295,220 105,220" fill="#B0A070"/>
+  <polygon points="108,220 292,220 304,232 96,232" fill="#A09060"/>
+  <polygon points="100,232 300,232 315,245 85,245" fill="#908050"/>
+  <!-- Left flanking dome -->
+  <ellipse cx="148" cy="150" rx="22" ry="15" fill="#D8D0C0"/>
+  <circle cx="148" cy="137" r="7" fill="#C8B890"/>
+  <!-- Right flanking dome -->
+  <ellipse cx="252" cy="150" rx="22" ry="15" fill="#D8D0C0"/>
+  <circle cx="252" cy="137" r="7" fill="#C8B890"/>
+  <!-- Central main dome -->
+  <ellipse cx="200" cy="130" rx="42" ry="28" fill="#E0D8C8"/>
+  <circle cx="200" cy="104" r="12" fill="#D0C8B8"/>
+  <!-- Small cap on top -->
+  <circle cx="200" cy="92" r="5" fill="#C8B890"/>
+  <!-- Ground foreground -->
+  <rect x="0" y="245" width="400" height="5" fill="#080604"/>
+</svg>

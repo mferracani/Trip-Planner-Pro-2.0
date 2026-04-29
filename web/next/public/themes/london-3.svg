@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="london3_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#101828"/><stop offset="100%" stop-color="#1A2840"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#london3_sky)"/>
+  <!-- Thames at bottom -->
+  <rect x="0" y="210" width="400" height="40" fill="#0A1428"/>
+  <!-- London Eye: large circle outline -->
+  <circle cx="200" cy="140" r="88" fill="none" stroke="#2A4A6A" stroke-width="4"/>
+  <!-- Center hub circle -->
+  <circle cx="200" cy="140" r="8" fill="#2A4A6A"/>
+  <!-- Support legs -->
+  <line x1="200" y1="228" x2="170" y2="228" stroke="#1A3050" stroke-width="5"/>
+  <line x1="200" y1="228" x2="230" y2="228" stroke="#1A3050" stroke-width="5"/>
+  <line x1="200" y1="228" x2="200" y2="210" stroke="#1A3050" stroke-width="4"/>
+  <!-- Spokes radiating from center -->
+  <line x1="200" y1="52" x2="200" y2="140" stroke="#2A4A6A" stroke-width="1.5"/>
+  <line x1="200" y1="228" x2="200" y2="140" stroke="#2A4A6A" stroke-width="1.5"/>
+  <line x1="112" y1="140" x2="200" y2="140" stroke="#2A4A6A" stroke-width="1.5"/>
+  <line x1="288" y1="140" x2="200" y2="140" stroke="#2A4A6A" stroke-width="1.5"/>
+  <line x1="138" y1="78" x2="200" y2="140" stroke="#2A4A6A" stroke-width="1.5"/>
+  <line x1="262" y1="78" x2="200" y2="140" stroke="#2A4A6A" stroke-width="1.5"/>
+  <line x1="138" y1="202" x2="200" y2="140" stroke="#2A4A6A" stroke-width="1.5"/>
+  <line x1="262" y1="202" x2="200" y2="140" stroke="#2A4A6A" stroke-width="1.5"/>
+  <!-- Gondola circles on the rim (8 positions) -->
+  <circle cx="200" cy="52" r="5" fill="#3A5A7A" opacity="0.8"/>
+  <circle cx="262" cy="78" r="5" fill="#3A5A7A" opacity="0.8"/>
+  <circle cx="288" cy="140" r="5" fill="#3A5A7A" opacity="0.8"/>
+  <circle cx="262" cy="202" r="5" fill="#3A5A7A" opacity="0.8"/>
+  <circle cx="200" cy="228" r="5" fill="#3A5A7A" opacity="0.8"/>
+  <circle cx="138" cy="202" r="5" fill="#3A5A7A" opacity="0.8"/>
+  <circle cx="112" cy="140" r="5" fill="#3A5A7A" opacity="0.8"/>
+  <circle cx="138" cy="78" r="5" fill="#3A5A7A" opacity="0.8"/>
+  <!-- Background skyline -->
+  <rect x="280" y="165" width="50" height="50" fill="#0D1822" opacity="0.7"/>
+  <rect x="320" y="150" width="38" height="65" fill="#0D1822" opacity="0.7"/>
+  <rect x="10" y="172" width="60" height="43" fill="#0D1822" opacity="0.6"/>
+</svg>

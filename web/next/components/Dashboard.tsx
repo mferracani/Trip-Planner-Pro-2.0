@@ -1,21 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
-import { getTrips } from "@/lib/firestore";
+import { getTrips, updateTripStatus } from "@/lib/firestore";
 import { Trip } from "@/lib/types";
 import { signOut } from "@/lib/auth";
-import { useCountUp } from "@/lib/hooks";
-import { Pressable } from "./ui/Pressable";
 import { BottomNav } from "./BottomNav";
 import { TopNav } from "./TopNav";
 import { CreateTripModal } from "./CreateTripModal";
 import { TripCard } from "./TripCard";
-import { Plane, MapPin, DollarSign, CalendarDays, ChevronRight } from "lucide-react";
+import { MapPin, CalendarDays, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { getTheme } from "@/lib/themes";
+import { createDemoTrip } from "@/lib/demo";
 
-type Filter = "all" | "future" | "active" | "past";
+type Filter = "all" | "future" | "active" | "past" | "draft";
 
 function getContextualGreeting(name: string): { line1: string; line2: string } {
   const hour = new Date().getHours();
@@ -25,18 +25,27 @@ function getContextualGreeting(name: string): { line1: string; line2: string } {
   return { line1: `Buenas noches,`, line2: firstName };
 }
 
-function classifyTrip(trip: Trip): "active" | "future" | "past" {
+function classifyTrip(trip: Trip): "draft" | "active" | "future" | "past" {
+  if (trip.status === "draft") return "draft";
   const today = new Date().toISOString().split("T")[0];
-  if (trip.end_date < today) return "past";
-  if (trip.start_date > today) return "future";
+  if (!trip.end_date || trip.end_date < today) return "past";
+  if (!trip.start_date || trip.start_date > today) return "future";
   return "active";
 }
 
-function getDaysUntil(dateStr: string): number {
-  const today = new Date();
+function getCountdownText(dateStr: string): string {
+  const now = new Date();
+  const today = new Date(now);
   today.setHours(0, 0, 0, 0);
   const target = new Date(dateStr + "T00:00:00");
-  return Math.ceil((target.getTime() - today.getTime()) / 86400000);
+  const diffDays = Math.ceil((target.getTime() - today.getTime()) / 86400000);
+
+  if (diffDays <= 0) return "Empieza hoy";
+  if (diffDays === 1) return "Mañana";
+  if (diffDays <= 6) return `En ${diffDays} días`;
+  if (diffDays <= 13) return `En 1 semana`;
+  if (diffDays < 60) return `En ${Math.round(diffDays / 7)} semanas`;
+  return `En ${Math.round(diffDays / 30)} meses`;
 }
 
 function getActiveDayNumber(trip: Trip): number {
@@ -52,39 +61,93 @@ function getTotalDays(trip: Trip): number {
   return Math.ceil((end.getTime() - start.getTime()) / 86400000) + 1;
 }
 
+function DraftConfirmButton({
+  tripId,
+  userId,
+  onConfirmed,
+}: {
+  tripId: string;
+  userId: string;
+  onConfirmed: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  async function confirm() {
+    setLoading(true);
+    try {
+      await updateTripStatus(userId, tripId, "planned");
+      onConfirmed();
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <button
+      onClick={confirm}
+      disabled={loading}
+      className="w-full mt-1.5 py-2 rounded-[12px] text-[13px] font-semibold text-[#FFD16A] border border-[#FFD16A]/30 bg-[#FFD16A]/8 press-feedback hover:bg-[#FFD16A]/15 transition-colors disabled:opacity-50"
+    >
+      {loading ? "Confirmando..." : "Confirmar viaje →"}
+    </button>
+  );
+}
+
 export function Dashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, ownerUid, loading: authLoading } = useAuth();
   const [filter, setFilter] = useState<Filter>("all");
   const [createOpen, setCreateOpen] = useState(false);
+  const [loadingDemo, setLoadingDemo] = useState(false);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const { data: trips = [], isLoading, refetch } = useQuery({
-    queryKey: ["trips", user?.uid],
-    queryFn: () => getTrips(user!.uid),
-    enabled: !!user,
+    queryKey: ["trips", ownerUid],
+    queryFn: () => getTrips(ownerUid!),
+    enabled: !!ownerUid,
   });
 
   const displayName = user?.displayName || user?.email || "Mati";
   const { line1, line2 } = getContextualGreeting(displayName);
 
-  const activeTrip = trips.find((t) => classifyTrip(t) === "active");
-  const nextTrip = trips
+  async function handleLoadDemo() {
+    if (!ownerUid || loadingDemo) return;
+    setLoadingDemo(true);
+    try {
+      await createDemoTrip(ownerUid);
+      await refetch();
+    } finally {
+      setLoadingDemo(false);
+    }
+  }
+
+  // Exclude drafts from hero
+  const nonDraftTrips = trips.filter((t) => classifyTrip(t) !== "draft");
+  const activeTrip = nonDraftTrips.find((t) => classifyTrip(t) === "active");
+  const nextTrip = nonDraftTrips
     .filter((t) => classifyTrip(t) === "future")
     .sort((a, b) => a.start_date.localeCompare(b.start_date))[0];
   const heroTrip = activeTrip ?? nextTrip;
 
   const filteredTrips = trips.filter((t) => {
-    if (filter === "all") return true;
-    return classifyTrip(t) === filter;
+    const s = classifyTrip(t);
+    if (filter === "all") return s !== "draft";
+    return s === filter;
   });
 
   const thisYear = new Date().getFullYear().toString();
   const yearTrips = trips.filter((t) => t.start_date.startsWith(thisYear));
-  const totalUsd = yearTrips.reduce((sum, t) => sum + (t.total_usd ?? 0), 0);
   const totalCities = yearTrips.reduce((sum, t) => sum + (t.cities_count ?? 0), 0);
-  const totalDaysThisYear = yearTrips.reduce((sum, t) => sum + getTotalDays(t), 0);
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D]">
+    <div
+      className="min-h-screen"
+      style={{
+        background:
+          "radial-gradient(circle at 8% 0%, rgba(168,145,232,0.12), transparent 34%), radial-gradient(circle at 90% 90%, rgba(113,211,166,0.10), transparent 30%), #090806",
+      }}
+    >
       <TopNav
         active="trips"
         onAdd={() => setCreateOpen(true)}
@@ -95,16 +158,18 @@ export function Dashboard() {
       {/* Mobile header */}
       <div className="md:hidden flex items-center justify-between px-6 pt-14 pb-6 animate-fade-slide-up stagger-0">
         <div>
-          <p className="text-[#A0A0A0] text-[13px] mb-0.5">
-            {new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
+          <p className="text-[#81786A] text-[20px] mb-1">
+            {line1}
           </p>
-          <h1 className="text-[28px] font-bold text-white leading-tight">
-            {line1} <span className="text-[#BF5AF2]">{line2}</span>
+          <h1 className="text-[38px] font-bold text-white leading-tight tracking-tight">
+            {activeTrip
+              ? `Día ${getActiveDayNumber(activeTrip)} · ${activeTrip.name}`
+              : `${line2}`}
           </h1>
         </div>
         <button
           onClick={() => signOut()}
-          className="w-10 h-10 rounded-full bg-[#1A1A1A] border border-[#333] flex items-center justify-center text-[15px] font-semibold text-white press-feedback"
+          className="w-16 h-16 rounded-full bg-[#242018] flex items-center justify-center text-[18px] font-bold text-[#F3ECE1] press-feedback"
           title="Cerrar sesión"
         >
           {(user?.displayName?.[0] ?? user?.email?.[0] ?? "M").toUpperCase()}
@@ -112,14 +177,18 @@ export function Dashboard() {
       </div>
 
       <div className="mx-auto max-w-6xl px-6 md:px-8 space-y-6 pb-32 md:pb-16 md:pt-8">
-        {/* Desktop greeting — inline, editorial feel */}
+        {/* Desktop greeting */}
         <div className="hidden md:flex items-baseline justify-between animate-fade-slide-up stagger-0">
           <div>
             <p className="text-[#707070] text-[12px] uppercase tracking-[0.2em] font-semibold mb-2">
               {new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
             </p>
             <h1 className="text-[34px] font-bold text-white leading-[1.1] tracking-tight">
-              {line1} <span className="text-[#BF5AF2]">{line2}</span>
+              {activeTrip ? (
+                <>Día <span className="text-[#FFD16A]">{getActiveDayNumber(activeTrip)}</span> · {activeTrip.name}</>
+              ) : (
+                <>{line1} <span className="text-[#FFD16A]">{line2}</span></>
+              )}
             </h1>
           </div>
           <p className="text-[#4D4D4D] text-[13px] font-mono tabular-nums">
@@ -127,56 +196,13 @@ export function Dashboard() {
           </p>
         </div>
 
-        {/* Desktop: hero + stats side-by-side ; Mobile: stacked */}
-        <div className="grid md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-3 md:gap-5 animate-spring-up stagger-2">
-          <div className="md:h-full">
-            {heroTrip ? (
-              <HeroTripCard trip={heroTrip} status={classifyTrip(heroTrip)} />
-            ) : (
-              <EmptyHeroCard onCreateTrip={() => setCreateOpen(true)} />
-            )}
-          </div>
-
-          {/* Stats 2×2 — glued next to hero on desktop */}
-          <div className="grid grid-cols-2 gap-3 md:content-stretch md:h-full">
-          <StatCard
-            label="Viajes"
-            sublabel="este año"
-            value={String(yearTrips.length)}
-            numericValue={yearTrips.length}
-            color="#0A84FF"
-            icon={<Plane size={16} strokeWidth={2.2} />}
-            staggerDelay={200}
-          />
-          <StatCard
-            label="Ciudades"
-            sublabel="visitadas"
-            value={String(totalCities)}
-            numericValue={totalCities}
-            color="#BF5AF2"
-            icon={<MapPin size={16} strokeWidth={2.2} />}
-            staggerDelay={260}
-          />
-          <StatCard
-            label="Total"
-            sublabel="gastado"
-            value={`USD ${totalUsd.toLocaleString("es-AR")}`}
-            numericValue={totalUsd}
-            currencyPrefix="USD "
-            color="#FF9F0A"
-            icon={<DollarSign size={16} strokeWidth={2.2} />}
-            staggerDelay={320}
-          />
-          <StatCard
-            label="Días"
-            sublabel="viajando"
-            value={String(totalDaysThisYear)}
-            numericValue={totalDaysThisYear}
-            color="#30D158"
-            icon={<CalendarDays size={16} strokeWidth={2.2} />}
-            staggerDelay={380}
-          />
-          </div>
+        {/* Hero */}
+        <div className="animate-spring-up stagger-2">
+          {heroTrip ? (
+            <HeroTripCard trip={heroTrip} status={classifyTrip(heroTrip) as "active" | "future" | "past"} />
+          ) : (
+            <EmptyHeroCard onCreateTrip={() => setCreateOpen(true)} onLoadDemo={handleLoadDemo} loadingDemo={loadingDemo} />
+          )}
         </div>
 
         {/* Mis viajes */}
@@ -185,23 +211,40 @@ export function Dashboard() {
             <div>
               <h2 className="text-[20px] md:text-[22px] font-semibold text-white tracking-tight">Mis viajes</h2>
               <p className="hidden md:block text-[#707070] text-[12px] mt-1">
-                {filteredTrips.length} {filter === "all" ? "total" : filter === "future" ? "próximos" : filter === "active" ? "en curso" : "pasados"}
+                {filteredTrips.length}{" "}
+                {filter === "all"
+                  ? "total"
+                  : filter === "future"
+                  ? "próximos"
+                  : filter === "active"
+                  ? "en curso"
+                  : filter === "past"
+                  ? "pasados"
+                  : "borradores"}
               </p>
             </div>
 
             {/* Filtros */}
             <div className="flex gap-1.5 overflow-x-auto no-scrollbar ios-scroll pb-1">
-              {(["all", "future", "active", "past"] as Filter[]).map((f) => (
+              {(["all", "future", "active", "past", "draft"] as Filter[]).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
                   className={`px-3.5 py-1.5 rounded-full text-[12px] md:text-[13px] font-medium whitespace-nowrap transition-colors flex-shrink-0 press-feedback ${
                     filter === f
                       ? "bg-white text-black"
-                      : "bg-[#161616] text-[#A0A0A0] border border-[#262626] hover:border-[#333] hover:text-white"
+                      : "bg-[#171512] text-[#C6BDAE] border border-[#252119] hover:border-[#332E25] hover:text-white"
                   }`}
                 >
-                  {f === "all" ? "Todos" : f === "future" ? "Futuros" : f === "active" ? "En curso" : "Pasados"}
+                  {f === "all"
+                    ? "Todos"
+                    : f === "future"
+                    ? "Futuros"
+                    : f === "active"
+                    ? "En curso"
+                    : f === "past"
+                    ? "Pasados"
+                    : "Borradores"}
                 </button>
               ))}
             </div>
@@ -215,16 +258,34 @@ export function Dashboard() {
               ))}
             </div>
           ) : filteredTrips.length === 0 ? (
-            <div className="text-center py-16 md:py-24 text-[#4D4D4D] text-[15px] border border-dashed border-[#1F1F1F] rounded-[18px]">
+            <div className="text-center py-16 md:py-24 text-[#81786A] text-[15px] border border-dashed border-[#252119] rounded-[18px]">
               {filter === "all"
                 ? "Todavía no tenés viajes."
-                : `No hay viajes ${filter === "future" ? "futuros" : filter === "active" ? "en curso" : "pasados"}.`}
+                : filter === "future"
+                ? "No hay viajes futuros."
+                : filter === "active"
+                ? "No hay viajes en curso."
+                : filter === "past"
+                ? "No hay viajes pasados."
+                : "No tenés borradores."}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {filteredTrips.map((trip) => (
-                <TripCard key={trip.id} trip={trip} status={classifyTrip(trip)} />
-              ))}
+              {filteredTrips.map((trip) => {
+                const tripStatus = classifyTrip(trip);
+                return (
+                  <div key={trip.id}>
+                    <TripCard trip={trip} status={tripStatus} />
+                    {tripStatus === "draft" && (
+                      <DraftConfirmButton
+                        tripId={trip.id}
+                        userId={ownerUid ?? user?.uid ?? ""}
+                        onConfirmed={() => refetch()}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -247,10 +308,17 @@ function HeroTripCard({ trip, status }: { trip: Trip; status: "active" | "future
   const isActive = status === "active";
   const dayNum = isActive ? getActiveDayNumber(trip) : null;
   const totalDays = getTotalDays(trip);
-  const daysUntil = !isActive ? getDaysUntil(trip.start_date) : null;
+  const countdownText = !isActive ? getCountdownText(trip.start_date) : null;
 
-  const tintColor = (trip as Trip & { primary_color?: string }).primary_color ?? "#BF5AF2";
-  const progress = isActive && dayNum ? Math.min(dayNum / totalDays, 1) : 0;
+  const theme = getTheme(trip.cover_url);
+  const accentRaw = theme?.gradientFrom ?? "rgba(255,209,106,0.9)";
+  const bgTint = theme?.gradientFrom.replace(/[\d.]+\)$/, "0.06)") ?? "rgba(255,209,106,0.06)";
+
+  const dateRange = `${new Date(trip.start_date + "T00:00:00").toLocaleDateString("es-AR", {
+    day: "numeric", month: "short",
+  })} – ${new Date(trip.end_date + "T00:00:00").toLocaleDateString("es-AR", {
+    day: "numeric", month: "short", year: "numeric",
+  })}`;
 
   const [pressed, setPressed] = useState(false);
 
@@ -260,183 +328,91 @@ function HeroTripCard({ trip, status }: { trip: Trip; status: "active" | "future
         onPointerDown={() => setPressed(true)}
         onPointerUp={() => setPressed(false)}
         onPointerLeave={() => setPressed(false)}
-        className="relative rounded-[24px] overflow-hidden h-52 flex flex-col p-5 cursor-pointer"
+        className="flex items-center gap-4 rounded-[14px] px-4 py-3.5 cursor-pointer"
         style={{
-          background: "#141414",
-          border: `1px solid ${tintColor}35`,
-          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.02)`,
-          transform: pressed ? "scale(0.985)" : "scale(1)",
-          transition: "transform 200ms cubic-bezier(0.2, 0.7, 0.3, 1)",
+          background: `linear-gradient(135deg, ${bgTint}, rgba(23,21,18,0.0) 60%), #171512`,
+          border: "1px solid #252119",
+          borderLeft: `3px solid ${accentRaw}`,
+          transform: pressed ? "scale(0.993)" : "scale(1)",
+          transition: "transform 180ms cubic-bezier(0.2, 0.7, 0.3, 1)",
         }}
       >
-        {/* Mesh gradient background */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: `
-              radial-gradient(ellipse 80% 50% at 15% 0%, ${tintColor}40 0%, transparent 60%),
-              radial-gradient(ellipse 60% 40% at 90% 100%, ${tintColor}25 0%, transparent 55%),
-              radial-gradient(ellipse 40% 30% at 50% 50%, ${tintColor}10 0%, transparent 70%)
-            `,
-          }}
-        />
+        {/* Badge */}
+        <span
+          className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em]"
+          style={{ background: "rgba(255,209,106,0.12)", color: "#FFD16A" }}
+        >
+          {isActive ? "En curso" : "Próximo"}
+        </span>
 
-        {/* Living drift layer */}
-        <div
-          className="absolute inset-0 pointer-events-none animate-gradient-drift opacity-60"
-          style={{
-            background: `linear-gradient(115deg, ${tintColor}18 0%, transparent 40%, ${tintColor}0A 80%, ${tintColor}15 100%)`,
-            backgroundSize: "220% 220%",
-          }}
-        />
-
-        {/* Noise/grain subtle */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-[0.04] mix-blend-overlay"
-          style={{
-            backgroundImage:
-              "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)'/%3E%3C/svg%3E\")",
-          }}
-        />
-
-        {/* Cover image (if any) */}
-        {trip.cover_url && (
-          <div
-            className="absolute inset-0 bg-cover bg-center opacity-25"
-            style={{ backgroundImage: `url(${trip.cover_url})` }}
-          />
-        )}
-
-        {/* Header row: status pill + chevron */}
-        <div className="relative flex items-start justify-between">
-          {isActive ? (
-            <div className="flex items-center gap-1.5 bg-[#30D158]/18 px-2.5 py-1 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#30D158] animate-soft-pulse" />
-              <span className="text-[10px] font-bold text-[#30D158] uppercase tracking-wider">En curso</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 bg-[#0A84FF]/18 px-2.5 py-1 rounded-full">
-              <span className="text-[10px] font-bold text-[#0A84FF] uppercase tracking-wider">Próximo</span>
-            </div>
-          )}
-
-          <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-white/60 backdrop-blur-sm">
-            <ChevronRight size={16} strokeWidth={2.4} />
-          </div>
+        {/* Name + context */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] font-bold text-white truncate leading-snug">{trip.name}</p>
+          <p className="text-[12px] text-[#707070] leading-snug mt-0.5">
+            {isActive
+              ? `Día ${dayNum} de ${totalDays} · ${dateRange}`
+              : `${countdownText} · ${dateRange}`}
+          </p>
         </div>
 
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Title + info */}
-        <div className="relative">
-          <h3 className="text-[28px] font-bold text-white leading-[1.05] tracking-tight">
-            {trip.name}
-          </h3>
-          <div className="flex items-center gap-2 mt-2">
-            <p className="text-white/75 text-[13px] font-medium">
-              {isActive ? `Día ${dayNum} de ${totalDays}` : `En ${daysUntil} ${daysUntil === 1 ? "día" : "días"}`}
-            </p>
-            {trip.total_usd > 0 && (
-              <>
-                <span className="text-white/25 text-[11px]">·</span>
-                <p className="text-white/75 text-[13px] font-mono tabular-nums">
-                  USD {trip.total_usd.toLocaleString("es-AR")}
-                </p>
-              </>
-            )}
-          </div>
-
-          {/* Progress bar (solo si active) */}
-          {isActive && (
-            <div className="mt-3 h-1 rounded-full bg-white/10 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{
-                  width: `${progress * 100}%`,
-                  background: `linear-gradient(90deg, ${tintColor}, ${tintColor}CC)`,
-                  boxShadow: `0 0 12px ${tintColor}88`,
-                }}
-              />
-            </div>
-          )}
+        {/* Pills — desktop */}
+        <div className="hidden md:flex items-center gap-4 flex-shrink-0">
+          <BannerPill icon={<MapPin size={13} />} value={String(trip.cities_count ?? 0)} label="ciudades" />
+          <BannerPill icon={<CalendarDays size={13} />} value={String(totalDays)} label="días" />
+          <span className="text-[#333]">·</span>
+          <span className="text-[15px] font-bold text-[#FFD16A] tabular-nums">
+            USD {(trip.total_usd ?? 0).toLocaleString("es-AR")}
+          </span>
         </div>
+
+        {/* Arrow */}
+        <ChevronRight size={16} className="flex-shrink-0 text-[#444]" />
       </div>
     </Link>
   );
 }
 
-function EmptyHeroCard({ onCreateTrip }: { onCreateTrip: () => void }) {
+function BannerPill({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
   return (
-    <button
-      onClick={onCreateTrip}
-      className="w-full bg-[#1A1A1A] rounded-[20px] border border-dashed border-[#333] h-44 flex flex-col items-center justify-center gap-3 transition-all hover:border-[#BF5AF2]/50 press-feedback"
-    >
-      <span className="text-4xl">✈️</span>
-      <div className="text-center">
-        <p className="text-white text-[17px] font-semibold">Tu primer viaje empieza acá</p>
-        <p className="text-[#707070] text-[13px] mt-1">Tocá para crear</p>
-      </div>
-    </button>
+    <div className="flex items-center gap-1.5 text-[#707070]">
+      {icon}
+      <span className="text-[13px] font-semibold text-[#C6BDAE] tabular-nums">{value}</span>
+      <span className="text-[12px]">{label}</span>
+    </div>
   );
 }
 
-function StatCard({
-  label,
-  sublabel,
-  value,
-  numericValue,
-  currencyPrefix,
-  color,
-  icon,
-  staggerDelay = 0,
+function EmptyHeroCard({
+  onCreateTrip,
+  onLoadDemo,
+  loadingDemo,
 }: {
-  label: string;
-  sublabel?: string;
-  value: string;
-  numericValue?: number;
-  currencyPrefix?: string;
-  color: string;
-  icon?: React.ReactNode;
-  staggerDelay?: number;
+  onCreateTrip: () => void;
+  onLoadDemo: () => void;
+  loadingDemo: boolean;
 }) {
-  const animated = useCountUp(numericValue ?? 0, 1200, staggerDelay + 80);
-  const displayValue =
-    numericValue !== undefined
-      ? `${currencyPrefix ?? ""}${animated.toLocaleString("es-AR")}`
-      : value;
-
   return (
-    <div
-      className="relative rounded-[18px] px-4 py-4 animate-pop-in overflow-hidden"
-      style={{
-        background: `linear-gradient(180deg, ${color}12 0%, #161616 100%)`,
-        border: `1px solid ${color}22`,
-        animationDelay: `${staggerDelay}ms`,
-        boxShadow: `inset 0 1px 0 ${color}15`,
-      }}
-    >
-      {/* Icon chip */}
-      {icon && (
-        <div
-          className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: `${color}22`, color }}
+    <div className="w-full bg-[#171512] rounded-[20px] border border-dashed border-[#332E25] py-10 flex flex-col items-center justify-center gap-4">
+      <span className="text-4xl">✈️</span>
+      <div className="text-center">
+        <p className="text-white text-[17px] font-semibold">Tu próximo viaje empieza acá</p>
+        <p className="text-[#707070] text-[13px] mt-1">Creá uno o explorá la app con un viaje de ejemplo</p>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xs px-4">
+        <button
+          onClick={onCreateTrip}
+          className="flex-1 py-2.5 rounded-[12px] text-[14px] font-semibold text-white transition-colors"
+          style={{ background: "linear-gradient(135deg, #0A84FF, #0670D9)" }}
         >
-          {icon}
-        </div>
-      )}
-
-      <div className="flex flex-col gap-1 pr-8">
-        <div className="flex items-baseline gap-1">
-          <span className="text-[11px] font-semibold text-[#A0A0A0] uppercase tracking-wider">{label}</span>
-          {sublabel && <span className="text-[10px] text-[#4D4D4D] font-medium">{sublabel}</span>}
-        </div>
-        <p
-          className={`font-bold leading-none tracking-tight whitespace-nowrap ${currencyPrefix ? "text-[20px]" : "text-[26px]"}`}
-          style={{ color, textShadow: `0 0 24px ${color}22` }}
+          + Nuevo viaje
+        </button>
+        <button
+          onClick={onLoadDemo}
+          disabled={loadingDemo}
+          className="flex-1 py-2.5 rounded-[12px] text-[14px] font-semibold text-[#A0A0A0] border border-[#2A2A2A] hover:border-[#444] hover:text-white transition-colors disabled:opacity-50"
         >
-          {displayValue}
-        </p>
+          {loadingDemo ? "Cargando…" : "Ver demo"}
+        </button>
       </div>
     </div>
   );

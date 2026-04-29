@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="newyork3_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1A4A8A"/><stop offset="100%" stop-color="#3A7AC8"/></linearGradient>
+    <linearGradient id="newyork3_park" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1A6A30"/><stop offset="100%" stop-color="#2A8A40"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#newyork3_sky)"/>
+  <!-- Buildings surrounding on top edge -->
+  <rect x="0" y="0" width="60" height="80" fill="#0A1828"/>
+  <rect x="55" y="15" width="45" height="65" fill="#0C1E30"/>
+  <rect x="295" y="0" width="60" height="75" fill="#0A1828"/>
+  <rect x="300" y="10" width="50" height="68" fill="#0C1E30"/>
+  <rect x="340" y="0" width="60" height="82" fill="#0A1828"/>
+  <!-- Buildings on left and right edges -->
+  <rect x="0" y="80" width="55" height="170" fill="#0A1828"/>
+  <rect x="345" y="80" width="55" height="170" fill="#0A1828"/>
+  <!-- Central park green rectangle -->
+  <rect x="60" y="80" width="280" height="170" fill="url(#newyork3_park)"/>
+  <!-- Trees in park: dark green circles -->
+  <circle cx="90" cy="120" r="10" fill="#0F4820" opacity="0.8"/>
+  <circle cx="130" cy="140" r="8" fill="#0F4820" opacity="0.75"/>
+  <circle cx="170" cy="110" r="9" fill="#0F5025" opacity="0.8"/>
+  <circle cx="230" cy="130" r="8" fill="#0F4820" opacity="0.75"/>
+  <circle cx="280" cy="118" r="10" fill="#0F4820" opacity="0.8"/>
+  <circle cx="310" cy="145" r="8" fill="#0F5025" opacity="0.75"/>
+  <!-- Reservoir: small blue oval in park center -->
+  <ellipse cx="200" cy="185" rx="55" ry="25" fill="#2A6AA0" opacity="0.7"/>
+  <ellipse cx="200" cy="185" rx="45" ry="18" fill="#3A80C0" opacity="0.5"/>
+  <!-- Park paths -->
+  <line x1="60" y1="155" x2="340" y2="155" stroke="#1A5828" stroke-width="2" opacity="0.5"/>
+  <line x1="200" y1="80" x2="200" y2="250" stroke="#1A5828" stroke-width="2" opacity="0.5"/>
+</svg>

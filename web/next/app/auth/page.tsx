@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { signInWithApple, signInWithGoogle } from "@/lib/auth";
 
 export default function AuthPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, configError } = useAuth();
   const router = useRouter();
   const [signingIn, setSigningIn] = useState<"apple" | "google" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +31,7 @@ export default function AuthPage() {
   }
 
   if (loading) return <LoadingScreen />;
+  if (configError) return <FirebaseSetupScreen error={configError} />;
 
   return (
     <main className="min-h-screen bg-[#0D0D0D] flex flex-col items-center justify-center px-8">
@@ -77,6 +78,33 @@ export default function AuthPage() {
           <span className="text-[#0A84FF]">Política de privacidad</span>
         </p>
       </div>
+    </main>
+  );
+}
+
+function FirebaseSetupScreen({ error }: { error: string }) {
+  return (
+    <main className="min-h-screen bg-[#090806] flex items-center justify-center px-8">
+      <section className="w-full max-w-md rounded-[24px] bg-[#171512] border border-[#332E25] p-6">
+        <p className="text-[#FFD16A] text-[11px] font-bold uppercase tracking-[0.18em] mb-3">
+          Firebase pendiente
+        </p>
+        <h1 className="text-white text-[26px] font-bold leading-tight mb-3">
+          Configurá Firebase para iniciar sesión.
+        </h1>
+        <p className="text-[#C6BDAE] text-[14px] leading-relaxed mb-4">
+          Para ver el rediseño sin credenciales, usá el mock visual.
+        </p>
+        <code className="block text-[#E98A9A] text-[12px] bg-[#090806] border border-[#252119] rounded-[12px] p-3 mb-5">
+          {error}
+        </code>
+        <a
+          href="/dev"
+          className="h-11 rounded-full bg-[#FFD16A] text-black font-bold text-[14px] flex items-center justify-center"
+        >
+          Ver mock visual
+        </a>
+      </section>
     </main>
   );
 }

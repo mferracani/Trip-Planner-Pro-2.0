@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1A0808"/><stop offset="100%" stop-color="#4A1010"/></linearGradient>
+    <linearGradient id="thames" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1A2840"/><stop offset="100%" stop-color="#0E1828"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#sky)"/>
+  <rect x="0" y="0" width="400" height="250" fill="#300808" opacity="0.25"/>
+  <rect x="60" y="80" width="38" height="130" fill="#1A0808"/>
+  <rect x="55" y="78" width="48" height="12" fill="#220A0A"/>
+  <polygon points="55,78 84,38 113,78" fill="#1A0808"/>
+  <rect x="72" y="56" width="24" height="22" fill="#CC2200" opacity="0.7"/>
+  <circle cx="84" cy="70" r="10" fill="#CC2200" opacity="0.8"/>
+  <rect x="98" y="140" width="120" height="70" fill="#180808"/>
+  <rect x="98" y="135" width="120" height="8" fill="#220A0A"/>
+  <polygon points="110,135 115,115 120,135" fill="#1A0808"/>
+  <polygon points="130,135 135,120 140,135" fill="#1A0808"/>
+  <polygon points="155,135 160,118 165,135" fill="#1A0808"/>
+  <polygon points="178,135 183,122 188,135" fill="#1A0808"/>
+  <rect x="260" y="145" width="20" height="70" fill="#1A0808"/>
+  <rect x="340" y="145" width="20" height="70" fill="#1A0808"/>
+  <polygon points="258,145 270,115 282,145" fill="#1A0808"/>
+  <polygon points="338,145 350,115 362,145" fill="#1A0808"/>
+  <path d="M280 130 L340 130" stroke="#1A0808" stroke-width="5"/>
+  <path d="M270 142 Q310 135 350 142" stroke="#220A0A" stroke-width="3" fill="none"/>
+  <path d="M0 210 C80 200 160 215 240 205 C310 196 370 210 400 205 L400 250 L0 250Z" fill="url(#thames)"/>
+  <path d="M0 190 C100 182 200 195 300 185 C360 178 400 190 400 188 L400 215 L0 215Z" fill="#300808" opacity="0.4"/>
+</svg>

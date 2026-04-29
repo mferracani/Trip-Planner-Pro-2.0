@@ -16,6 +16,7 @@ final class DashboardViewModel {
         case upcoming = "Próximos"
         case active = "En curso"
         case past = "Pasados"
+        case draft = "Borradores"
 
         var id: String { rawValue }
     }
@@ -74,6 +75,8 @@ final class DashboardViewModel {
             if days == 0 { return "Buen viaje, Mati" }
             if days == 1 { return "Mañana empieza" }
             if days <= 7 { return "Esta semana viajás" }
+            if days < 60 { return "En \(days / 7) semana\(days / 7 == 1 ? "" : "s")" }
+            return "En \(days / 30) mes\(days / 30 == 1 ? "" : "es")"
         }
 
         return "Hola, Mati"
@@ -88,27 +91,33 @@ final class DashboardViewModel {
 
     // MARK: - Trips segmentation
 
+    /// Confirmed trips only (excludes drafts).
+    var confirmedTrips: [Trip] { trips.filter { $0.status != .draft } }
+
+    var draftTrips: [Trip] { trips.filter { $0.status == .draft } }
+
     var upcomingTrip: Trip? {
-        trips.filter { $0.status_computed == .planned }.min(by: { $0.startDate < $1.startDate })
+        confirmedTrips.filter { $0.status_computed == .planned }.min(by: { $0.startDate < $1.startDate })
     }
 
     var activeTrip: Trip? {
-        trips.first(where: { $0.status_computed == .active })
+        confirmedTrips.first(where: { $0.status_computed == .active })
     }
 
-    /// Used for the hero card — active trip wins, else the next planned trip.
+    /// Used for the hero card — active trip wins, else the next planned trip (drafts excluded).
     var heroTrip: Trip? { activeTrip ?? upcomingTrip }
 
-    var plannedTrips: [Trip] { trips.filter { $0.status_computed == .planned } }
-    var activeTrips: [Trip] { trips.filter { $0.status_computed == .active } }
-    var pastTrips: [Trip] { trips.filter { $0.status_computed == .past } }
+    var plannedTrips: [Trip] { confirmedTrips.filter { $0.status_computed == .planned } }
+    var activeTrips: [Trip] { confirmedTrips.filter { $0.status_computed == .active } }
+    var pastTrips: [Trip] { confirmedTrips.filter { $0.status_computed == .past } }
 
     var filteredTrips: [Trip] {
         switch filter {
-        case .all:      return trips.sorted { $0.startDate > $1.startDate }
+        case .all:      return confirmedTrips.sorted { $0.startDate > $1.startDate }
         case .upcoming: return plannedTrips.sorted { $0.startDate < $1.startDate }
         case .active:   return activeTrips
         case .past:     return pastTrips.sorted { $0.startDate > $1.startDate }
+        case .draft:    return draftTrips.sorted { $0.startDate < $1.startDate }
         }
     }
 
@@ -124,6 +133,11 @@ final class DashboardViewModel {
     }
 
     var statTripsThisYear: Int { tripsThisYear.count }
+
+    /// All cities across ALL trips this year (includes planned, for header subtitle).
+    var statYearCities: Int {
+        tripsThisYear.reduce(0) { $0 + ($1.citiesCount ?? 0) }
+    }
 
     var statCitiesVisited: Int {
         // Sum unique cityOrder counts across past + active trips this year.
@@ -144,6 +158,33 @@ final class DashboardViewModel {
         return Int(total.rounded())
     }
 
+    // MARK: - Global stats (all trips, no year filter, drafts excluded)
+
+    /// Total number of confirmed trips (excludes drafts).
+    var globalStatTrips: Int { confirmedTrips.count }
+
+    /// Total city count across all confirmed trips.
+    /// Uses the denormalized `citiesCount` field per trip.
+    /// When TripCity streaming is available, replace with a real cross-trip dedup.
+    var globalStatCities: Int {
+        confirmedTrips.reduce(0) { $0 + ($1.citiesCount ?? 0) }
+    }
+
+    /// Total flight count across all confirmed trips.
+    var globalStatFlights: Int {
+        confirmedTrips.reduce(0) { $0 + ($1.flightsCount ?? 0) }
+    }
+
+    /// Sum of trip duration (inclusive day count) for past and active trips only.
+    var globalStatDaysTraveling: Int {
+        confirmedTrips
+            .filter { $0.status_computed == .past || $0.status_computed == .active }
+            .reduce(0) { acc, trip in
+                let days = Calendar.current.dateComponents([.day], from: trip.startDate, to: trip.endDate).day ?? 0
+                return acc + max(1, days + 1)
+            }
+    }
+
     /// Days between today and the heroTrip's start (0 if active / past).
     var daysUntilHero: Int {
         guard let hero = heroTrip else { return 0 }
@@ -151,12 +192,13 @@ final class DashboardViewModel {
         return max(0, hero.daysUntilStart)
     }
 
-    /// Progress metric for the hero ring:
-    /// - If a trip is active → % of trip time elapsed
-    /// - If a next trip exists → inverse of days-until (clamped), so the ring
-    ///   fills as the trip approaches
-    /// - Otherwise → % of year elapsed
+    /// Progress metric for the hero ring.
+    /// Payment progress (paid_usd / total_usd) takes priority when a budget is set.
+    /// Falls back to temporal progress (days elapsed or countdown) when no budget exists.
     var heroProgress: Double {
+        if let hero = heroTrip, let total = hero.totalUSD, total > 0 {
+            return min(1, (hero.paidUSD ?? 0) / total)
+        }
         if let active = activeTrip {
             let total = max(1, Calendar.current.dateComponents([.day], from: active.startDate, to: active.endDate).day ?? 0)
             let elapsed = max(0, Calendar.current.dateComponents([.day], from: active.startDate, to: Date()).day ?? 0)
@@ -164,7 +206,6 @@ final class DashboardViewModel {
         }
         if let next = upcomingTrip {
             let days = max(0, next.daysUntilStart)
-            // 0 days → 1.0 (about to start); 90+ days → 0.1
             let p = max(0.05, 1 - Double(days) / 90.0)
             return min(1, p)
         }

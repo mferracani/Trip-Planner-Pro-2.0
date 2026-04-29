@@ -10,6 +10,7 @@ enum SelectedItem: Identifiable {
     case hotel(Hotel)
     case transport(Transport)
     case expense(Expense)
+    case city(TripCity)
 
     var id: String {
         switch self {
@@ -17,6 +18,7 @@ enum SelectedItem: Identifiable {
         case .hotel(let h): return "hotel-\(h.id ?? UUID().uuidString)"
         case .transport(let t): return "transport-\(t.id ?? UUID().uuidString)"
         case .expense(let e): return "expense-\(e.id ?? UUID().uuidString)"
+        case .city(let c): return "city-\(c.id ?? UUID().uuidString)"
         }
     }
 }
@@ -43,6 +45,9 @@ struct EditSheetPresenter: ViewModifier {
                         .presentationBackground(Tokens.Color.bgPrimary)
                 case .expense(let e):
                     ExpenseEditSheet(tripID: tripID, existing: e) { self.item = nil }
+                        .presentationBackground(Tokens.Color.bgPrimary)
+                case .city(let c):
+                    CityEditSheet(city: c, tripID: tripID) { self.item = nil }
                         .presentationBackground(Tokens.Color.bgPrimary)
                 }
             }

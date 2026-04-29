@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="beach3_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#010818"/><stop offset="100%" stop-color="#040E28"/></linearGradient>
+    <linearGradient id="beach3_sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#030E22"/><stop offset="100%" stop-color="#020A1A"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#beach3_sky)"/>
+  <!-- Stars -->
+  <circle cx="40" cy="18" r="1" fill="white" opacity="0.8"/>
+  <circle cx="100" cy="10" r="1.5" fill="white" opacity="0.7"/>
+  <circle cx="175" cy="22" r="1" fill="white" opacity="0.9"/>
+  <circle cx="250" cy="8" r="1" fill="white" opacity="0.6"/>
+  <circle cx="330" cy="15" r="1.5" fill="white" opacity="0.8"/>
+  <circle cx="60" cy="40" r="1" fill="white" opacity="0.5"/>
+  <circle cx="290" cy="35" r="1" fill="white" opacity="0.7"/>
+  <circle cx="370" cy="28" r="1" fill="white" opacity="0.6"/>
+  <circle cx="145" cy="48" r="1" fill="white" opacity="0.5"/>
+  <!-- Crescent moon: full circle minus overlapping circle -->
+  <circle cx="310" cy="45" r="22" fill="#B8C8E8" opacity="0.9"/>
+  <circle cx="322" cy="38" r="20" fill="#010818"/>
+  <!-- Ocean -->
+  <path d="M0 158 C70 148 160 168 240 152 C310 138 360 155 400 148 L400 250 L0 250Z" fill="url(#beach3_sea)"/>
+  <!-- Phosphorescent wave edge -->
+  <path d="M0 158 C70 148 160 168 240 152 C310 138 360 155 400 148" stroke="#00FFCC" stroke-width="2" fill="none" opacity="0.5"/>
+  <!-- Sand -->
+  <path d="M0 210 C80 202 180 218 300 208 C360 202 390 214 400 210 L400 250 L0 250Z" fill="#1A1208"/>
+  <!-- Palm silhouette left -->
+  <path d="M65 245 C63 215 60 185 58 160 C56 144 59 132 63 124" stroke="#050808" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <ellipse cx="63" cy="121" rx="40" ry="9" fill="#060A06" transform="rotate(-38 63 121)"/>
+  <ellipse cx="63" cy="121" rx="40" ry="9" fill="#060A06" transform="rotate(18 63 121)"/>
+  <ellipse cx="63" cy="121" rx="34" ry="8" fill="#040804" transform="rotate(-72 63 121)"/>
+</svg>

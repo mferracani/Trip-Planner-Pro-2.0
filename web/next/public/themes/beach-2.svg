@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="beach2_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0088CC"/><stop offset="100%" stop-color="#66CCFF"/></linearGradient>
+    <linearGradient id="beach2_sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00AADD"/><stop offset="100%" stop-color="#0077AA"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#beach2_sky)"/>
+  <circle cx="200" cy="50" r="38" fill="#FFF7A0" opacity="0.95"/>
+  <circle cx="200" cy="50" r="55" fill="#FFF7A0" opacity="0.15"/>
+  <path d="M0 148 C70 132 160 158 240 140 C310 124 360 148 400 138 L400 250 L0 250Z" fill="url(#beach2_sea)"/>
+  <path d="M0 205 C80 196 170 212 260 202 C330 194 370 208 400 203 L400 250 L0 250Z" fill="#E8C84A"/>
+  <path d="M0 230 C90 224 200 236 310 228 C360 224 390 232 400 229 L400 250 L0 250Z" fill="#D4A820"/>
+  <!-- Left palm tree -->
+  <path d="M70 240 C68 210 65 180 62 155 C60 138 63 126 67 118" stroke="#5D3A1A" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <ellipse cx="67" cy="115" rx="42" ry="10" fill="#1A9940" transform="rotate(-35 67 115)"/>
+  <ellipse cx="67" cy="115" rx="42" ry="10" fill="#22BB50" transform="rotate(20 67 115)"/>
+  <ellipse cx="67" cy="115" rx="36" ry="9" fill="#1A9940" transform="rotate(-70 67 115)"/>
+  <ellipse cx="67" cy="115" rx="36" ry="9" fill="#44DD70" transform="rotate(55 67 115)"/>
+  <circle cx="67" cy="118" r="7" fill="#4A2800"/>
+  <!-- Right palm tree -->
+  <path d="M338 240 C340 210 342 180 345 155 C347 138 344 126 340 118" stroke="#5D3A1A" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <ellipse cx="340" cy="115" rx="42" ry="10" fill="#1A9940" transform="rotate(35 340 115)"/>
+  <ellipse cx="340" cy="115" rx="42" ry="10" fill="#22BB50" transform="rotate(-20 340 115)"/>
+  <ellipse cx="340" cy="115" rx="36" ry="9" fill="#1A9940" transform="rotate(70 340 115)"/>
+  <ellipse cx="340" cy="115" rx="36" ry="9" fill="#44DD70" transform="rotate(-55 340 115)"/>
+  <circle cx="340" cy="118" r="7" fill="#4A2800"/>
+</svg>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="cold2_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8898A8"/><stop offset="100%" stop-color="#C8D8E0"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#cold2_sky)"/>
+  <!-- Mountain silhouette barely visible, very pale -->
+  <polygon points="100,180 200,80 300,180" fill="#A8B8C8" opacity="0.55"/>
+  <polygon points="0,180 80,120 160,180" fill="#A8B8C8" opacity="0.40"/>
+  <polygon points="250,180 340,105 400,180" fill="#A8B8C8" opacity="0.40"/>
+  <!-- Snow ground -->
+  <rect x="0" y="195" width="400" height="55" fill="white"/>
+  <path d="M0 196 C80 192 180 200 300 194 C360 191 390 197 400 194" stroke="#C8D8E0" stroke-width="1" fill="none"/>
+  <!-- Wind-driven snow streaks -->
+  <rect x="20" y="60" width="55" height="2" fill="white" opacity="0.62" transform="rotate(-8 20 60)"/>
+  <rect x="100" y="40" width="70" height="2" fill="white" opacity="0.58" transform="rotate(-6 100 40)"/>
+  <rect x="200" y="75" width="60" height="2" fill="white" opacity="0.65" transform="rotate(-10 200 75)"/>
+  <rect x="280" y="50" width="80" height="2" fill="white" opacity="0.55" transform="rotate(-7 280 50)"/>
+  <rect x="0" y="110" width="65" height="1.5" fill="white" opacity="0.60" transform="rotate(-9 0 110)"/>
+  <rect x="130" y="120" width="75" height="1.5" fill="white" opacity="0.55" transform="rotate(-8 130 120)"/>
+  <rect x="310" y="100" width="85" height="1.5" fill="white" opacity="0.62" transform="rotate(-6 310 100)"/>
+  <rect x="50" y="150" width="60" height="1.5" fill="white" opacity="0.58" transform="rotate(-9 50 150)"/>
+  <rect x="230" y="140" width="70" height="1.5" fill="white" opacity="0.60" transform="rotate(-7 230 140)"/>
+</svg>

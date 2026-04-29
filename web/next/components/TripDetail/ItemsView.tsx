@@ -1,24 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/context/AuthContext";
-import { getExpenses } from "@/lib/firestore";
-import type { Trip, City, Flight, Hotel, Transport, Expense } from "@/lib/types";
+import type { Trip, City, Flight, Hotel, Transport } from "@/lib/types";
 import { CityForm } from "../forms/CityForm";
 import { FlightForm } from "../forms/FlightForm";
 import { HotelForm } from "../forms/HotelForm";
 import { TransportForm } from "../forms/TransportForm";
-import { ExpenseForm } from "../forms/ExpenseForm";
 
-type SubTab = "flights" | "hotels" | "transports" | "cities" | "expenses";
+type SubTab = "flights" | "hotels" | "transports" | "cities";
+
+function fmtISODate(iso?: string | null): string {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return d ? `${d}-${m}-${y}` : iso;
+}
 
 const SUBTABS: { value: SubTab; label: string; emoji: string }[] = [
   { value: "flights", label: "Vuelos", emoji: "✈️" },
   { value: "hotels", label: "Hoteles", emoji: "🏨" },
   { value: "transports", label: "Transportes", emoji: "🚆" },
   { value: "cities", label: "Ciudades", emoji: "🏙️" },
-  { value: "expenses", label: "Gastos", emoji: "💵" },
 ];
 
 interface Props {
@@ -35,57 +36,32 @@ type EditTarget =
   | { kind: "flight"; data?: Flight }
   | { kind: "hotel"; data?: Hotel }
   | { kind: "transport"; data?: Transport }
-  | { kind: "expense"; data?: Expense }
   | null;
 
 export function ItemsView({ trip, cities, flights, hotels, transports, onChanged }: Props) {
-  const { user } = useAuth();
   const [sub, setSub] = useState<SubTab>("flights");
   const [editing, setEditing] = useState<EditTarget>(null);
-
-  const { data: expenses = [], refetch: refetchExpenses } = useQuery({
-    queryKey: ["expenses", user?.uid, trip.id],
-    queryFn: () => getExpenses(user!.uid, trip.id),
-    enabled: !!user,
-  });
 
   function handleSaved() {
     setEditing(null);
     onChanged();
-    refetchExpenses();
   }
 
   function openNew() {
     switch (sub) {
-      case "flights":
-        setEditing({ kind: "flight" });
-        break;
-      case "hotels":
-        setEditing({ kind: "hotel" });
-        break;
-      case "transports":
-        setEditing({ kind: "transport" });
-        break;
-      case "cities":
-        setEditing({ kind: "city" });
-        break;
-      case "expenses":
-        setEditing({ kind: "expense" });
-        break;
+      case "flights": setEditing({ kind: "flight" }); break;
+      case "hotels":  setEditing({ kind: "hotel" });  break;
+      case "transports": setEditing({ kind: "transport" }); break;
+      case "cities":  setEditing({ kind: "city" });   break;
     }
   }
 
   const subTabIndex = SUBTABS.findIndex((s) => s.value === sub);
   const addLabel =
-    sub === "flights"
-      ? "+ Vuelo"
-      : sub === "hotels"
-      ? "+ Hotel"
-      : sub === "transports"
-      ? "+ Transporte"
-      : sub === "cities"
-      ? "+ Ciudad"
-      : "+ Gasto";
+    sub === "flights" ? "+ Vuelo"
+    : sub === "hotels" ? "+ Hotel"
+    : sub === "transports" ? "+ Transporte"
+    : "+ Ciudad";
 
   return (
     <div className="pb-32 md:pb-8">
@@ -161,17 +137,6 @@ export function ItemsView({ trip, cities, flights, hotels, transports, onChanged
             onClick={(c) => setEditing({ kind: "city", data: c })}
           />
         )}
-        {sub === "expenses" && (
-          <>
-            <ExpensesSummary expenses={expenses} />
-            <ItemList
-              items={expenses}
-              empty="Todavía no hay gastos."
-              render={(e) => <ExpenseRow expense={e} />}
-              onClick={(e) => setEditing({ kind: "expense", data: e })}
-            />
-          </>
-        )}
       </div>
 
       {/* Form modals */}
@@ -205,14 +170,6 @@ export function ItemsView({ trip, cities, flights, hotels, transports, onChanged
       )}
       {editing?.kind === "transport" && (
         <TransportForm
-          tripId={trip.id}
-          existing={editing.data}
-          onClose={() => setEditing(null)}
-          onSaved={handleSaved}
-        />
-      )}
-      {editing?.kind === "expense" && (
-        <ExpenseForm
           tripId={trip.id}
           existing={editing.data}
           onClose={() => setEditing(null)}
@@ -281,7 +238,7 @@ function HotelRow({ hotel }: { hotel: Hotel }) {
       <div className="flex-1 min-w-0">
         <p className="text-[15px] font-semibold text-white truncate">{hotel.name}</p>
         <p className="text-[13px] text-[#A0A0A0]">
-          {hotel.check_in} → {hotel.check_out}
+          {fmtISODate(hotel.check_in)} → {fmtISODate(hotel.check_out)}
           {hotel.room_type ? ` · ${hotel.room_type}` : ""}
         </p>
       </div>
@@ -293,7 +250,7 @@ function HotelRow({ hotel }: { hotel: Hotel }) {
 function TransportRow({ transport }: { transport: Transport }) {
   const dep = transport.departure_local_time?.split("T")[1]?.slice(0, 5) ?? "";
   const depDate = transport.departure_local_time?.split("T")[0] ?? "";
-  const emoji = { train: "🚆", bus: "🚌", ferry: "⛴️", car: "🚗", taxi: "🚕", subway: "🚇", other: "🚐" }[transport.type] ?? "🚐";
+  const emoji = { train: "🚆", bus: "🚌", ferry: "⛴️", car: "🚗", car_rental: "🚙", taxi: "🚕", subway: "🚇", other: "🚐" }[transport.type] ?? "🚐";
   return (
     <>
       <div className="w-10 h-10 rounded-full bg-[#BF5AF2]/15 flex items-center justify-center text-xl flex-shrink-0">{emoji}</div>
@@ -328,59 +285,5 @@ function CityRow({ city }: { city: City }) {
       </div>
       <span className="text-[#707070] text-[16px]">›</span>
     </>
-  );
-}
-
-function ExpenseRow({ expense }: { expense: Expense }) {
-  const emoji =
-    { flight: "✈️", hotel: "🏨", transport: "🚆", food: "🍽️", activity: "🎫", shopping: "🛍️", other: "📌" }[
-      expense.category
-    ] ?? "📌";
-  return (
-    <>
-      <div className="w-10 h-10 rounded-full bg-[#30D158]/15 flex items-center justify-center text-xl flex-shrink-0">
-        {emoji}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-semibold text-white truncate">{expense.title}</p>
-        <p className="text-[13px] text-[#A0A0A0]">
-          {expense.date} · {expense.category}
-        </p>
-      </div>
-      <div className="text-right flex-shrink-0">
-        <p className="text-[14px] font-bold text-white tabular-nums">
-          {expense.amount.toLocaleString("es-AR")} {expense.currency}
-        </p>
-        {expense.currency !== "USD" && expense.amount_usd > 0 && (
-          <p className="text-[11px] text-[#707070] tabular-nums">
-            ≈ USD {expense.amount_usd.toLocaleString("es-AR")}
-          </p>
-        )}
-      </div>
-    </>
-  );
-}
-
-function ExpensesSummary({ expenses }: { expenses: Expense[] }) {
-  if (expenses.length === 0) return null;
-  const totalUsd = expenses.reduce((s, e) => s + (e.amount_usd || 0), 0);
-  const byCategory: Record<string, number> = {};
-  for (const e of expenses) {
-    byCategory[e.category] = (byCategory[e.category] ?? 0) + (e.amount_usd || 0);
-  }
-  return (
-    <div
-      className="rounded-[14px] px-5 py-4 mt-2"
-      style={{
-        background: "linear-gradient(180deg, #1A1A1A 0%, #141414 100%)",
-        border: "1px solid #262626",
-      }}
-    >
-      <p className="text-[10px] uppercase tracking-wider text-[#707070] font-bold mb-1">Total gastado</p>
-      <p className="text-[24px] font-bold text-white tabular-nums">
-        USD <span className="text-[#30D158]">{totalUsd.toLocaleString("es-AR")}</span>
-      </p>
-      <p className="text-[12px] text-[#707070] mt-1">{expenses.length} gasto{expenses.length === 1 ? "" : "s"}</p>
-    </div>
   );
 }

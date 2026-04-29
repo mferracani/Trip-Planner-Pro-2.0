@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="forest3_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8AA8B8"/><stop offset="100%" stop-color="#C8D8E0"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#forest3_sky)"/>
+  <!-- Background trees dark gray -->
+  <polygon points="0,200 18,145 36,200" fill="#2A3840" opacity="0.5"/>
+  <polygon points="30,200 50,135 70,200" fill="#2A3840" opacity="0.55"/>
+  <polygon points="70,200 92,125 114,200" fill="#2A3840" opacity="0.5"/>
+  <polygon points="120,200 142,130 164,200" fill="#2A3840" opacity="0.55"/>
+  <polygon points="165,200 188,120 211,200" fill="#2A3840" opacity="0.6"/>
+  <polygon points="215,200 238,128 261,200" fill="#2A3840" opacity="0.55"/>
+  <polygon points="265,200 288,132 311,200" fill="#2A3840" opacity="0.5"/>
+  <polygon points="315,200 338,138 361,200" fill="#2A3840" opacity="0.55"/>
+  <polygon points="360,200 380,145 400,200" fill="#2A3840" opacity="0.5"/>
+  <!-- Ground -->
+  <rect x="0" y="200" width="400" height="50" fill="#1A2228"/>
+  <!-- Horizontal fog bands at varying heights -->
+  <rect x="0" y="148" width="400" height="22" fill="white" opacity="0.20"/>
+  <rect x="0" y="168" width="400" height="15" fill="white" opacity="0.28"/>
+  <rect x="0" y="182" width="400" height="12" fill="white" opacity="0.22"/>
+  <rect x="0" y="110" width="400" height="18" fill="white" opacity="0.14"/>
+  <rect x="0" y="88" width="400" height="12" fill="white" opacity="0.10"/>
+  <rect x="0" y="196" width="400" height="10" fill="white" opacity="0.35"/>
+</svg>

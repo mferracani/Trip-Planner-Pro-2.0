@@ -67,3 +67,6 @@ yarn-error.log*
 .idea/
 *.swp
 *.swo
+
+# Clipy framework symlink — apunta al vault de Obsidian
+/clipy

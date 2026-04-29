@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="rio2_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0A0418"/><stop offset="50%" stop-color="#3A1060"/><stop offset="100%" stop-color="#8A3090"/></linearGradient>
+    <radialGradient id="rio2_aura" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#F8F0E0" stop-opacity="0.35"/><stop offset="50%" stop-color="#F0D080" stop-opacity="0.12"/><stop offset="100%" stop-color="#F0D080" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#rio2_sky)"/>
+  <!-- Stars -->
+  <circle cx="40" cy="18" r="1" fill="white" opacity="0.7"/>
+  <circle cx="100" cy="10" r="1.5" fill="white" opacity="0.6"/>
+  <circle cx="310" cy="15" r="1" fill="white" opacity="0.7"/>
+  <circle cx="360" cy="28" r="1" fill="white" opacity="0.6"/>
+  <circle cx="55" cy="42" r="1" fill="white" opacity="0.5"/>
+  <circle cx="280" cy="40" r="1" fill="white" opacity="0.5"/>
+  <!-- Corcovado mountain: dark pyramid -->
+  <polygon points="200,55 280,200 120,200" fill="#0E0818"/>
+  <!-- Aura / backlit glow behind statue -->
+  <circle cx="200" cy="60" r="48" fill="url(#rio2_aura)"/>
+  <!-- Christ the Redeemer silhouette: vertical body + horizontal arms -->
+  <!-- Body (vertical rectangle) -->
+  <rect x="195" y="38" width="10" height="52" fill="#E8E0D8"/>
+  <!-- Arms (horizontal rectangle) -->
+  <rect x="162" y="52" width="76" height="8" fill="#E8E0D8"/>
+  <!-- Head: small circle -->
+  <circle cx="200" cy="36" r="6" fill="#E8E0D8"/>
+  <!-- Ground -->
+  <rect x="0" y="200" width="400" height="50" fill="#08040E"/>
+</svg>

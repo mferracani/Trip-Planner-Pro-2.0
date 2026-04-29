@@ -77,7 +77,7 @@ function CityRow({
   fallbackColor: string;
   onSaved: () => void;
 }) {
-  const { user } = useAuth();
+  const { user, ownerUid } = useAuth();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -86,10 +86,11 @@ function CityRow({
   const normalizedName = normalizeCity(cityName);
 
   async function save(data: Partial<Omit<CitySetting, "normalized_name">>) {
-    if (!user) return;
+    const uid = ownerUid ?? user?.uid;
+    if (!uid) return;
     setSaving(true);
     try {
-      await upsertCitySetting(user.uid, normalizedName, { name: cityName, ...data });
+      await upsertCitySetting(uid, normalizedName, { name: cityName, ...data });
       onSaved();
     } finally {
       setSaving(false);
@@ -243,19 +244,19 @@ function CityRow({
 // ── CitiesCatalog ─────────────────────────────────────────────────────────────
 
 export function CitiesCatalog() {
-  const { user } = useAuth();
+  const { ownerUid } = useAuth();
   const qc = useQueryClient();
 
   const { data: allCities = [], isLoading: loadingCities } = useQuery({
-    queryKey: ["allCities", user?.uid],
-    queryFn: () => getAllCities(user!.uid),
-    enabled: !!user,
+    queryKey: ["allCities", ownerUid],
+    queryFn: () => getAllCities(ownerUid!),
+    enabled: !!ownerUid,
   });
 
   const { data: settings = [], isLoading: loadingSettings } = useQuery({
-    queryKey: ["citySettings", user?.uid],
-    queryFn: () => getCitySettings(user!.uid),
-    enabled: !!user,
+    queryKey: ["citySettings", ownerUid],
+    queryFn: () => getCitySettings(ownerUid!),
+    enabled: !!ownerUid,
   });
 
   const settingsMap = useMemo(
@@ -279,7 +280,7 @@ export function CitiesCatalog() {
   const isLoading = loadingCities || loadingSettings;
 
   function invalidate() {
-    qc.invalidateQueries({ queryKey: ["citySettings", user?.uid] });
+    qc.invalidateQueries({ queryKey: ["citySettings", ownerUid] });
   }
 
   if (isLoading) {

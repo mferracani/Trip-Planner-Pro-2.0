@@ -30,28 +30,52 @@ final class TripDetailViewModel {
         tasks.forEach { $0.cancel() }
         tasks = []
 
-        tasks.append(subscribe { try self.client.citiesStream(tripID: tripID) } onValue: { [weak self] in
-            self?.cities = $0
+        // Prefill from local cache for instant rendering while Firestore connects.
+        // isOffline is cleared by markLoaded() on the first successful stream emission.
+        if let cache {
+            let cf = cache.cachedFlights(tripID: tripID)
+            let ch = cache.cachedHotels(tripID: tripID)
+            let ct = cache.cachedTransports(tripID: tripID)
+            let ce = cache.cachedExpenses(tripID: tripID)
+            let cc = cache.cachedCities(tripID: tripID)
+            if !cf.isEmpty || !ch.isEmpty || !ct.isEmpty || !ce.isEmpty || !cc.isEmpty {
+                flights = cf
+                hotels = ch
+                transports = ct
+                expenses = ce
+                cities = cc
+                isLoading = false
+                isOffline = true
+            }
+        }
+
+        tasks.append(subscribe { try self.client.citiesStream(tripID: tripID) } onValue: { [weak self] items in
+            self?.cities = items
+            self?.cache?.upsertCities(items, tripID: tripID)
             self?.markLoaded()
         })
 
-        tasks.append(subscribe { try self.client.flightsStream(tripID: tripID) } onValue: { [weak self] in
-            self?.flights = $0
+        tasks.append(subscribe { try self.client.flightsStream(tripID: tripID) } onValue: { [weak self] items in
+            self?.flights = items
+            self?.cache?.upsertFlights(items, tripID: tripID)
             self?.markLoaded()
         })
 
-        tasks.append(subscribe { try self.client.hotelsStream(tripID: tripID) } onValue: { [weak self] in
-            self?.hotels = $0
+        tasks.append(subscribe { try self.client.hotelsStream(tripID: tripID) } onValue: { [weak self] items in
+            self?.hotels = items
+            self?.cache?.upsertHotels(items, tripID: tripID)
             self?.markLoaded()
         })
 
-        tasks.append(subscribe { try self.client.transportsStream(tripID: tripID) } onValue: { [weak self] in
-            self?.transports = $0
+        tasks.append(subscribe { try self.client.transportsStream(tripID: tripID) } onValue: { [weak self] items in
+            self?.transports = items
+            self?.cache?.upsertTransports(items, tripID: tripID)
             self?.markLoaded()
         })
 
-        tasks.append(subscribe { try self.client.expensesStream(tripID: tripID) } onValue: { [weak self] in
-            self?.expenses = $0
+        tasks.append(subscribe { try self.client.expensesStream(tripID: tripID) } onValue: { [weak self] items in
+            self?.expenses = items
+            self?.cache?.upsertExpenses(items, tripID: tripID)
             self?.markLoaded()
         })
     }
@@ -81,6 +105,93 @@ final class TripDetailViewModel {
     func stop() {
         tasks.forEach { $0.cancel() }
         tasks = []
+    }
+
+    // MARK: - Mark as paid
+
+    /// Sets paid_amount = total for a flight. No-op if already fully paid or no price.
+    func markFlightPaid(_ flight: Flight) async throws {
+        guard let tripID = trip.id else { return }
+        var updated = flight
+        updated.paidAmount = flight.price
+        try await client.updateFlight(updated, tripID: tripID)
+    }
+
+    /// Sets paid_amount = total for a hotel.
+    func markHotelPaid(_ hotel: Hotel) async throws {
+        guard let tripID = trip.id else { return }
+        var updated = hotel
+        updated.paidAmount = hotel.totalPrice
+        try await client.updateHotel(updated, tripID: tripID)
+    }
+
+    /// Sets paid_amount = total for a transport.
+    func markTransportPaid(_ transport: Transport) async throws {
+        guard let tripID = trip.id else { return }
+        var updated = transport
+        updated.paidAmount = transport.price
+        try await client.updateTransport(updated, tripID: tripID)
+    }
+
+    /// Sets paid_amount = amount for an expense.
+    func markExpensePaid(_ expense: Expense) async throws {
+        guard let tripID = trip.id else { return }
+        var updated = expense
+        updated.paidAmount = expense.amount
+        try await client.updateExpense(updated, tripID: tripID)
+    }
+
+    /// Marks all items in a category as paid.
+    func markAllPaid(category: CostCategory) async throws {
+        guard let tripID = trip.id else { return }
+        switch category {
+        case .flights:
+            for f in flights where (f.paidAmount ?? 0) < (f.price ?? 0) {
+                var updated = f; updated.paidAmount = f.price
+                try await client.updateFlight(updated, tripID: tripID)
+            }
+        case .hotels:
+            for h in hotels where (h.paidAmount ?? 0) < (h.totalPrice ?? 0) {
+                var updated = h; updated.paidAmount = h.totalPrice
+                try await client.updateHotel(updated, tripID: tripID)
+            }
+        case .transports:
+            for t in transports where (t.paidAmount ?? 0) < (t.price ?? 0) {
+                var updated = t; updated.paidAmount = t.price
+                try await client.updateTransport(updated, tripID: tripID)
+            }
+        case .expenses:
+            for e in expenses where (e.paidAmount ?? 0) < e.amount {
+                var updated = e; updated.paidAmount = e.amount
+                try await client.updateExpense(updated, tripID: tripID)
+            }
+        }
+    }
+
+    // MARK: - Delete
+
+    func deleteFlight(id: String) async throws {
+        guard let tripID = trip.id else { return }
+        try await client.deleteFlight(id: id, tripID: tripID)
+        try await client.recalcTripAggregates(tripID: tripID)
+    }
+
+    func deleteHotel(id: String) async throws {
+        guard let tripID = trip.id else { return }
+        try await client.deleteHotel(id: id, tripID: tripID)
+        try await client.recalcTripAggregates(tripID: tripID)
+    }
+
+    func deleteTransport(id: String) async throws {
+        guard let tripID = trip.id else { return }
+        try await client.deleteTransport(id: id, tripID: tripID)
+        try await client.recalcTripAggregates(tripID: tripID)
+    }
+
+    func deleteExpense(id: String) async throws {
+        guard let tripID = trip.id else { return }
+        try await client.deleteExpense(id: id, tripID: tripID)
+        try await client.recalcTripAggregates(tripID: tripID)
     }
 
     // MARK: - Calendar helpers
@@ -114,10 +225,17 @@ final class TripDetailViewModel {
         city(for: date)?.swiftColor
     }
 
-    /// Flights happening on this date — departure OR arrival matches.
+    /// Flights happening on this date — departure OR arrival matches (root-level or any leg).
     func flights(on date: Date) -> [Flight] {
         let key = Trip.isoDateFormatter.string(from: date)
-        return flights.filter { $0.departureDate == key || $0.arrivalDate == key }
+        return flights.filter { flight in
+            if flight.departureDate == key || flight.arrivalDate == key { return true }
+            guard let legs = flight.legs else { return false }
+            return legs.contains { leg in
+                String(leg.departureLocalTime.prefix(10)) == key ||
+                String(leg.arrivalLocalTime.prefix(10)) == key
+            }
+        }
     }
 
     /// Hotels occupying this date (between check_in inclusive and check_out exclusive).
@@ -146,6 +264,9 @@ final class TripDetailViewModel {
 
     // MARK: - Totals (used by CostsView)
 
+    /// Total number of flights in this trip (all, not per-day).
+    var allFlightsCount: Int { flights.count }
+
     /// Unified total USD across all item types.
     var grandTotalUSD: Double {
         let f = flights.reduce(0) { $0 + ($1.priceUSD ?? 0) }
@@ -169,6 +290,35 @@ final class TripDetailViewModel {
         let t = transports.reduce(0) { $0 + paidUSD(paid: $1.paidAmount, price: $1.price, priceUSD: $1.priceUSD) }
         let e = expenses.reduce(0) { $0 + paidUSD(paid: $1.paidAmount, price: $1.amount, priceUSD: $1.amountUSD) }
         return f + h + t + e
+    }
+
+    // MARK: - City-range assignment
+
+    /// Asigna una ciudad a un rango de fechas. Quita esas fechas de otras ciudades si ya las tenían.
+    func assignCity(_ targetCity: TripCity, toDates dates: [String]) async throws {
+        guard let tripID = trip.id else { return }
+        for var other in cities where other.id != targetCity.id {
+            let overlap = Set(other.days).intersection(dates)
+            if !overlap.isEmpty {
+                other.days = other.days.filter { !overlap.contains($0) }
+                try await client.updateCity(other, tripID: tripID)
+            }
+        }
+        var updated = targetCity
+        updated.days = Array(Set(updated.days).union(dates)).sorted()
+        try await client.updateCity(updated, tripID: tripID)
+    }
+
+    /// Quita la asignación de ciudad de un rango de fechas.
+    func removeCityFromDates(_ dates: [String]) async throws {
+        guard let tripID = trip.id else { return }
+        for var city in cities {
+            let overlap = Set(city.days).intersection(dates)
+            if !overlap.isEmpty {
+                city.days = city.days.filter { !overlap.contains($0) }
+                try await client.updateCity(city, tripID: tripID)
+            }
+        }
     }
 
     private let calendar: Calendar = {

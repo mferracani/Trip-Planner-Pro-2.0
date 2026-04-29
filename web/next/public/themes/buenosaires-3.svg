@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="ba3_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1A5AB8"/><stop offset="100%" stop-color="#4A8AE0"/></linearGradient>
+  </defs>
+  <!-- Argentine flag suggestion: subtle blue-white-blue horizontal stripes in upper sky -->
+  <rect width="400" height="250" fill="#1A5AB8"/>
+  <rect x="0" y="0" width="400" height="80" fill="#4A8AE0" opacity="0.30"/>
+  <rect x="0" y="80" width="400" height="80" fill="#FFFFFF" opacity="0.12"/>
+  <rect x="0" y="160" width="400" height="90" fill="#4A8AE0" opacity="0.28"/>
+  <rect width="400" height="250" fill="url(#ba3_sky)" opacity="0.6"/>
+  <!-- Casa Rosada (The Pink House) -->
+  <!-- Central body -->
+  <rect x="110" y="120" width="180" height="90" fill="#E87880"/>
+  <!-- White columns (thin vertical rects) -->
+  <rect x="118" y="122" width="6" height="88" fill="#F0E8D8" opacity="0.6"/>
+  <rect x="130" y="122" width="6" height="88" fill="#F0E8D8" opacity="0.6"/>
+  <rect x="142" y="122" width="6" height="88" fill="#F0E8D8" opacity="0.6"/>
+  <rect x="154" y="122" width="6" height="88" fill="#F0E8D8" opacity="0.6"/>
+  <rect x="240" y="122" width="6" height="88" fill="#F0E8D8" opacity="0.6"/>
+  <rect x="252" y="122" width="6" height="88" fill="#F0E8D8" opacity="0.6"/>
+  <rect x="264" y="122" width="6" height="88" fill="#F0E8D8" opacity="0.6"/>
+  <rect x="276" y="122" width="6" height="88" fill="#F0E8D8" opacity="0.6"/>
+  <!-- Left wing -->
+  <rect x="30" y="135" width="80" height="75" fill="#D86870"/>
+  <!-- Right wing -->
+  <rect x="290" y="135" width="80" height="75" fill="#D86870"/>
+  <!-- Cornice / top trim -->
+  <rect x="110" y="115" width="180" height="8" fill="#C86068"/>
+  <rect x="30" y="128" width="80" height="8" fill="#C86068"/>
+  <rect x="290" y="128" width="80" height="8" fill="#C86068"/>
+  <!-- Windows -->
+  <rect x="175" y="132" width="20" height="28" fill="#A84858" opacity="0.5"/>
+  <rect x="205" y="132" width="20" height="28" fill="#A84858" opacity="0.5"/>
+  <!-- Plaza de Mayo foreground -->
+  <rect x="0" y="210" width="400" height="40" fill="#606060"/>
+  <!-- Ground line -->
+  <rect x="0" y="207" width="400" height="4" fill="#505050"/>
+</svg>

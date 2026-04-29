@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <rect width="400" height="250" fill="#010204"/>
+  <!-- Buildings -->
+  <rect x="0" y="70" width="38" height="180" fill="#060C18"/>
+  <rect x="33" y="90" width="30" height="160" fill="#040810"/>
+  <rect x="58" y="55" width="32" height="195" fill="#060C18"/>
+  <rect x="85" y="78" width="28" height="172" fill="#040810"/>
+  <rect x="108" y="42" width="36" height="208" fill="#07101E"/>
+  <rect x="140" y="68" width="30" height="182" fill="#040810"/>
+  <rect x="165" y="30" width="40" height="220" fill="#060C18"/>
+  <rect x="200" y="58" width="28" height="192" fill="#040810"/>
+  <rect x="223" y="45" width="35" height="205" fill="#060C18"/>
+  <rect x="253" y="72" width="28" height="178" fill="#040810"/>
+  <rect x="276" y="38" width="40" height="212" fill="#060C18"/>
+  <rect x="311" y="60" width="30" height="190" fill="#040810"/>
+  <rect x="336" y="28" width="40" height="222" fill="#07101E"/>
+  <rect x="370" y="55" width="30" height="195" fill="#040810"/>
+  <!-- Neon signs: vivid pink -->
+  <rect x="8" y="85" width="16" height="8" fill="#FF0080" opacity="0.9"/>
+  <rect x="65" y="68" width="18" height="8" fill="#FF0080" opacity="0.85"/>
+  <rect x="172" y="45" width="20" height="9" fill="#FF0080" opacity="0.9"/>
+  <rect x="280" y="52" width="18" height="8" fill="#FF0080" opacity="0.85"/>
+  <rect x="342" y="42" width="20" height="9" fill="#FF0080" opacity="0.9"/>
+  <!-- Neon signs: cyan -->
+  <rect x="38" y="102" width="16" height="8" fill="#00FFFF" opacity="0.85"/>
+  <rect x="115" y="58" width="18" height="8" fill="#00FFFF" opacity="0.9"/>
+  <rect x="228" y="62" width="16" height="8" fill="#00FFFF" opacity="0.85"/>
+  <rect x="315" y="75" width="18" height="8" fill="#00FFFF" opacity="0.9"/>
+  <!-- Neon signs: purple -->
+  <rect x="92" y="92" width="15" height="7" fill="#8800FF" opacity="0.85"/>
+  <rect x="148" y="80" width="16" height="7" fill="#8800FF" opacity="0.80"/>
+  <rect x="258" y="88" width="15" height="7" fill="#8800FF" opacity="0.85"/>
+  <rect x="376" y="68" width="16" height="7" fill="#8800FF" opacity="0.80"/>
+  <!-- Rain: thin vertical lines -->
+  <line x1="25" y1="0" x2="22" y2="80" stroke="white" stroke-width="0.5" opacity="0.22"/>
+  <line x1="75" y1="0" x2="72" y2="70" stroke="white" stroke-width="0.5" opacity="0.20"/>
+  <line x1="135" y1="0" x2="132" y2="85" stroke="white" stroke-width="0.5" opacity="0.22"/>
+  <line x1="195" y1="0" x2="192" y2="75" stroke="white" stroke-width="0.5" opacity="0.20"/>
+  <line x1="255" y1="0" x2="252" y2="80" stroke="white" stroke-width="0.5" opacity="0.22"/>
+  <line x1="315" y1="0" x2="312" y2="72" stroke="white" stroke-width="0.5" opacity="0.20"/>
+  <line x1="375" y1="0" x2="372" y2="78" stroke="white" stroke-width="0.5" opacity="0.22"/>
+  <!-- Ground puddle neon reflections -->
+  <ellipse cx="18" cy="248" rx="14" ry="3" fill="#FF0080" opacity="0.22"/>
+  <ellipse cx="130" cy="246" rx="16" ry="3" fill="#00FFFF" opacity="0.20"/>
+  <ellipse cx="240" cy="248" rx="14" ry="3" fill="#8800FF" opacity="0.18"/>
+  <ellipse cx="350" cy="247" rx="16" ry="3" fill="#FF0080" opacity="0.20"/>
+  <!-- Electric blue street glow -->
+  <rect x="0" y="245" width="400" height="5" fill="#0040FF" opacity="0.15"/>
+</svg>

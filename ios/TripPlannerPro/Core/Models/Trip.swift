@@ -3,7 +3,7 @@ import Foundation
 import SwiftUI
 
 enum TripStatus: String, Codable, Sendable {
-    case planned, active, past
+    case draft, planned, active, past
 }
 
 // MARK: - Trip
@@ -17,7 +17,14 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
     var createdAt: Date
     var updatedAt: Date?
     var totalUSD: Double?
+    var paidUSD: Double?
     var citiesCount: Int?
+    /// Denormalized count of flights for this trip — updated by Cloud Function on write.
+    var flightsCount: Int?
+    /// Persisted status — "draft" or "planned". When nil, status is inferred from dates.
+    var statusStored: TripStatus?
+    /// True when the trip is a draft with tentative (estimated) dates.
+    var isTentativeDates: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -28,7 +35,11 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case totalUSD = "total_usd"
+        case paidUSD = "paid_usd"
         case citiesCount = "cities_count"
+        case flightsCount = "flights_count"
+        case statusStored = "status"
+        case isTentativeDates = "is_tentative_dates"
     }
 
     static let isoDateFormatter: DateFormatter = {
@@ -42,7 +53,14 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
     var startDate: Date { Self.isoDateFormatter.date(from: startDateString) ?? createdAt }
     var endDate: Date { Self.isoDateFormatter.date(from: endDateString) ?? startDate }
 
-    var status: TripStatus { status_computed }
+    /// Returns the effective status:
+    /// - If `statusStored == .draft`, always returns `.draft`.
+    /// - Otherwise, infers from current date vs trip dates.
+    var status: TripStatus {
+        if statusStored == .draft { return .draft }
+        return status_computed
+    }
+
     var status_computed: TripStatus {
         let now = Date()
         if now < startDate { return .planned }
@@ -59,19 +77,27 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         startDate: Date,
         endDate: Date,
         coverURL: String? = nil,
+        statusStored: TripStatus? = nil,
+        isTentativeDates: Bool? = nil,
         createdAt: Date = .now,
         totalUSD: Double? = nil,
-        citiesCount: Int? = nil
+        paidUSD: Double? = nil,
+        citiesCount: Int? = nil,
+        flightsCount: Int? = nil
     ) {
         self._id = .init(wrappedValue: id)
         self.name = name
         self.startDateString = Self.isoDateFormatter.string(from: startDate)
         self.endDateString = Self.isoDateFormatter.string(from: endDate)
         self.coverURL = coverURL
+        self.statusStored = statusStored
+        self.isTentativeDates = isTentativeDates
         self.createdAt = createdAt
         self.updatedAt = createdAt
         self.totalUSD = totalUSD
+        self.paidUSD = paidUSD
         self.citiesCount = citiesCount
+        self.flightsCount = flightsCount
     }
 
     init(
@@ -83,7 +109,15 @@ struct Trip: Identifiable, Codable, Sendable, Equatable, Hashable {
         cityOrder: [String],
         createdAt: Date
     ) {
-        self.init(id: id, name: name, startDate: startDate, endDate: endDate, createdAt: createdAt)
+        self.init(
+            id: id,
+            name: name,
+            startDate: startDate,
+            endDate: endDate,
+            statusStored: status == .draft ? .draft : nil,
+            isTentativeDates: status == .draft ? true : nil,
+            createdAt: createdAt
+        )
     }
 }
 
@@ -130,9 +164,47 @@ struct TripCity: Identifiable, Codable, Sendable {
     }
 }
 
+// MARK: - FlightLeg
+
+struct FlightLeg: Codable, Sendable, Identifiable {
+    var id: UUID = UUID()
+    var direction: String          // "outbound" | "inbound"
+    var airline: String
+    var flightNumber: String
+    var originIATA: String
+    var destinationIATA: String
+    var departureLocalTime: String
+    var departureTimezone: String?
+    var departureUTC: Date?
+    var arrivalLocalTime: String
+    var arrivalTimezone: String?
+    var arrivalUTC: Date?
+    var durationMinutes: Int?
+    var cabinClass: String?
+    var seat: String?
+
+    enum CodingKeys: String, CodingKey {
+        case direction
+        case airline
+        case flightNumber = "flight_number"
+        case originIATA = "origin_iata"
+        case destinationIATA = "destination_iata"
+        case departureLocalTime = "departure_local_time"
+        case departureTimezone = "departure_timezone"
+        case departureUTC = "departure_utc"
+        case arrivalLocalTime = "arrival_local_time"
+        case arrivalTimezone = "arrival_timezone"
+        case arrivalUTC = "arrival_utc"
+        case durationMinutes = "duration_minutes"
+        case cabinClass = "cabin_class"
+        case seat
+    }
+}
+
 // MARK: - Flight
 //
 // Matches web schema exactly: flat fields, snake_case, Timestamps for UTC.
+// Root-level fields are derived from the first outbound leg for backward compatibility.
 struct Flight: Identifiable, Codable, Sendable {
     @DocumentID var id: String?
     var tripId: String?
@@ -154,6 +226,7 @@ struct Flight: Identifiable, Codable, Sendable {
     var currency: String?
     var priceUSD: Double?
     var paidAmount: Double?
+    var legs: [FlightLeg]?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -176,6 +249,7 @@ struct Flight: Identifiable, Codable, Sendable {
         case currency
         case priceUSD = "price_usd"
         case paidAmount = "paid_amount"
+        case legs
     }
 
     /// "YYYY-MM-DD" of departure — extracted from departure_local_time.

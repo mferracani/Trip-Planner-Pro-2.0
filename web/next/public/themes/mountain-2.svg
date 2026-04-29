@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="mountain2_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3A0800"/><stop offset="55%" stop-color="#E0600A"/><stop offset="100%" stop-color="#FFB84A"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#mountain2_sky)"/>
+  <!-- Dramatic center peak -->
+  <polygon points="200,30 320,195 80,195" fill="#2A1040"/>
+  <!-- Secondary peaks -->
+  <polygon points="60,195 140,100 220,195" fill="#1E0A30" opacity="0.8"/>
+  <polygon points="290,195 360,115 400,195" fill="#1E0A30" opacity="0.8"/>
+  <!-- Mist/fog band at mountain base -->
+  <rect x="0" y="180" width="400" height="25" fill="white" opacity="0.12"/>
+  <!-- Ground -->
+  <rect x="0" y="195" width="400" height="55" fill="#180A28"/>
+  <!-- Foreground pine silhouettes left -->
+  <polygon points="15,195 27,158 39,195" fill="#0A1810"/>
+  <polygon points="32,195 42,165 52,195" fill="#081410"/>
+  <polygon points="5,195 14,170 23,195" fill="#0A1810"/>
+  <!-- Foreground pine silhouettes right -->
+  <polygon points="355,195 367,158 379,195" fill="#0A1810"/>
+  <polygon points="372,195 382,165 392,195" fill="#081410"/>
+  <polygon points="340,195 350,168 360,195" fill="#0A1810"/>
+  <!-- Sun glow at horizon -->
+  <circle cx="200" cy="195" r="55" fill="#FFB84A" opacity="0.18"/>
+  <circle cx="200" cy="195" r="30" fill="#FF9020" opacity="0.12"/>
+</svg>

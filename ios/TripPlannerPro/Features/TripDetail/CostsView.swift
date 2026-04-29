@@ -8,8 +8,14 @@ import SwiftUI
 
 struct CostsView: View {
     let vm: TripDetailViewModel
+    @Environment(FirestoreClient.self) private var client
     @State private var selectedCategory: CostCategory?
     @State private var selectedItem: SelectedItem?
+    @State private var markAllPaidCategory: CostCategory?
+    @State private var markAllPaidError: String?
+    @State private var customRates: [String: String] = [:]
+    @State private var editingRateCurrency: String? = nil
+    @State private var showAddExpense = false
 
     // Raw sums per bucket
     private var flightsUSD: Double { vm.flights.reduce(0) { $0 + ($1.priceUSD ?? 0) } }
@@ -66,6 +72,45 @@ struct CostsView: View {
             .sorted { $0.1 > $1.1 }
     }
 
+    private var impliedRateMap: [String: Double] {
+        var localTotals: [String: Double] = [:]
+        var usdTotals: [String: Double] = [:]
+        func add(_ c: String?, _ p: Double?, _ usd: Double?) {
+            guard let c, c != "USD", let p, p > 0, let usd, usd > 0 else { return }
+            localTotals[c, default: 0] += p
+            usdTotals[c, default: 0] += usd
+        }
+        for f in vm.flights    { add(f.currency, f.price, f.priceUSD) }
+        for h in vm.hotels     { add(h.currency, h.totalPrice, h.totalPriceUSD) }
+        for t in vm.transports { add(t.currency, t.price, t.priceUSD) }
+        for e in vm.expenses   { add(e.currency, e.amount, e.amountUSD) }
+        return localTotals.reduce(into: [:]) { result, pair in
+            if let usd = usdTotals[pair.key], pair.value > 0 {
+                result[pair.key] = usd / pair.value
+            }
+        }
+    }
+
+    private var projectedTotalUSD: Double? {
+        guard !customRates.isEmpty else { return nil }
+        var total = 0.0
+        func addItem(_ currency: String?, _ price: Double?, _ priceUSD: Double?) {
+            let c = currency ?? "USD"
+            if c == "USD" {
+                total += priceUSD ?? price ?? 0
+            } else if let rateStr = customRates[c], let rate = Double(rateStr.replacingOccurrences(of: ",", with: ".")), let p = price {
+                total += p * rate
+            } else {
+                total += priceUSD ?? 0
+            }
+        }
+        for f in vm.flights    { addItem(f.currency, f.price, f.priceUSD) }
+        for h in vm.hotels     { addItem(h.currency, h.totalPrice, h.totalPriceUSD) }
+        for t in vm.transports { addItem(t.currency, t.price, t.priceUSD) }
+        for e in vm.expenses   { addItem(e.currency, e.amount, e.amountUSD) }
+        return total
+    }
+
     private var dailyAverage: Double {
         let days = max(
             1,
@@ -83,7 +128,11 @@ struct CostsView: View {
                     totalHero
                     breakdownSection
                     currencySection
+                    if !impliedRateMap.isEmpty {
+                        fxRatesSection
+                    }
                 }
+                addExpenseButton
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 20)
@@ -108,6 +157,61 @@ struct CostsView: View {
             .presentationBackground(Tokens.Color.bgPrimary)
         }
         .editSheet(item: $selectedItem, tripID: vm.trip.id ?? "")
+        // Confirmation alert: "mark all [category] as paid"
+        .alert(
+            markAllPaidCategory.map { "¿Marcar todos los \($0.label) como pagados?" } ?? "",
+            isPresented: Binding(
+                get: { markAllPaidCategory != nil },
+                set: { if !$0 { markAllPaidCategory = nil } }
+            )
+        ) {
+            Button("Marcar como pagado", role: .none) {
+                guard let cat = markAllPaidCategory else { return }
+                markAllPaidCategory = nil
+                Task {
+                    do { try await vm.markAllPaid(category: cat) }
+                    catch { markAllPaidError = "No se pudo actualizar." }
+                }
+            }
+            Button("Cancelar", role: .cancel) { markAllPaidCategory = nil }
+        }
+        .alert("Error", isPresented: Binding(
+            get: { markAllPaidError != nil },
+            set: { if !$0 { markAllPaidError = nil } }
+        )) {
+            Button("OK") { markAllPaidError = nil }
+        } message: {
+            Text(markAllPaidError ?? "")
+        }
+        .sheet(isPresented: $showAddExpense) {
+            ManualFormSheet(trip: vm.trip, type: .expense, onClose: { showAddExpense = false })
+                .environment(client)
+        }
+    }
+
+    private var addExpenseButton: some View {
+        Button {
+            showAddExpense = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                Text("Agregar gasto")
+                    .font(Tokens.Typo.strongS)
+            }
+            .foregroundStyle(Tokens.Color.accentGreen)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                    .fill(Tokens.Color.accentGreen.opacity(0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                            .strokeBorder(Tokens.Color.accentGreen.opacity(0.25), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private var emptyState: some View {
@@ -187,10 +291,34 @@ struct CostsView: View {
             VStack(spacing: 0) {
                 ForEach(Array(breakdown.enumerated()), id: \.offset) { idx, row in
                     let pct = totalUSD > 0 ? row.usd / totalUSD : 0
-                    Button { selectedCategory = row.category } label: {
-                        BreakdownBar(row: row, percent: pct)
+                    let hasUnpaid = categoryHasUnpaid(row.category)
+                    HStack(spacing: 0) {
+                        Button { selectedCategory = row.category } label: {
+                            BreakdownBar(row: row, percent: pct)
+                        }
+                        .buttonStyle(RowButtonStyle())
+
+                        if hasUnpaid {
+                            // Action: mark all as paid (circle, not filled)
+                            Button {
+                                markAllPaidCategory = row.category
+                            } label: {
+                                Image(systemName: "circle")
+                                    .font(.system(size: 18, weight: .light))
+                                    .foregroundStyle(Tokens.Color.textTertiary)
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .padding(.trailing, 8)
+                        } else {
+                            // Status: fully paid
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundStyle(Tokens.Color.accentGreen)
+                                .frame(width: 44, height: 44)
+                                .padding(.trailing, 8)
+                        }
                     }
-                    .buttonStyle(RowButtonStyle())
                     if idx < breakdown.count - 1 { Hairline() }
                 }
             }
@@ -202,6 +330,20 @@ struct CostsView: View {
                             .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
                     )
             )
+        }
+    }
+
+    /// Returns true when the category has any item where paid_amount < total.
+    private func categoryHasUnpaid(_ category: CostCategory) -> Bool {
+        switch category {
+        case .flights:
+            return vm.flights.contains { ($0.paidAmount ?? 0) < ($0.price ?? 0) && ($0.price ?? 0) > 0 }
+        case .hotels:
+            return vm.hotels.contains { ($0.paidAmount ?? 0) < ($0.totalPrice ?? 0) && ($0.totalPrice ?? 0) > 0 }
+        case .transports:
+            return vm.transports.contains { ($0.paidAmount ?? 0) < ($0.price ?? 0) && ($0.price ?? 0) > 0 }
+        case .expenses:
+            return vm.expenses.contains { ($0.paidAmount ?? 0) < $0.amount && $0.amount > 0 }
         }
     }
 
@@ -240,6 +382,108 @@ struct CostsView: View {
                             .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
                     )
             )
+        }
+    }
+
+    // MARK: - FX Rates
+
+    private var fxRatesSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "Tasas FX")
+
+            VStack(spacing: 0) {
+                ForEach(Array(impliedRateMap.keys.sorted()), id: \.self) { currency in
+                    let implied = impliedRateMap[currency] ?? 0
+                    let isEditing = editingRateCurrency == currency
+                    let hasCustom = customRates[currency] != nil && !(customRates[currency]?.isEmpty ?? true)
+
+                    HStack(spacing: 12) {
+                        Text("1 \(currency)")
+                            .font(.system(size: 13, weight: .bold, design: .monospaced))
+                            .foregroundStyle(Tokens.Color.textSecondary)
+
+                        Text("=")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Tokens.Color.textTertiary)
+
+                        if isEditing {
+                            TextField(rateFormatted(implied), text: Binding(
+                                get: { customRates[currency] ?? "" },
+                                set: { customRates[currency] = $0 }
+                            ))
+                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(Tokens.Color.accentOrange)
+                            .keyboardType(.decimalPad)
+                            .frame(maxWidth: .infinity)
+                            .onSubmit { editingRateCurrency = nil }
+                        } else {
+                            let displayRate = customRates[currency].flatMap { Double($0.replacingOccurrences(of: ",", with: ".")) } ?? implied
+                            Text("\(rateFormatted(displayRate)) USD")
+                                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(hasCustom ? Tokens.Color.accentOrange : Tokens.Color.textPrimary)
+                            Spacer()
+                        }
+
+                        Button {
+                            if isEditing {
+                                editingRateCurrency = nil
+                            } else if hasCustom {
+                                customRates.removeValue(forKey: currency)
+                                editingRateCurrency = nil
+                            } else {
+                                editingRateCurrency = currency
+                            }
+                        } label: {
+                            Image(systemName: isEditing ? "checkmark" : hasCustom ? "lock.fill" : "pencil")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(hasCustom ? Tokens.Color.accentOrange : Tokens.Color.textTertiary)
+                                .frame(width: 36, height: 36)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+
+                    if currency != impliedRateMap.keys.sorted().last {
+                        Hairline()
+                    }
+                }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                    .fill(Tokens.Color.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                            .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
+                    )
+            )
+
+            if let projected = projectedTotalUSD {
+                HStack {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Tokens.Color.accentOrange)
+                    Text("Proyectado con tasas personalizadas")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Tokens.Color.textTertiary)
+                    Spacer()
+                    Text("$\(Int(projected.rounded())) USD")
+                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Tokens.Color.accentOrange)
+                }
+                .padding(.horizontal, 4)
+            }
+        }
+    }
+
+    private func rateFormatted(_ rate: Double) -> String {
+        if rate < 0.01 {
+            return String(format: "%.6f", rate)
+        } else if rate < 1 {
+            return String(format: "%.4f", rate)
+        } else {
+            return String(format: "%.4f", rate)
         }
     }
 

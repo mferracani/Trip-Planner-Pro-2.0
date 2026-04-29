@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="city4_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0A1828"/><stop offset="100%" stop-color="#2040A0"/></linearGradient>
+    <linearGradient id="city4_river" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0E2040"/><stop offset="100%" stop-color="#0A1828"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#city4_sky)"/>
+  <!-- Buildings in dark navy -->
+  <rect x="0" y="108" width="40" height="130" fill="#060E1E"/>
+  <rect x="35" y="128" width="32" height="110" fill="#04090A"/>
+  <rect x="62" y="92" width="28" height="146" fill="#060E1E"/>
+  <rect x="85" y="115" width="30" height="123" fill="#04090A"/>
+  <rect x="110" y="75" width="26" height="163" fill="#060E1E"/>
+  <rect x="131" y="100" width="30" height="138" fill="#04090A"/>
+  <rect x="156" y="58" width="36" height="180" fill="#070F20"/>
+  <rect x="187" y="85" width="28" height="153" fill="#04090A"/>
+  <rect x="210" y="62" width="33" height="176" fill="#060E1E"/>
+  <rect x="238" y="92" width="28" height="146" fill="#04090A"/>
+  <rect x="261" y="75" width="38" height="163" fill="#060E1E"/>
+  <rect x="294" y="58" width="42" height="180" fill="#070F20"/>
+  <rect x="331" y="88" width="30" height="150" fill="#04090A"/>
+  <rect x="356" y="72" width="44" height="166" fill="#060E1E"/>
+  <!-- Windows pale blue-white -->
+  <rect x="8" y="120" width="5" height="4" fill="#88AACC" opacity="0.7"/>
+  <rect x="15" y="132" width="5" height="4" fill="#88AACC" opacity="0.65"/>
+  <rect x="70" y="105" width="4" height="4" fill="#88AACC" opacity="0.75"/>
+  <rect x="77" y="118" width="4" height="4" fill="#88AACC" opacity="0.60"/>
+  <rect x="120" y="88" width="4" height="4" fill="#88AACC" opacity="0.70"/>
+  <rect x="163" y="72" width="5" height="4" fill="#88AACC" opacity="0.75"/>
+  <rect x="170" y="85" width="5" height="4" fill="#88AACC" opacity="0.65"/>
+  <rect x="196" y="98" width="4" height="4" fill="#88AACC" opacity="0.70"/>
+  <rect x="218" y="75" width="4" height="4" fill="#88AACC" opacity="0.75"/>
+  <rect x="268" y="88" width="5" height="4" fill="#88AACC" opacity="0.65"/>
+  <rect x="302" y="70" width="5" height="4" fill="#88AACC" opacity="0.75"/>
+  <rect x="312" y="84" width="5" height="4" fill="#88AACC" opacity="0.68"/>
+  <rect x="365" y="85" width="5" height="4" fill="#88AACC" opacity="0.70"/>
+  <!-- River at bottom -->
+  <rect x="0" y="225" width="400" height="25" fill="url(#city4_river)"/>
+  <!-- River reflection of sky gradient -->
+  <rect x="0" y="226" width="400" height="24" fill="#2040A0" opacity="0.15"/>
+  <!-- Birds: simple V shapes in mid-sky -->
+  <path d="M120 80 L115 74 L110 80" stroke="white" stroke-width="1.2" fill="none" opacity="0.6"/>
+  <path d="M160 65 L154 59 L148 65" stroke="white" stroke-width="1.2" fill="none" opacity="0.55"/>
+  <path d="M250 72 L244 66 L238 72" stroke="white" stroke-width="1.2" fill="none" opacity="0.5"/>
+</svg>

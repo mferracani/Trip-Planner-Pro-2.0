@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
+  <defs>
+    <linearGradient id="ba4_sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#080418"/><stop offset="50%" stop-color="#1A2A6A"/><stop offset="100%" stop-color="#3A5A9A"/></linearGradient>
+    <linearGradient id="ba4_water" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#080C20"/><stop offset="100%" stop-color="#040810"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#ba4_sky)"/>
+  <!-- Modern glass towers -->
+  <rect x="20" y="60" width="55" height="175" fill="#0A1428"/>
+  <rect x="70" y="40" width="48" height="195" fill="#0E1A34"/>
+  <rect x="113" y="55" width="42" height="180" fill="#0A1428"/>
+  <rect x="245" y="50" width="48" height="185" fill="#0A1428"/>
+  <rect x="288" y="35" width="55" height="200" fill="#0E1A34"/>
+  <rect x="338" y="55" width="42" height="180" fill="#0A1428"/>
+  <!-- Blue-tinted windows -->
+  <rect x="28" y="75" width="8" height="6" fill="#2A4A7A" opacity="0.8"/>
+  <rect x="38" y="75" width="8" height="6" fill="#2A4A7A" opacity="0.75"/>
+  <rect x="28" y="90" width="8" height="6" fill="#2A4A7A" opacity="0.7"/>
+  <rect x="78" y="55" width="8" height="6" fill="#2A4A7A" opacity="0.8"/>
+  <rect x="88" y="55" width="8" height="6" fill="#2A4A7A" opacity="0.75"/>
+  <rect x="78" y="70" width="8" height="6" fill="#2A4A7A" opacity="0.7"/>
+  <rect x="253" y="65" width="8" height="6" fill="#2A4A7A" opacity="0.8"/>
+  <rect x="263" y="65" width="8" height="6" fill="#2A4A7A" opacity="0.75"/>
+  <rect x="296" y="50" width="8" height="6" fill="#2A4A7A" opacity="0.8"/>
+  <rect x="306" y="50" width="8" height="6" fill="#2A4A7A" opacity="0.75"/>
+  <rect x="346" y="68" width="8" height="6" fill="#2A4A7A" opacity="0.75"/>
+  <!-- Woman's Bridge (Puente de la Mujer): distinctive tilted white mast + cables -->
+  <!-- Bridge deck -->
+  <rect x="140" y="175" width="120" height="6" fill="#C8D0D8"/>
+  <!-- Tilted mast: diagonal line from left side -->
+  <line x1="155" y1="175" x2="200" y2="105" stroke="#E8EEF4" stroke-width="5" stroke-linecap="round"/>
+  <!-- Cables from mast top to bridge deck -->
+  <line x1="200" y1="105" x2="160" y2="175" stroke="#C8D0D8" stroke-width="1.2"/>
+  <line x1="200" y1="105" x2="175" y2="175" stroke="#C8D0D8" stroke-width="1.2"/>
+  <line x1="200" y1="105" x2="190" y2="175" stroke="#C8D0D8" stroke-width="1.2"/>
+  <line x1="200" y1="105" x2="210" y2="175" stroke="#C8D0D8" stroke-width="1.2"/>
+  <line x1="200" y1="105" x2="230" y2="175" stroke="#C8D0D8" stroke-width="1.2"/>
+  <line x1="200" y1="105" x2="250" y2="175" stroke="#C8D0D8" stroke-width="1.2"/>
+  <!-- Dark water -->
+  <rect x="0" y="182" width="400" height="68" fill="url(#ba4_water)"/>
+  <!-- Building reflections in water -->
+  <rect x="20" y="185" width="55" height="40" fill="#0A1428" opacity="0.35"/>
+  <rect x="70" y="185" width="48" height="40" fill="#0E1A34" opacity="0.30"/>
+  <rect x="288" y="185" width="55" height="40" fill="#0E1A34" opacity="0.30"/>
+  <rect x="338" y="185" width="42" height="40" fill="#0A1428" opacity="0.30"/>
+</svg>

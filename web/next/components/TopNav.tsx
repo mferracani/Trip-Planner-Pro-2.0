@@ -23,10 +23,10 @@ export function TopNav({ active, onAdd, addIcon = "plus", addLabel = "Nuevo viaj
     <header
       className="hidden md:block sticky top-0 z-30"
       style={{
-        background: "rgba(13,13,13,0.82)",
+        background: "rgba(9,8,6,0.84)",
         backdropFilter: "blur(20px) saturate(160%)",
         WebkitBackdropFilter: "blur(20px) saturate(160%)",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
       }}
     >
       <div className="mx-auto max-w-6xl px-8 h-16 flex items-center gap-8">
@@ -35,8 +35,8 @@ export function TopNav({ active, onAdd, addIcon = "plus", addLabel = "Nuevo viaj
           <div
             className="w-8 h-8 rounded-[9px] flex items-center justify-center text-white text-[14px] font-bold tracking-tight"
             style={{
-              background: "linear-gradient(135deg, #BF5AF2 0%, #7B3DDB 100%)",
-              boxShadow: "0 2px 8px rgba(191,90,242,0.35), inset 0 1px 0 rgba(255,255,255,0.22)",
+              background: "linear-gradient(135deg, #71D3A6 0%, #244437 100%)",
+              boxShadow: "0 2px 12px rgba(113,211,166,0.28), inset 0 1px 0 rgba(255,255,255,0.22)",
             }}
           >
             ✈
@@ -51,7 +51,7 @@ export function TopNav({ active, onAdd, addIcon = "plus", addLabel = "Nuevo viaj
           <NavItem href="/" active={active === "trips"} icon={<Briefcase size={16} strokeWidth={2.2} />} label="Viajes" />
           <NavItem href="/catalog" active={active === "catalog"} icon={<Library size={16} strokeWidth={2.2} />} label="Catálogo" />
           <DisabledNavItem icon={<Map size={16} strokeWidth={2.2} />} label="Mapa" />
-          <DisabledNavItem icon={<Settings size={16} strokeWidth={2.2} />} label="Ajustes" />
+          <NavItem href="/settings" active={active === "settings"} icon={<Settings size={16} strokeWidth={2.2} />} label="Ajustes" />
         </nav>
 
         {/* Right side: action + avatar */}
@@ -61,8 +61,8 @@ export function TopNav({ active, onAdd, addIcon = "plus", addLabel = "Nuevo viaj
               onClick={onAdd}
               className="flex items-center gap-1.5 px-3.5 h-9 rounded-full text-[13px] font-semibold text-white transition-all hover:brightness-110 active:scale-[0.97]"
               style={{
-                background: "linear-gradient(135deg, #BF5AF2, #9B3FD6)",
-                boxShadow: "0 4px 14px rgba(191,90,242,0.35)",
+                background: "linear-gradient(135deg, #A891E8, #7C5FCE)",
+                boxShadow: "0 4px 14px rgba(168,145,232,0.32)",
               }}
             >
               {addIcon === "sparkles" ? <Sparkles size={15} strokeWidth={2.3} /> : <Plus size={16} strokeWidth={2.4} />}

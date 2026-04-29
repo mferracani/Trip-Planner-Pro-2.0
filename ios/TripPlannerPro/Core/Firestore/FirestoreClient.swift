@@ -77,6 +77,18 @@ final class FirestoreClient {
         return streamCollection(ref)
     }
 
+    // One-shot fetch of all cities across all user trips — used to populate city catalog.
+    func fetchAllCitiesOnce() async throws -> [TripCity] {
+        let tripsSnap = try await userCollection("trips").getDocuments()
+        var all: [TripCity] = []
+        for tripDoc in tripsSnap.documents {
+            let citiesSnap = try await tripDoc.reference.collection("cities").getDocuments()
+            let cities = citiesSnap.documents.compactMap { try? $0.data(as: TripCity.self) }
+            all.append(contentsOf: cities)
+        }
+        return all.sorted { $0.name < $1.name }
+    }
+
     // MARK: - Catalog (all items across trips)
 
     func allItemsStream() throws -> AsyncThrowingStream<CatalogItems, Error> {
@@ -86,7 +98,7 @@ final class FirestoreClient {
                 do {
                     for try await trips in tripsStream {
                         // Build Firestore refs on MainActor before spawning tasks
-                        typealias TripRefs = (trip: Trip, flights: CollectionReference, hotels: CollectionReference, transports: CollectionReference)
+                        typealias TripRefs = (trip: Trip, flights: CollectionReference, hotels: CollectionReference, transports: CollectionReference, cities: CollectionReference)
                         var tripRefs: [TripRefs] = []
                         for trip in trips {
                             guard let tripID = trip.id else { continue }
@@ -96,7 +108,8 @@ final class FirestoreClient {
                                 trip: trip,
                                 flights: base.collection("flights"),
                                 hotels: base.collection("hotels"),
-                                transports: base.collection("transports")
+                                transports: base.collection("transports"),
+                                cities: base.collection("cities")
                             ))
                         }
 
@@ -104,7 +117,8 @@ final class FirestoreClient {
                         typealias TripBatch = (
                             flights: [(trip: Trip, flight: Flight)],
                             hotels: [(trip: Trip, hotel: Hotel)],
-                            transports: [(trip: Trip, transport: Transport)]
+                            transports: [(trip: Trip, transport: Transport)],
+                            cities: [(trip: Trip, city: TripCity)]
                         )
 
                         let batches: [TripBatch] = await withTaskGroup(of: TripBatch.self) { group in
@@ -113,11 +127,13 @@ final class FirestoreClient {
                                 let fRef = refs.flights
                                 let hRef = refs.hotels
                                 let tRef = refs.transports
+                                let cRef = refs.cities
 
                                 group.addTask {
                                     async let fDocs = (try? fRef.getDocuments())?.documents ?? []
                                     async let hDocs = (try? hRef.getDocuments())?.documents ?? []
                                     async let tDocs = (try? tRef.getDocuments())?.documents ?? []
+                                    async let cDocs = (try? cRef.getDocuments())?.documents ?? []
 
                                     let flights = await fDocs.compactMap { try? $0.data(as: Flight.self) }
                                         .map { (trip: trip, flight: $0) }
@@ -125,8 +141,10 @@ final class FirestoreClient {
                                         .map { (trip: trip, hotel: $0) }
                                     let transports = await tDocs.compactMap { try? $0.data(as: Transport.self) }
                                         .map { (trip: trip, transport: $0) }
+                                    let cities = await cDocs.compactMap { try? $0.data(as: TripCity.self) }
+                                        .map { (trip: trip, city: $0) }
 
-                                    return (flights: flights, hotels: hotels, transports: transports)
+                                    return (flights: flights, hotels: hotels, transports: transports, cities: cities)
                                 }
                             }
 
@@ -141,11 +159,14 @@ final class FirestoreClient {
                             .sorted { $0.hotel.checkIn < $1.hotel.checkIn }
                         let allTransports = batches.flatMap(\.transports)
                             .sorted { $0.transport.departureLocalTime < $1.transport.departureLocalTime }
+                        let allCities = batches.flatMap(\.cities)
+                            .sorted { $0.city.name < $1.city.name }
 
                         continuation.yield(CatalogItems(
                             flights: allFlights,
                             hotels: allHotels,
-                            transports: allTransports
+                            transports: allTransports,
+                            cities: allCities
                         ))
                     }
                     continuation.finish()
@@ -155,6 +176,53 @@ final class FirestoreClient {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+
+    // MARK: - Travel Documents
+
+    func travelDocumentsStream() throws -> AsyncThrowingStream<[TravelDocument], Error> {
+        let ref = try userCollection("travel_documents")
+        return AsyncThrowingStream { continuation in
+            let listener = ref
+                .order(by: "created_at", descending: true)
+                .addSnapshotListener { snapshot, error in
+                    if let error {
+                        continuation.finish(throwing: error)
+                        return
+                    }
+                    let docs = (snapshot?.documents ?? []).compactMap {
+                        try? $0.data(as: TravelDocument.self)
+                    }
+                    continuation.yield(docs)
+                }
+            continuation.onTermination = { _ in listener.remove() }
+        }
+    }
+
+    func createTravelDocument(_ doc: TravelDocument) async throws {
+        let ref = try userCollection("travel_documents")
+        try ref.addDocument(from: doc)
+    }
+
+    func deleteTravelDocument(id: String, storagePath: String) async throws {
+        try await userCollection("travel_documents").document(id).delete()
+        try await StorageClient.shared.deleteTravelDocument(storagePath: storagePath)
+    }
+
+    // MARK: - Household
+
+    /// Fetches households/main and returns the owner UID (memberUids[0]).
+    /// Falls back to currentUID if the doc doesn't exist or the user isn't a member.
+    func resolveOwnerUID(_ currentUID: String) async -> String {
+        let ref = db.collection("households").document("main")
+        guard let snap = try? await ref.getDocument(),
+              snap.exists,
+              let members = snap.data()?["memberUids"] as? [String],
+              !members.isEmpty,
+              members.contains(currentUID) else {
+            return currentUID
+        }
+        return members[0]
     }
 
     // MARK: - Helpers
@@ -180,8 +248,9 @@ struct CatalogItems: Sendable {
     var flights: [(trip: Trip, flight: Flight)]
     var hotels: [(trip: Trip, hotel: Hotel)]
     var transports: [(trip: Trip, transport: Transport)]
+    var cities: [(trip: Trip, city: TripCity)]
 
-    static let empty = CatalogItems(flights: [], hotels: [], transports: [])
+    static let empty = CatalogItems(flights: [], hotels: [], transports: [], cities: [])
 }
 
 enum FirestoreError: Error {

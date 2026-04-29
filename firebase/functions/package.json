@@ -8,7 +8,8 @@
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "add-household-member": "ts-node --transpile-only --project ../seed/tsconfig.json ../seed/add-household-member.ts"
   },
   "engines": {
     "node": "20"
