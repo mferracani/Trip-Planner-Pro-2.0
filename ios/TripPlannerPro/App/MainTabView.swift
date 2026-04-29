@@ -7,7 +7,9 @@ struct MainTabView: View {
     @Binding var showPendingParseForTrip: Trip?
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(NetworkMonitor.self) private var networkMonitor
     @State private var firestoreClient = FirestoreClient()
+    @State private var prefetcher = OfflinePrefetcher()
     @State private var selection: Int = 0
     @State private var showTripPickerForParse = false
     @State private var availableTrips: [Trip] = []
@@ -30,11 +32,10 @@ struct MainTabView: View {
                 let resolved = await firestoreClient.resolveOwnerUID(user.uid)
                 HouseholdConfig.ownerUID = resolved
                 resolvingHousehold = false
+                // Kick off initial prefetch once we know the owner UID.
+                prefetcher.prefetchIfNeeded(client: firestoreClient, cache: cacheManager)
             }
         } else {
-        // Using .safeAreaInset for the tab bar so the ScrollViews inside each
-        // tab know where their bottom edge is — avoids the ZStack-overlay
-        // issue where the tab bar eats scroll gestures in its hit area.
         Group {
             switch selection {
             case 0, 1:
@@ -59,28 +60,41 @@ struct MainTabView: View {
         }
         .id(selection)
         .background(Tokens.Color.bgPrimary.ignoresSafeArea())
+        // Offline banner sits above the tab bar, below the content area.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if tabBarVisible {
-                AtlasTabBar(
-                    selection: $selection,
-                    tabs: AtlasTab.mainTabs,
-                    onFABTap: {
-                        if let override = fabContext.overrideAction {
-                            override()
-                        } else {
-                            showCreateTrip = true
+            VStack(spacing: 0) {
+                if !networkMonitor.isConnected {
+                    OfflineBanner()
+                }
+                if tabBarVisible {
+                    AtlasTabBar(
+                        selection: $selection,
+                        tabs: AtlasTab.mainTabs,
+                        onFABTap: {
+                            if let override = fabContext.overrideAction {
+                                override()
+                            } else {
+                                showCreateTrip = true
+                            }
                         }
-                    }
-                )
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
         }
         .environment(firestoreClient)
         .environment(fabContext)
+        .environment(networkMonitor)
         .onPreferenceChange(TabBarVisibilityKey.self) { visible in
             withAnimation(Tokens.Motion.spring) {
                 tabBarVisible = visible
             }
+        }
+        // Trigger prefetch whenever we reconnect (especially useful on WiFi).
+        .onChange(of: networkMonitor.didReconnect) { _, didReconnect in
+            guard didReconnect else { return }
+            networkMonitor.consumeReconnect()
+            prefetcher.prefetchIfNeeded(client: firestoreClient, cache: cacheManager)
         }
         .onChange(of: pendingParseText) { _, newText in
             guard newText != nil else { return }

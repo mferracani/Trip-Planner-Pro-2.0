@@ -12,6 +12,13 @@ final class CachedTrip {
     var startDateString: String
     var endDateString: String
     var updatedAt: Date
+    // Extended fields (schema v5) — optional so existing rows read as nil on migration.
+    var statusRaw: String?
+    var totalUSD: Double?
+    var paidUSD: Double?
+    var citiesCount: Int?
+    var flightsCount: Int?
+    var coverURL: String?
 
     init(from trip: Trip) {
         self.firestoreID = trip.id ?? UUID().uuidString
@@ -21,6 +28,12 @@ final class CachedTrip {
         self.startDateString = trip.startDateString
         self.endDateString = trip.endDateString
         self.updatedAt = trip.updatedAt ?? Date()
+        self.statusRaw = trip.statusStored?.rawValue
+        self.totalUSD = trip.totalUSD
+        self.paidUSD = trip.paidUSD
+        self.citiesCount = trip.citiesCount
+        self.flightsCount = trip.flightsCount
+        self.coverURL = trip.coverURL
     }
 
     func update(from trip: Trip) {
@@ -30,6 +43,12 @@ final class CachedTrip {
         startDateString = trip.startDateString
         endDateString = trip.endDateString
         updatedAt = trip.updatedAt ?? Date()
+        statusRaw = trip.statusStored?.rawValue
+        totalUSD = trip.totalUSD
+        paidUSD = trip.paidUSD
+        citiesCount = trip.citiesCount
+        flightsCount = trip.flightsCount
+        coverURL = trip.coverURL
     }
 
     func toTrip() -> Trip {
@@ -38,7 +57,13 @@ final class CachedTrip {
             name: name,
             startDate: startDate,
             endDate: endDate,
-            createdAt: updatedAt
+            coverURL: coverURL,
+            statusStored: statusRaw.flatMap(TripStatus.init(rawValue:)),
+            createdAt: updatedAt,
+            totalUSD: totalUSD,
+            paidUSD: paidUSD,
+            citiesCount: citiesCount,
+            flightsCount: flightsCount
         )
     }
 }
