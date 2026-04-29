@@ -1,5 +1,5 @@
 # Project State — Trip Planner Pro 2
-_Última actualización: 2026-04-29 (flight tracking v1.1 completado)_
+_Última actualización: 2026-04-29 (push notifications completado)_
 
 ---
 
@@ -81,13 +81,18 @@ Ver tabla completa en `.project/feature-parity.md` (64 items auditados al 2026-0
 | Issue | Feature | Valor |
 |-------|---------|-------|
 | ~~TPP-?~~ | ~~**Flight Tracking en tiempo real** (AeroDataBox)~~ | ✅ **COMPLETADO** — `trackFlights` deployada, badges + estimated times en iOS + web |
-| TPP-? | **Push notifications de vuelos** (FCM/APNS) | Sin esto el tracking vale la mitad. Necesario para que la app sea proactiva. |
+| ~~TPP-?~~ | ~~**Push notifications de vuelos** (FCM/APNS)~~ | ✅ **COMPLETADO** — FCM en Cloud Function, iOS MessagingDelegate + FCMTokenManager, Web service worker + pushNotifications.ts |
+
+### 🔴 P1 — Arrancar ahora
+
+| Issue | Feature | Valor |
+|-------|---------|-------|
+| TPP-? | **Widget iOS próximo vuelo** (WidgetKit Small+Medium+Lock Screen) | Utilidad máxima sin abrir la app. App Group entitlement ya en el plan. |
 
 ### 🟡 P2 — Alta prioridad
 
 | Issue | Feature | Valor |
 |-------|---------|-------|
-| TPP-? | **Widget iOS próximo vuelo** (WidgetKit Small+Medium+Lock Screen) | Utilidad sin abrir la app. App Group entitlement ya en el plan. |
 | TPP-? | **Live Activities / Dynamic Island** (vuelo activo) | Diferencial premium. Solo cuando el vuelo está en status `active`. |
 | TPP-? | **Export PDF del itinerario** | Caso de uso: imprimir/enviar antes del viaje. PDFKit iOS / @react-pdf web. Bajo costo, alto valor percibido. |
 | TPP-? | **Duplicar viaje** | Falta en ambas plataformas. Útil para viajes recurrentes (ej. Buenos Aires → Madrid cada año). |

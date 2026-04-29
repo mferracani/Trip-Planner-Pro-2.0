@@ -87,9 +87,9 @@ _Última actualización: 2026-04-29_
 - [x] Horario estimado visible en detalle de vuelo (iOS + web)
 - [x] "Actualizado hace X min" indicator (iOS + web)
 - [x] Retry con backoff en HTTP 429 de AeroDataBox
-- [ ] Push notifications via FCM/APNS
+- [x] Push notifications via FCM/APNS — Cloud Function + iOS MessagingDelegate + Web service worker
 
-### Widget iOS del próximo vuelo (P2)
+### Widget iOS del próximo vuelo ★ (P1 — siguiente)
 - [ ] WidgetKit: Small + Medium + Lock Screen
 - [ ] App Group entitlement para compartir data con la app
 - [ ] Live Activities (Dynamic Island) cuando vuelo está en status `active`
