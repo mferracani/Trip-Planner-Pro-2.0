@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { GitBranch, LogOut } from "lucide-react";
+import { GitBranch, LogOut, FileText, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { signOut } from "@/lib/auth";
 import { TopNav } from "./TopNav";
@@ -209,6 +210,24 @@ export function SettingsPage() {
                 ))}
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* ── Documentos de viaje ───────────────────────────── */}
+        <section>
+          <SectionLabel>Documentos de viaje</SectionLabel>
+          <div className="bg-[#121212] rounded-[16px] border border-[#1E1E1E] overflow-hidden">
+            <Link
+              href="/documents"
+              className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-[#1A1A1A] active:bg-[#222]"
+            >
+              <FileText size={17} strokeWidth={2} className="flex-shrink-0" style={{ color: "#4D96FF" }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-[15px] font-medium">Pasaportes, visas y seguros</p>
+                <p className="text-[#707070] text-[13px] mt-0.5">Accedé a tus documentos cuando viajás</p>
+              </div>
+              <ChevronRight size={16} strokeWidth={2} className="text-[#333] flex-shrink-0" />
+            </Link>
           </div>
         </section>
 

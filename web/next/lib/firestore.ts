@@ -12,7 +12,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { getFirebaseDb } from "./firebase";
-import type { Trip, City, Flight, Hotel, Transport, Expense, CitySetting } from "./types";
+import type { Trip, City, Flight, Hotel, Transport, Expense, CitySetting, TravelDocument } from "./types";
 
 // Base path helpers
 const tripsRef = (uid: string) => collection(getFirebaseDb(), "users", uid, "trips");
@@ -29,6 +29,8 @@ const expensesRef = (uid: string, tripId: string) => collection(getFirebaseDb(),
 const expenseRef = (uid: string, tripId: string, id: string) => doc(getFirebaseDb(), "users", uid, "trips", tripId, "expenses", id);
 export const citySettingsRef = (uid: string) => collection(getFirebaseDb(), "users", uid, "city_settings");
 const citySettingRef = (uid: string, normalizedName: string) => doc(getFirebaseDb(), "users", uid, "city_settings", normalizedName);
+const travelDocsRef = (uid: string) => collection(getFirebaseDb(), "users", uid, "travel_documents");
+const travelDocRef = (uid: string, id: string) => doc(getFirebaseDb(), "users", uid, "travel_documents", id);
 
 // Firestore rejects undefined values; strip them recursively before writing.
 // Shallow strip is not enough — nested objects (e.g. legs[].cabin_class) also cause errors.
@@ -313,4 +315,20 @@ export async function updateExpense(uid: string, tripId: string, id: string, dat
 
 export async function deleteExpense(uid: string, tripId: string, id: string) {
   await deleteDoc(expenseRef(uid, tripId, id));
+}
+
+// Travel Documents
+export async function getTravelDocuments(uid: string): Promise<TravelDocument[]> {
+  const q = query(travelDocsRef(uid), orderBy("created_at", "desc"));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as TravelDocument));
+}
+
+export async function createTravelDocument(uid: string, data: Omit<TravelDocument, "id">): Promise<string> {
+  const ref = await addDoc(travelDocsRef(uid), stripUndefined({ ...data, created_at: serverTimestamp() }));
+  return ref.id;
+}
+
+export async function deleteTravelDocumentDoc(uid: string, id: string): Promise<void> {
+  await deleteDoc(travelDocRef(uid, id));
 }

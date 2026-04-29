@@ -15,6 +15,7 @@ struct SettingsView: View {
                         accountSection
                         aiSection
                         preferencesSection
+                        documentsSection
                         aboutSection
                     }
                     .padding(.horizontal, Tokens.Spacing.base)
@@ -157,6 +158,29 @@ struct SettingsView: View {
 
                 CurrencyPicker()
             }
+        }
+    }
+
+    // MARK: - Documentos
+
+    private var documentsSection: some View {
+        SettingsSection(header: "Documentos de viaje") {
+            NavigationLink(destination: TravelDocumentsView()) {
+                HStack {
+                    Image(systemName: "person.text.rectangle")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Tokens.Color.accentBlue)
+                        .frame(width: 20)
+                    Text("Pasaportes, visas y seguros")
+                        .font(Tokens.Typo.bodyM)
+                        .foregroundStyle(Tokens.Color.textPrimary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Tokens.Color.textTertiary)
+                }
+            }
+            .buttonStyle(.plain)
         }
     }
 

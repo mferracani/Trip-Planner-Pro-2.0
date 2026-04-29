@@ -254,6 +254,25 @@ export interface FxRates {
 }
 
 // ---------------------------------------------------------------------------
+// TravelDocument (subcollection of user: users/{userId}/travel_documents/{docId})
+// Files stored in Firebase Storage at users/{userId}/documents/{filename}
+// ---------------------------------------------------------------------------
+
+export type TravelDocumentType = "passport" | "visa" | "insurance" | "other";
+
+export interface TravelDocument {
+  type: TravelDocumentType;
+  title: string;
+  storage_ref: string;        // Storage path, e.g. "users/{uid}/documents/{filename}"
+  file_name: string;
+  mime_type: string;          // "application/pdf" | "image/jpeg" | etc.
+  expires_at: string | null;  // "YYYY-MM-DD" — for passport/visa expiry
+  notes: string | null;
+  created_at: Timestamp;
+  updated_at: Timestamp | null;
+}
+
+// ---------------------------------------------------------------------------
 // Cloud Function request/response shapes
 // ---------------------------------------------------------------------------
 

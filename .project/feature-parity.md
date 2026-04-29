@@ -82,6 +82,8 @@ _Generado: 2026-04-27 | Auditoría manual del código fuente_
 | 61 | Version / GitHub link | Si | Si — sección "Sobre la app" en SettingsView con versión de bundle + link GitHub (implementado) | Ninguno | — |
 | 62 | **Export JSON** | No en ninguna plataforma | Si — botón share en customNavBar → JSONEncoder → ShareSheet con UIActivityViewController | Ventaja iOS | — |
 | 63 | **ManualFlightForm multi-tramo (IDA / VUELTA / escalas)** | Si — FlightForm.tsx con legs[] array, direction outbound/inbound, secciones IDA/VUELTA, "+ escala" | Si — ManualFlightForm refactorizado con LegFormState, LegCard, secciones IDA/VUELTA. Flight.legs guardado en Firestore | Ninguno (cerrado) | — |
+| **DOCUMENTOS DE VIAJE (v1.2)** |
+| 64 | **Documentos de viaje (pasaporte, visa, seguro)** | Si — /documents con lista, preview download, upload PDF/imagen, tipo selector, fecha vencimiento | Si — TravelDocumentsView con lista, preview via QuickLook, share via UIActivityViewController, AddTravelDocumentSheet con file picker | Ninguno | — |
 
 ---
 

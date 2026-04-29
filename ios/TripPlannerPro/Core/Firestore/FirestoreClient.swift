@@ -178,6 +178,37 @@ final class FirestoreClient {
         }
     }
 
+    // MARK: - Travel Documents
+
+    func travelDocumentsStream() throws -> AsyncThrowingStream<[TravelDocument], Error> {
+        let ref = try userCollection("travel_documents")
+        return AsyncThrowingStream { continuation in
+            let listener = ref
+                .order(by: "created_at", descending: true)
+                .addSnapshotListener { snapshot, error in
+                    if let error {
+                        continuation.finish(throwing: error)
+                        return
+                    }
+                    let docs = (snapshot?.documents ?? []).compactMap {
+                        try? $0.data(as: TravelDocument.self)
+                    }
+                    continuation.yield(docs)
+                }
+            continuation.onTermination = { _ in listener.remove() }
+        }
+    }
+
+    func createTravelDocument(_ doc: TravelDocument) async throws {
+        let ref = try userCollection("travel_documents")
+        try ref.addDocument(from: doc)
+    }
+
+    func deleteTravelDocument(id: String, storagePath: String) async throws {
+        try await userCollection("travel_documents").document(id).delete()
+        try await StorageClient.shared.deleteTravelDocument(storagePath: storagePath)
+    }
+
     // MARK: - Household
 
     /// Fetches households/main and returns the owner UID (memberUids[0]).

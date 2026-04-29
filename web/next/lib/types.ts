@@ -184,6 +184,21 @@ export interface ParsedTransport {
 
 export type ParsedItem = ParsedFlight | ParsedHotel | ParsedTransport;
 
+export type TravelDocumentType = "passport" | "visa" | "insurance" | "other";
+
+export interface TravelDocument {
+  id: string;
+  type: TravelDocumentType;
+  title: string;
+  storage_ref: string;       // Firebase Storage path
+  file_name: string;
+  mime_type: string;
+  expires_at?: string;       // "YYYY-MM-DD"
+  notes?: string;
+  created_at: Timestamp;
+  updated_at?: Timestamp;
+}
+
 export interface CitySetting {
   normalized_name: string; // document ID — lowercase, no accents
   name: string;            // display name (e.g. "Madrid")
