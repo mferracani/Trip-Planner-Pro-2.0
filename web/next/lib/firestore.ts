@@ -329,6 +329,14 @@ export async function createTravelDocument(uid: string, data: Omit<TravelDocumen
   return ref.id;
 }
 
+export async function updateTravelDocument(
+  uid: string,
+  id: string,
+  data: Partial<Pick<TravelDocument, "title" | "document_number" | "issued_at" | "expires_at" | "notes">>
+): Promise<void> {
+  await updateDoc(travelDocRef(uid, id), { ...stripUndefined(data), updated_at: serverTimestamp() });
+}
+
 export async function deleteTravelDocumentDoc(uid: string, id: string): Promise<void> {
   await deleteDoc(travelDocRef(uid, id));
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, type ComponentType } from "react";
-import { FileText, Shield, ScanSearch, File, Plus, Trash2, Download } from "lucide-react";
+import { FileText, Shield, ScanSearch, File, Plus, Trash2, Download, X, ChevronRight, Pencil } from "lucide-react";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
@@ -9,6 +9,7 @@ import { getFirebaseStorage } from "@/lib/firebase";
 import {
   getTravelDocuments,
   createTravelDocument,
+  updateTravelDocument,
   deleteTravelDocumentDoc,
 } from "@/lib/firestore";
 import type { CSSProperties } from "react";
@@ -50,6 +51,11 @@ function expiryLabel(expiresAt: string): { text: string; color: string } {
   return { text: `Vence en ${Math.floor(days / 365)} años`, color: "#81786A" };
 }
 
+function fmtDate(d: string) {
+  const [y, m, day] = d.split("-");
+  return `${day}/${m}/${y}`;
+}
+
 // MARK: - Page
 
 export function TravelDocumentsPage() {
@@ -57,6 +63,7 @@ export function TravelDocumentsPage() {
   const [docs, setDocs] = useState<TravelDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState<TravelDocument | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -74,24 +81,20 @@ export function TravelDocumentsPage() {
       await deleteObject(storageRef).catch(() => {});
       await deleteTravelDocumentDoc(user.uid, doc.id);
       setDocs((prev) => prev.filter((d) => d.id !== doc.id));
+      if (viewingDoc?.id === doc.id) setViewingDoc(null);
     } catch {
       alert("No se pudo eliminar el documento.");
-    }
-  }
-
-  async function handleDownload(doc: TravelDocument) {
-    try {
-      const storageRef = ref(getFirebaseStorage(), doc.storage_ref);
-      const url = await getDownloadURL(storageRef);
-      window.open(url, "_blank");
-    } catch {
-      alert("No se pudo descargar el archivo.");
     }
   }
 
   function handleAdded(newDoc: TravelDocument) {
     setDocs((prev) => [newDoc, ...prev]);
     setShowAdd(false);
+  }
+
+  function handleUpdated(updated: TravelDocument) {
+    setDocs((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+    setViewingDoc(updated);
   }
 
   return (
@@ -138,8 +141,8 @@ export function TravelDocumentsPage() {
               <DocumentRow
                 key={doc.id}
                 doc={doc}
+                onView={() => setViewingDoc(doc)}
                 onDelete={() => handleDelete(doc)}
-                onDownload={() => handleDownload(doc)}
               />
             ))}
           </div>
@@ -152,6 +155,17 @@ export function TravelDocumentsPage() {
           uid={user.uid}
           onClose={() => setShowAdd(false)}
           onAdded={handleAdded}
+        />
+      )}
+
+      {/* Viewer sheet */}
+      {viewingDoc && user && (
+        <DocumentViewerSheet
+          doc={viewingDoc}
+          uid={user.uid}
+          onClose={() => setViewingDoc(null)}
+          onDelete={() => handleDelete(viewingDoc)}
+          onUpdated={handleUpdated}
         />
       )}
 
@@ -192,12 +206,12 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 
 function DocumentRow({
   doc,
+  onView,
   onDelete,
-  onDownload,
 }: {
   doc: TravelDocument;
+  onView: () => void;
   onDelete: () => void;
-  onDownload: () => void;
 }) {
   const cfg = typeConfig(doc.type);
   const Icon = cfg.icon;
@@ -205,12 +219,10 @@ function DocumentRow({
   const expiry = doc.expires_at ? expiryLabel(doc.expires_at) : null;
 
   return (
-    <div
-      className="flex items-center gap-3 p-4 rounded-xl"
-      style={{
-        background: "#171717",
-        border: "1px solid #1E1E1E",
-      }}
+    <button
+      onClick={onView}
+      className="flex items-center gap-3 p-4 rounded-xl w-full text-left transition-colors hover:bg-white/[0.02]"
+      style={{ background: "#171717", border: "1px solid #1E1E1E" }}
     >
       {/* Icon */}
       <div
@@ -225,10 +237,18 @@ function DocumentRow({
         <p className="font-semibold text-sm truncate" style={{ color: "#F5F0E8" }}>
           {doc.title}
         </p>
-        <div className="flex items-center gap-2 mt-0.5">
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <span className="text-xs font-semibold uppercase tracking-wider" style={{ color }}>
             {cfg.label}
           </span>
+          {doc.document_number && (
+            <>
+              <span style={{ color: "#333" }}>·</span>
+              <span className="text-xs font-mono" style={{ color: "#81786A" }}>
+                {doc.document_number}
+              </span>
+            </>
+          )}
           {expiry && (
             <>
               <span style={{ color: "#333" }}>·</span>
@@ -240,23 +260,274 @@ function DocumentRow({
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-1">
-        <button
-          onClick={onDownload}
-          className="p-2 rounded-lg transition-colors hover:bg-white/5"
-          title="Ver / descargar"
+      <ChevronRight size={16} strokeWidth={1.8} style={{ color: "#333", flexShrink: 0 }} />
+    </button>
+  );
+}
+
+// MARK: - Document viewer sheet
+
+function DocumentViewerSheet({
+  doc,
+  uid,
+  onClose,
+  onDelete,
+  onUpdated,
+}: {
+  doc: TravelDocument;
+  uid: string;
+  onClose: () => void;
+  onDelete: () => void;
+  onUpdated: (doc: TravelDocument) => void;
+}) {
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [loadingFile, setLoadingFile] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [docNumber, setDocNumber] = useState(doc.document_number ?? "");
+  const [issuedAt, setIssuedAt] = useState(doc.issued_at ?? "");
+  const [expiresAt, setExpiresAt] = useState(doc.expires_at ?? "");
+  const [notes, setNotes] = useState(doc.notes ?? "");
+
+  const isImage = doc.mime_type.startsWith("image/");
+  const color = TYPE_COLORS[doc.type];
+  const cfg = typeConfig(doc.type);
+  const expiry = expiresAt ? expiryLabel(expiresAt) : null;
+
+  useEffect(() => {
+    const storageRef = ref(getFirebaseStorage(), doc.storage_ref);
+    getDownloadURL(storageRef)
+      .then((url) => setFileUrl(url))
+      .catch(() => setFileUrl(null))
+      .finally(() => setLoadingFile(false));
+  }, [doc.storage_ref]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const updates = {
+        document_number: docNumber.trim() || undefined,
+        issued_at: issuedAt || undefined,
+        expires_at: expiresAt || undefined,
+        notes: notes.trim() || undefined,
+      };
+      await updateTravelDocument(uid, doc.id, updates);
+      onUpdated({ ...doc, ...updates });
+      setEditing(false);
+    } catch {
+      alert("No se pudo guardar los cambios.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+
+      <div
+        className="relative w-full max-w-lg rounded-t-2xl md:rounded-2xl overflow-hidden flex flex-col"
+        style={{ background: "#111", maxHeight: "92dvh" }}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between px-5 py-4 flex-shrink-0"
+          style={{ borderBottom: "1px solid #1E1E1E" }}
         >
-          <Download size={16} strokeWidth={1.8} style={{ color: "#81786A" }} />
-        </button>
-        <button
-          onClick={onDelete}
-          className="p-2 rounded-lg transition-colors hover:bg-red-500/10"
-          title="Eliminar"
-        >
-          <Trash2 size={16} strokeWidth={1.8} style={{ color: "#81786A" }} />
-        </button>
+          <button onClick={onClose} className="p-1 rounded-lg" style={{ color: "#81786A" }}>
+            <X size={18} strokeWidth={2} />
+          </button>
+          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color }}>
+            {cfg.label}
+          </span>
+          {editing ? (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="text-sm font-semibold disabled:opacity-40"
+              style={{ color: "#4D96FF" }}
+            >
+              {saving ? "Guardando…" : "Guardar"}
+            </button>
+          ) : (
+            <button
+              onClick={() => setEditing(true)}
+              className="p-1 rounded-lg transition-colors hover:bg-white/5"
+              style={{ color: "#81786A" }}
+            >
+              <Pencil size={16} strokeWidth={1.8} />
+            </button>
+          )}
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {/* File preview */}
+          <div
+            className="mx-5 mt-4 rounded-xl overflow-hidden flex items-center justify-center"
+            style={{ background: "#0A0A0A", border: "1px solid #1E1E1E", minHeight: 200 }}
+          >
+            {loadingFile ? (
+              <div
+                className="w-6 h-6 rounded-full border-2 animate-spin m-8"
+                style={{ borderColor: "#333 #333 #4D96FF #333" }}
+              />
+            ) : fileUrl ? (
+              isImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={fileUrl}
+                  alt={doc.title}
+                  className="w-full object-contain"
+                  style={{ maxHeight: 440 }}
+                />
+              ) : (
+                <embed
+                  src={fileUrl}
+                  type="application/pdf"
+                  className="w-full"
+                  style={{ height: 440 }}
+                />
+              )
+            ) : (
+              <div className="flex flex-col items-center gap-2 py-10">
+                <FileText size={32} strokeWidth={1.2} style={{ color: "#333" }} />
+                <p className="text-xs" style={{ color: "#81786A" }}>
+                  No se pudo cargar el archivo
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Open in new tab */}
+          {fileUrl && (
+            <div className="flex justify-center mt-2">
+              <a
+                href={fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs py-1 px-3"
+                style={{ color: "#4D96FF" }}
+              >
+                <Download size={13} strokeWidth={2} />
+                Abrir en nueva pestaña
+              </a>
+            </div>
+          )}
+
+          {/* Title */}
+          <div className="px-5 mt-4">
+            <p className="font-semibold text-base" style={{ color: "#F5F0E8" }}>
+              {doc.title}
+            </p>
+          </div>
+
+          {/* Key data */}
+          <div className="px-5 mt-3 flex flex-col gap-2">
+            <DataRow label="Número" editing={editing} placeholder="—"
+              value={doc.document_number}
+            >
+              <input
+                type="text"
+                value={docNumber}
+                onChange={(e) => setDocNumber(e.target.value)}
+                placeholder="Ej. AAB123456"
+                className="w-full bg-transparent outline-none text-sm font-mono"
+                style={{ color: "#F5F0E8" }}
+              />
+            </DataRow>
+
+            <DataRow label="Emisión" editing={editing} placeholder="—"
+              value={doc.issued_at ? fmtDate(doc.issued_at) : undefined}
+            >
+              <input
+                type="date"
+                value={issuedAt}
+                onChange={(e) => setIssuedAt(e.target.value)}
+                className="w-full bg-transparent outline-none text-sm"
+                style={{ color: issuedAt ? "#F5F0E8" : "#81786A", colorScheme: "dark" }}
+              />
+            </DataRow>
+
+            <DataRow label="Vencimiento" editing={editing} placeholder="—"
+              value={doc.expires_at ? fmtDate(doc.expires_at) : undefined}
+              valueColor={expiry?.color}
+            >
+              <input
+                type="date"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+                className="w-full bg-transparent outline-none text-sm"
+                style={{ color: expiresAt ? "#F5F0E8" : "#81786A", colorScheme: "dark" }}
+              />
+            </DataRow>
+
+            {(editing || doc.notes) && (
+              <DataRow label="Notas" editing={editing} placeholder="—" value={doc.notes}>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Notas adicionales"
+                  rows={2}
+                  className="w-full bg-transparent outline-none text-sm resize-none"
+                  style={{ color: "#F5F0E8" }}
+                />
+              </DataRow>
+            )}
+          </div>
+
+          {/* Delete */}
+          <div className="px-5 mt-5 mb-8">
+            <button
+              onClick={onDelete}
+              className="w-full py-3 rounded-xl text-sm font-semibold transition-colors hover:bg-red-500/10"
+              style={{ color: "#E54B4B", border: "1px solid rgba(229,75,75,0.2)" }}
+            >
+              <span className="flex items-center justify-center gap-2">
+                <Trash2 size={15} strokeWidth={2} />
+                Eliminar documento
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function DataRow({
+  label,
+  value,
+  valueColor,
+  editing,
+  placeholder,
+  children,
+}: {
+  label: string;
+  value?: string;
+  valueColor?: string;
+  editing: boolean;
+  placeholder: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="flex items-center gap-3 px-4 py-3 rounded-xl"
+      style={{ background: "#1A1A1A", border: "1px solid #1E1E1E" }}
+    >
+      <span
+        className="text-xs font-semibold uppercase tracking-wider flex-shrink-0"
+        style={{ color: "#81786A", width: 88 }}
+      >
+        {label}
+      </span>
+      {editing ? (
+        <div className="flex-1">{children}</div>
+      ) : (
+        <span className="text-sm flex-1" style={{ color: valueColor ?? (value ? "#F5F0E8" : "#333") }}>
+          {value ?? placeholder}
+        </span>
+      )}
     </div>
   );
 }
@@ -274,6 +545,8 @@ function AddDocumentSheet({
 }) {
   const [docType, setDocType] = useState<TravelDocumentType>("passport");
   const [title, setTitle] = useState("");
+  const [documentNumber, setDocumentNumber] = useState("");
+  const [issuedAt, setIssuedAt] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [notes, setNotes] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -288,7 +561,6 @@ function AddDocumentSheet({
     setSaving(true);
     setError(null);
 
-    // Sanitize filename and resolve MIME type
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const uniqueName = `${crypto.randomUUID()}_${safeName}`;
     const storagePath = `users/${uid}/documents/${uniqueName}`;
@@ -306,6 +578,8 @@ function AddDocumentSheet({
         storage_ref: storagePath,
         file_name: file.name,
         mime_type: mimeType,
+        document_number: documentNumber.trim() || undefined,
+        issued_at: issuedAt || undefined,
         expires_at: expiresAt || undefined,
         notes: notes || undefined,
         created_at: serverTimestamp() as TravelDocument["created_at"],
@@ -313,7 +587,6 @@ function AddDocumentSheet({
       const newId = await createTravelDocument(uid, data);
       onAdded({ ...data, id: newId });
     } catch (err) {
-      // Clean up orphaned Storage file if Firestore write failed
       if (uploadedToStorage) {
         deleteObject(ref(getFirebaseStorage(), storagePath)).catch(() => null);
       }
@@ -325,13 +598,8 @@ function AddDocumentSheet({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Sheet */}
       <div
         className="relative w-full max-w-lg rounded-t-2xl md:rounded-2xl overflow-hidden"
         style={{ background: "#111" }}
@@ -420,6 +688,29 @@ function AddDocumentSheet({
                   if (!title) setTitle(f.name.replace(/\.[^.]+$/, ""));
                 }
               }}
+            />
+          </FormField>
+
+          {/* Document number */}
+          <FormField label="Número de documento (opcional)">
+            <input
+              type="text"
+              value={documentNumber}
+              onChange={(e) => setDocumentNumber(e.target.value)}
+              placeholder="Ej. AAB123456"
+              className="w-full bg-transparent outline-none text-sm font-mono"
+              style={{ color: "#F5F0E8" }}
+            />
+          </FormField>
+
+          {/* Issued at */}
+          <FormField label="Fecha de emisión (opcional)">
+            <input
+              type="date"
+              value={issuedAt}
+              onChange={(e) => setIssuedAt(e.target.value)}
+              className="w-full bg-transparent outline-none text-sm"
+              style={{ color: issuedAt ? "#F5F0E8" : "#81786A", colorScheme: "dark" }}
             />
           </FormField>
 

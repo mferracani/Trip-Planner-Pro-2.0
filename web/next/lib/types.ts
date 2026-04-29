@@ -204,6 +204,8 @@ export interface TravelDocument {
   storage_ref: string;       // Firebase Storage path
   file_name: string;
   mime_type: string;
+  document_number?: string;  // e.g. passport/visa number
+  issued_at?: string;        // "YYYY-MM-DD"
   expires_at?: string;       // "YYYY-MM-DD"
   notes?: string;
   created_at: Timestamp;
