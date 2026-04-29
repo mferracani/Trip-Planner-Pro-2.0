@@ -2,12 +2,10 @@
  * Adds a second user to households/main by email.
  * Run after the new member has logged in at least once (so their Firebase Auth account exists).
  *
- * Usage:
+ * Usage (desde firebase/functions/):
  *   GOOGLE_APPLICATION_CREDENTIALS=/tmp/firebase-adc.json \
  *   GCLOUD_PROJECT=trip-planner-pro-2 \
- *   NODE_PATH=./node_modules \
- *   npx ts-node --transpile-only --skip-project \
- *     ../../firebase/seed/add-household-member.ts lucia@email.com
+ *   npm run add-household-member -- agustina@email.com
  */
 
 import * as admin from "firebase-admin";
