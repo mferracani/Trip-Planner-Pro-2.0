@@ -30,6 +30,8 @@ struct TripDetailView: View {
     @State private var draftStartDate: Date
     @State private var draftEndDate: Date
     @State private var isConfirmingDraft = false
+    @State private var isDeletingDraft = false
+    @State private var showDeleteDraftAlert = false
     @State private var showExport = false
     @State private var exportURL: URL? = nil
     @State private var allTripsCities: [TripCity] = []
@@ -89,8 +91,34 @@ struct TripDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
         .enableSwipeBack()
         .hideTabBar()
-        .onAppear { fabContext.overrideAction = { showAddItem = true } }
-        .onDisappear { fabContext.overrideAction = nil }
+        .onAppear {
+            // Single onAppear: set FAB override + init ViewModel.
+            // Keeping both in one block avoids the edge case where two separate
+            // .onAppear modifiers fire out of order after a sheet dismissal,
+            // which could leave fabContext.overrideAction nil and let the FAB
+            // fall through to CreateTripSheet (TPP-58).
+            fabContext.overrideAction = { showAddItem = true }
+
+            if vm == nil {
+                let viewModel = TripDetailViewModel(
+                    trip: trip,
+                    client: client,
+                    cache: CacheManager(modelContext: modelContext)
+                )
+                vm = viewModel
+                viewModel.start()
+                Task {
+                    if let cities = try? await client.fetchAllCitiesOnce() {
+                        allTripsCities = cities
+                    }
+                }
+            }
+        }
+        .onDisappear {
+            fabContext.overrideAction = nil
+            vm?.stop()
+            vm = nil
+        }
         .sheet(isPresented: $showAddItem) {
             AddItemChooser(
                 trip: trip,
@@ -120,21 +148,6 @@ struct TripDetailView: View {
                 .environment(client)
                 .presentationBackground(Tokens.Color.bgPrimary)
         }
-        .onAppear {
-            let viewModel = TripDetailViewModel(
-                trip: trip,
-                client: client,
-                cache: CacheManager(modelContext: modelContext)
-            )
-            vm = viewModel
-            viewModel.start()
-            Task {
-                if let cities = try? await client.fetchAllCitiesOnce() {
-                    allTripsCities = cities
-                }
-            }
-        }
-        .onDisappear { vm?.stop() }
         .sheet(isPresented: $showExport) {
             if let url = exportURL {
                 ShareSheet(items: [url])
@@ -199,6 +212,18 @@ struct TripDetailView: View {
 
                 Spacer()
 
+                // Delete draft
+                Button { showDeleteDraftAlert = true } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Tokens.Color.accentRed)
+                        .frame(width: 32, height: 32)
+                        .background(Circle().fill(Tokens.Color.accentRed.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+                .disabled(isDeletingDraft)
+
+                // Confirm draft
                 Button {
                     confirmDraft()
                 } label: {
@@ -223,6 +248,12 @@ struct TripDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(isConfirmingDraft)
+            }
+            .alert("¿Eliminar borrador?", isPresented: $showDeleteDraftAlert) {
+                Button("Eliminar", role: .destructive) { deleteDraft() }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text("Se eliminará \"\(trip.name)\" y todos sus ítems.")
             }
 
             // Date pickers
@@ -269,6 +300,16 @@ struct TripDetailView: View {
         Task {
             try? await client.updateTripStatus(tripID: tripID, status: .planned)
             isConfirmingDraft = false
+        }
+    }
+
+    private func deleteDraft() {
+        guard let tripID = trip.id else { return }
+        isDeletingDraft = true
+        Task {
+            try? await client.deleteTrip(id: tripID)
+            isDeletingDraft = false
+            dismiss()
         }
     }
 
