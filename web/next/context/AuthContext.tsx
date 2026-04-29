@@ -5,6 +5,7 @@ import { User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { onAuthChange } from "@/lib/auth";
 import { getFirebaseConfigError, getFirebaseDb } from "@/lib/firebase";
+import { registerPushNotifications, listenForegroundMessages } from "@/lib/pushNotifications";
 
 interface AuthContextValue {
   user: User | null;
@@ -47,13 +48,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      let unlistenForeground: (() => void) | undefined;
+
       const unsubscribe = onAuthChange(async (u) => {
         setUser(u);
         if (u) {
           const resolved = await resolveOwnerUid(u.uid);
           setOwnerUid(resolved);
+          // Register push notifications (best-effort, never blocks login)
+          registerPushNotifications(u.uid).catch(() => null);
+          listenForegroundMessages().then((unsub) => { unlistenForeground = unsub; }).catch(() => null);
         } else {
           setOwnerUid(null);
+          unlistenForeground?.();
         }
         setLoading(false);
       });

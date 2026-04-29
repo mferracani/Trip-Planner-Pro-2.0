@@ -2,6 +2,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getAuth, OAuthProvider, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getMessaging, isSupported } from "firebase/messaging";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -55,6 +56,13 @@ export function getFirebaseStorage() {
 
 export function getAppleProvider() {
   return new OAuthProvider("apple.com");
+}
+
+export async function getFirebaseMessaging() {
+  if (typeof window === "undefined") return null;
+  const supported = await isSupported();
+  if (!supported) return null;
+  return getMessaging(getFirebaseApp());
 }
 
 export function getGoogleProvider() {

@@ -16,6 +16,7 @@ import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
+import { getMessaging } from "firebase-admin/messaging";
 
 import { DateTime } from "luxon";
 import Anthropic from "@anthropic-ai/sdk";
@@ -684,6 +685,14 @@ export const trackFlights = onSchedule(
       let skipped = 0;
       let errors = 0;
 
+      // Notifications to send after all batch writes are committed.
+      const pendingNotifications: Array<{
+        userId: string;
+        flightNumber: string;
+        title: string;
+        body: string;
+      }> = [];
+
       // Firestore batch limit is 500 ops; commit every 400 to stay safe.
       const BATCH_LIMIT = 400;
       let batch = db.batch();
@@ -699,9 +708,11 @@ export const trackFlights = onSchedule(
           continue;
         }
 
+        // Parse userId from doc path: users/{userId}/trips/{tripId}/flights/{flightId}
+        const pathParts = doc.ref.path.split("/");
+        const userId = pathParts[1] ?? "unknown";
+
         // Derive the departure date string for the AeroDataBox query.
-        // Prefer the stored local time string (e.g. "2026-03-15T21:35") for
-        // accuracy; fall back to the UTC timestamp converted to a date string.
         let dateStr: string;
         if (typeof data["departure_local_time"] === "string" && data["departure_local_time"].length >= 10) {
           dateStr = (data["departure_local_time"] as string).slice(0, 10);
@@ -725,7 +736,7 @@ export const trackFlights = onSchedule(
               validateStatus: (s) => s < 500,
             });
             if (response.status !== 429) break;
-            const backoff = 2000 * Math.pow(2, attempt); // 2s, 4s, 8s
+            const backoff = 2000 * Math.pow(2, attempt);
             logger.warn("trackFlights: 429 from AeroDataBox, backing off", { flightNumber, attempt, backoff });
             await new Promise((r) => setTimeout(r, backoff));
           }
@@ -735,54 +746,71 @@ export const trackFlights = onSchedule(
             continue;
           }
 
-          // 404 or empty array means AeroDataBox does not have the flight yet.
-          if (response.status === 404) {
-            skipped++;
-            continue;
-          }
+          if (response.status === 404) { skipped++; continue; }
 
           const items: unknown[] = Array.isArray(response.data) ? (response.data as unknown[]) : [];
-          if (items.length === 0) {
-            skipped++;
-            continue;
-          }
+          if (items.length === 0) { skipped++; continue; }
 
           const item = items[0] as Record<string, unknown>;
           const departure = item["departure"] as Record<string, unknown> | undefined;
           const arrival = item["arrival"] as Record<string, unknown> | undefined;
 
+          const oldStatus = typeof data["current_status"] === "string" ? data["current_status"] : null;
+          const oldGateDep = typeof data["current_gate_departure"] === "string" ? data["current_gate_departure"] : null;
+
           const statusUpdate: Record<string, unknown> = {
             last_tracking_update: Timestamp.fromDate(new Date()),
           };
 
-          if (typeof item["status"] === "string") {
-            statusUpdate["current_status"] = item["status"];
-          }
+          const newStatus = typeof item["status"] === "string" ? (item["status"] as string) : null;
+          if (newStatus) statusUpdate["current_status"] = newStatus;
 
-          statusUpdate["current_gate_departure"] =
-            typeof departure?.["gate"] === "string" ? departure["gate"] : null;
-          statusUpdate["current_gate_arrival"] =
-            typeof arrival?.["gate"] === "string" ? arrival["gate"] : null;
+          const newGateDep = typeof departure?.["gate"] === "string" ? (departure["gate"] as string) : null;
+          const newGateArr = typeof arrival?.["gate"] === "string" ? (arrival["gate"] as string) : null;
+          statusUpdate["current_gate_departure"] = newGateDep;
+          statusUpdate["current_gate_arrival"] = newGateArr;
           statusUpdate["current_terminal_departure"] =
             typeof departure?.["terminal"] === "string" ? departure["terminal"] : null;
           statusUpdate["current_terminal_arrival"] =
             typeof arrival?.["terminal"] === "string" ? arrival["terminal"] : null;
 
           const depRevisedRaw = departure?.["revisedTimeUtc"] ?? departure?.["scheduledTimeUtc"];
-          if (typeof depRevisedRaw === "string" && depRevisedRaw.length > 0) {
+          if (typeof depRevisedRaw === "string" && depRevisedRaw.length > 0)
             statusUpdate["estimated_departure_utc"] = Timestamp.fromDate(new Date(depRevisedRaw));
-          }
 
           const arrRevisedRaw = arrival?.["revisedTimeUtc"] ?? arrival?.["scheduledTimeUtc"];
-          if (typeof arrRevisedRaw === "string" && arrRevisedRaw.length > 0) {
+          if (typeof arrRevisedRaw === "string" && arrRevisedRaw.length > 0)
             statusUpdate["estimated_arrival_utc"] = Timestamp.fromDate(new Date(arrRevisedRaw));
-          }
 
           batch.update(doc.ref, statusUpdate);
           batchCount++;
           updated++;
 
-          // Commit and start a fresh batch before hitting the 500-op limit.
+          // Detect events worth notifying — only when something changed.
+          if (userId !== "unknown") {
+            const statusChanged = newStatus && newStatus !== oldStatus;
+            const gateChanged = newGateDep && newGateDep !== oldGateDep;
+
+            if (statusChanged) {
+              const msgMap: Record<string, { title: string; body: string }> = {
+                Delayed:   { title: `✈️ ${flightNumber} demorado`, body: "El horario de salida fue actualizado." },
+                Canceled:  { title: `❌ ${flightNumber} cancelado`, body: "El vuelo fue cancelado." },
+                Diverted:  { title: `⚠️ ${flightNumber} desviado`, body: "El vuelo aterrizará en un aeropuerto alternativo." },
+                Active:    { title: `✈️ ${flightNumber} en vuelo`, body: "El avión ya despegó." },
+                Landed:    { title: `✅ ${flightNumber} aterrizó`, body: "El vuelo llegó a destino." },
+              };
+              const msg = msgMap[newStatus];
+              if (msg) pendingNotifications.push({ userId, flightNumber, ...msg });
+            } else if (gateChanged && newGateDep) {
+              pendingNotifications.push({
+                userId,
+                flightNumber,
+                title: `🚪 ${flightNumber} — cambio de puerta`,
+                body: `Nueva puerta de embarque: ${newGateDep}`,
+              });
+            }
+          }
+
           if (batchCount >= BATCH_LIMIT) {
             await batch.commit();
             batch = db.batch();
@@ -790,9 +818,6 @@ export const trackFlights = onSchedule(
           }
         } catch (flightErr) {
           errors++;
-          // Parse the userId from the doc path: users/{userId}/trips/{tripId}/flights/{flightId}
-          const parts = doc.ref.path.split("/");
-          const userId = parts[1] ?? "unknown";
           logger.warn("trackFlights: error processing flight", {
             flightId: doc.id,
             userId,
@@ -803,11 +828,53 @@ export const trackFlights = onSchedule(
       }
 
       // Commit any remaining writes.
-      if (batchCount > 0) {
-        await batch.commit();
+      if (batchCount > 0) await batch.commit();
+
+      // Send push notifications grouped by user.
+      if (pendingNotifications.length > 0) {
+        const messaging = getMessaging();
+        const userNotifs = new Map<string, typeof pendingNotifications>();
+        for (const n of pendingNotifications) {
+          const list = userNotifs.get(n.userId) ?? [];
+          list.push(n);
+          userNotifs.set(n.userId, list);
+        }
+
+        for (const [uid, notifs] of userNotifs) {
+          try {
+            const tokensSnap = await db.collection(`users/${uid}/fcm_tokens`).get();
+            if (tokensSnap.empty) continue;
+            const tokens = tokensSnap.docs
+              .map((d) => d.data()["token"] as string | undefined)
+              .filter((t): t is string => !!t);
+            if (tokens.length === 0) continue;
+
+            for (const notif of notifs) {
+              const result = await messaging.sendEachForMulticast({
+                tokens,
+                notification: { title: notif.title, body: notif.body },
+                apns: { payload: { aps: { sound: "default", badge: 1 } } },
+                webpush: { notification: { icon: "/icon-192.png", badge: "/icon-192.png" } },
+              });
+              // Remove stale tokens that are no longer valid.
+              result.responses.forEach((r, i) => {
+                if (!r.success && r.error?.code === "messaging/registration-token-not-registered") {
+                  db.doc(`users/${uid}/fcm_tokens/${tokens[i]}`).delete().catch(() => null);
+                }
+              });
+              logger.info("trackFlights: notification sent", {
+                flightNumber: notif.flightNumber,
+                userId: uid,
+                successCount: result.successCount,
+              });
+            }
+          } catch (notifErr) {
+            logger.warn("trackFlights: notification error", { userId: uid, error: String(notifErr) });
+          }
+        }
       }
 
-      logger.info("trackFlights completed", { processed, updated, skipped, errors });
+      logger.info("trackFlights completed", { processed, updated, skipped, errors, notifications: pendingNotifications.length });
     } catch (err) {
       logger.error("trackFlights failed", { error: String(err) });
       throw err;

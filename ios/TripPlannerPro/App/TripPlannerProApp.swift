@@ -1,6 +1,9 @@
 import FirebaseCore
+import FirebaseFirestore
+import FirebaseMessaging
 import SwiftData
 import SwiftUI
+import UserNotifications
 
 @main
 struct TripPlannerProApp: App {
@@ -13,13 +16,10 @@ struct TripPlannerProApp: App {
             CachedCatalogSnapshot.self,
             CachedPendingOperation.self,
         ])
-        // Versioned store name — bump when schema changes to avoid migration errors.
         let config = ModelConfiguration("TripPlannerCache_v5", schema: schema)
         do {
             return try ModelContainer(for: schema, configurations: config)
         } catch {
-            // Fall back to in-memory so the app still launches if the disk
-            // store is corrupted / incompatible.
             let mem = ModelConfiguration("TripPlannerCacheMem_v5", schema: schema, isStoredInMemoryOnly: true)
             return try! ModelContainer(for: schema, configurations: mem)
         }
@@ -43,6 +43,46 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         FirebaseApp.configure()
+
+        // Push notifications setup
+        UNUserNotificationCenter.current().delegate = self
+        Messaging.messaging().delegate = self
+
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+            guard granted else { return }
+            DispatchQueue.main.async {
+                UIApplication.shared.registerForRemoteNotifications()
+            }
+        }
+
         return true
+    }
+
+    // Called after APNs registration — pass token to Firebase Messaging
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        Messaging.messaging().apnsToken = deviceToken
+    }
+}
+
+// MARK: - UNUserNotificationCenterDelegate
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    // Show notification while app is in foreground
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound, .badge])
+    }
+}
+
+// MARK: - MessagingDelegate
+
+extension AppDelegate: MessagingDelegate {
+    // Called whenever FCM token is refreshed — save to Firestore
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        guard let token = fcmToken else { return }
+        FCMTokenManager.shared.saveToken(token)
     }
 }
