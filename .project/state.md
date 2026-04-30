@@ -1,7 +1,7 @@
 # Project State — Trip Planner Pro 2
 
 ## Fase actual
-`backend` — Firebase setup (Fase 1 del ROADMAP)
+`ios` — Fase 4 en progreso. TestFlight en preparación (Fase 5 inminente).
 
 ## Reentrada rapida
 - Backlog activo de mejoras iOS: `.project/ios-improvements-backlog.md`
@@ -94,8 +94,21 @@
 - [x] Dashboard — sección "Mis estadísticas" (GlobalStatsStrip: viajes, ciudades, vuelos, días) — T11 (2026-04-27)
 - [x] Cache offline CatalogView — T3 completo: CatalogViewModel + CachedCatalogSnapshot (SwiftData v4) + offline banner (2026-04-28)
 - [x] "Tu mundo" StatsView iOS (MAT-39) — globe canvas + CountUpText + StatsViewModel + tab "Mundo" (2026-04-28)
+- [x] TPP-95: Eliminar tab "Mundo" — stats/globo movidos al tab "Inicio". Ahora hay 4 tabs: Inicio (stats), Viajes (dashboard), Catálogo, Settings (iOS + web) (2026-04-30)
+- [x] TPP-97: Días padding grises en calendario — completan la semana, al tocarlos extienden el rango del viaje (iOS + web). Fix: mayor contraste padding days (#1E1E1E fondo, #707070 texto) (2026-04-30)
 - [ ] Tests (checklist QA creado; ejecucion Xcode pendiente)
-### ⬜ Fase 5 — TestFlight (bloqueado por Fase 4)
+### ⏳ Fase 5 — TestFlight (en preparación)
+- [ ] Archive desde Xcode (Mati lo hace ahora — 2026-04-30)
+- [ ] Subir build a App Store Connect
+- [ ] Invitar a Agustina vía TestFlight (script add-household-member con Firebase UID de su Apple ID)
+- [ ] TPP-49 household sharing: Agustina loguea con su Apple ID, Mati corre `firebase/seed/upsert-household-member.ts` con su UID
+
+## Decisiones PM — 2026-04-30
+
+- [PM] TPP-95 mergeado a main: tab "Mundo" eliminado, stats/globo 3D movidos al tab "Inicio". Estructura final de tabs: Inicio / Viajes / Catálogo / Settings (iOS + web). Paridad confirmada.
+- [PM] TPP-97 mergeado a main: días padding del calendario (fuera del rango del viaje pero dentro de la semana) ahora son grises y tapeables — al tocarlos extienden el rango. Fix adicional de contraste: fondo #1E1E1E, texto #707070. Paridad iOS + web confirmada.
+- [PM] MAT-39 / feat/mat-39 mergeado a main: pantalla "Tu mundo" con globo 3D WebGL + stats animadas (iOS + web). Integrado finalmente como tab "Inicio" vía TPP-95.
+- [PM] Fase 5 desbloqueada: Mati hace el archive desde Xcode para subir primer build a TestFlight. Siguiente paso: invitar a Agustina con household sharing (TPP-49).
 
 ## Handoffs pendientes
 - [x] [product-manager] → [frontend-engineer]: implementar Ticket "Modo Borrador Web" — ver `docs/draft-mode-plan.md` §4 — completado en rama feat/draft-mode
