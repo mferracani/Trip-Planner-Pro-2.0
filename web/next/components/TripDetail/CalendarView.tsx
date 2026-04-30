@@ -265,9 +265,10 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
   }
 
   function handlePointerDown(dateStr: string, inRange: boolean, e: ReactPointerEvent<HTMLElement>) {
-    if (!inRange) return;
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* noop */ }
     dragStartDate.current = dateStr;
+    // Only start long-press/selection timer for in-range days
+    if (!inRange) return;
     if (longPressTimer.current !== null) window.clearTimeout(longPressTimer.current);
     longPressTimer.current = window.setTimeout(() => {
       setSelection(new Set([dateStr]));
@@ -282,6 +283,17 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
     setRangeFromStart(dateStr);
   }
 
+  async function handlePaddingDayTap(dateStr: string) {
+    const uid = ownerUid ?? user?.uid;
+    if (!uid) return;
+    if (dateStr < trip.start_date) {
+      await updateTrip(uid, trip.id, { start_date: dateStr });
+    } else if (dateStr > trip.end_date) {
+      await updateTrip(uid, trip.id, { end_date: dateStr });
+    }
+    onChanged();
+  }
+
   function handlePointerUp(dateStr: string, inRange: boolean) {
     const wasDragging = isDragging.current;
     if (longPressTimer.current !== null) {
@@ -291,7 +303,10 @@ export function CalendarView({ trip, cities, flights, hotels, transports, onChan
     isDragging.current = false;
     dragStartDate.current = null;
 
-    if (!inRange) return;
+    if (!inRange) {
+      handlePaddingDayTap(dateStr);
+      return;
+    }
 
     if (wasDragging) {
       return;
@@ -629,7 +644,7 @@ function DayCell({
     ? `linear-gradient(145deg, ${resolvedColor}42 0%, ${resolvedColor}14 100%)`
     : inRange
     ? "#1A1A1A"
-    : "#0D0D0D";
+    : "#141414";
 
   // Border: city color at 40%, default #333333
   const borderColor = isSelected
@@ -638,7 +653,7 @@ function DayCell({
     ? "#FFD16A"
     : resolvedColor
     ? `${resolvedColor}66`
-    : "#333333";
+    : inRange ? "#333333" : "#222222";
   const borderWidth = isSelected || isToday ? 2 : 1;
 
   const showProgress = !isSplit && primaryCity && totalDays > 0 && dayIndex >= 0;
@@ -662,13 +677,12 @@ function DayCell({
       onPointerEnter={onPointerEnter}
       onPointerUp={onPointerUp}
       data-date={dateStr}
-      aria-disabled={!inRange}
       aria-label={`${dateStr}${primaryCity ? ` — ${primaryCity.name}` : ""}`}
       className={`
         relative flex flex-col rounded-[10px] p-1.5 md:rounded-[12px] md:p-2
         min-h-[120px] md:min-h-[140px] w-full text-left
-        transition-all
-        ${inRange ? "cursor-pointer active:scale-[0.94]" : "opacity-20 cursor-default"}
+        transition-all cursor-pointer
+        ${inRange ? "active:scale-[0.94]" : "group/padding hover:brightness-125"}
         ${dimmed ? "opacity-30" : ""}
         ${isSelected ? "scale-[0.96]" : ""}
         focus:outline-none
@@ -685,7 +699,7 @@ function DayCell({
       <div className="flex items-start justify-between mb-1">
         <span
           className="text-[11px] md:text-[12px] font-bold leading-none tabular-nums"
-          style={{ color: isToday ? "#FFD16A" : inRange ? "#A0A0A0" : "#444" }}
+          style={{ color: isToday ? "#FFD16A" : inRange ? "#A0A0A0" : "#555" }}
         >
           {dateLabel}
         </span>
@@ -763,6 +777,13 @@ function DayCell({
           {overflowCount > 0 && (
             <span className="text-[8px] text-[#555] font-semibold">+{overflowCount}</span>
           )}
+        </div>
+      )}
+
+      {/* Padding day "+" hint */}
+      {!inRange && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <span className="text-[#333] group-hover/padding:text-[#555] text-lg font-light transition-colors">+</span>
         </div>
       )}
     </div>
