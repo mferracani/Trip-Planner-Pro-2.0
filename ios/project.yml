@@ -57,6 +57,8 @@ targets:
         product: FirebaseStorage
       - package: Firebase
         product: FirebaseFunctions
+      - package: Firebase
+        product: FirebaseMessaging
       - package: SwiftKeychainWrapper
 
   # ── Share Extension ────────────────────────────────────────────────────────

@@ -14,8 +14,7 @@ extension FirestoreClient {
     // MARK: - Prefetch all subcollections for a trip into cache
 
     func prefetchTripItems(tripID: String, into cache: CacheManager) async {
-        guard let uid = userUID else { return }
-        let base = db.collection("users").document(uid).collection("trips").document(tripID)
+        guard let base = try? userCollection("trips").document(tripID) else { return }
 
         async let fSnap = try? base.collection("flights").getDocuments()
         async let hSnap = try? base.collection("hotels").getDocuments()

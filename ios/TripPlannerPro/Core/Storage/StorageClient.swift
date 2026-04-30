@@ -30,7 +30,7 @@ final class StorageClient: Sendable {
         let tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
             .appendingPathExtension(storagePath.components(separatedBy: ".").last ?? "bin")
-        try await ref.writeAsync(toFile: tempURL)
+        _ = try await ref.writeAsync(toFile: tempURL)
         return tempURL
     }
 

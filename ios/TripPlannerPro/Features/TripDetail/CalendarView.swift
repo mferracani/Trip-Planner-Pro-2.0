@@ -1449,28 +1449,6 @@ private struct BookingRefRow: View {
     }
 }
 
-private extension View {
-    func itemCard(color: Color) -> some View {
-        self
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: Tokens.Radius.md)
-                    .fill(Tokens.Color.surface)
-                    .overlay(alignment: .leading) {
-                        Rectangle()
-                            .fill(color)
-                            .frame(width: 3)
-                    }
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Tokens.Radius.md)
-                            .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
-                    )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.md))
-    }
-}
-
 // MARK: - CityRangeAssignSheet
 
 private struct CityRangeAssignSheet: View {
