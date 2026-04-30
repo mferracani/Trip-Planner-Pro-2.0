@@ -262,7 +262,7 @@ private struct FlightRowDetail: View {
                         if let dep = flight.estimatedDepartureUTC {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Salida")
-                                    .font(Tokens.Typo.caption)
+                                    .font(Tokens.Typo.bodyS)
                                     .foregroundStyle(Tokens.Color.textTertiary)
                                 Text("\(fmtUTCTime(dep)) UTC")
                                     .font(Tokens.Typo.strongS)
@@ -272,7 +272,7 @@ private struct FlightRowDetail: View {
                         if let arr = flight.estimatedArrivalUTC {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Llegada")
-                                    .font(Tokens.Typo.caption)
+                                    .font(Tokens.Typo.bodyS)
                                     .foregroundStyle(Tokens.Color.textTertiary)
                                 Text("\(fmtUTCTime(arr)) UTC")
                                     .font(Tokens.Typo.strongS)
@@ -282,7 +282,7 @@ private struct FlightRowDetail: View {
                     }
                     if let upd = flight.lastTrackingUpdate {
                         Text("Actualizado \(fmtRelativeMinutes(upd))")
-                            .font(Tokens.Typo.caption)
+                            .font(Tokens.Typo.bodyS)
                             .foregroundStyle(Tokens.Color.textTertiary)
                     }
                 }

@@ -484,7 +484,7 @@ private struct NextTripCard: View {
         HStack(alignment: .center, spacing: 20) {
             // Progress ring — temporal: trip elapsed % (active) or countdown (upcoming)
             ZStack {
-                ProgressRing(
+                TripProgressRing(
                     progress: vm.heroProgress,
                     lineWidth: 8,
                     size: 90,
@@ -586,9 +586,9 @@ private struct StatIconRow: View {
     }
 }
 
-// MARK: - ProgressRing
+// MARK: - TripProgressRing
 
-struct ProgressRing: View {
+private struct TripProgressRing: View {
     let progress: Double
     let lineWidth: CGFloat
     let size: CGFloat

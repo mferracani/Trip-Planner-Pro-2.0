@@ -66,7 +66,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
 // MARK: - UNUserNotificationCenterDelegate
 
-extension AppDelegate: UNUserNotificationCenterDelegate {
+extension AppDelegate: @preconcurrency UNUserNotificationCenterDelegate {
     // Show notification while app is in foreground
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
@@ -79,7 +79,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
 
 // MARK: - MessagingDelegate
 
-extension AppDelegate: MessagingDelegate {
+extension AppDelegate: @preconcurrency MessagingDelegate {
     // Called whenever FCM token is refreshed — save to Firestore
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         guard let token = fcmToken else { return }

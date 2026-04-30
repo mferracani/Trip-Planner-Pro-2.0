@@ -15,7 +15,7 @@ struct TravelDocumentsView: View {
     @State private var previewURL: URL? = nil
     @State private var isLoadingPreview = false
     @State private var previewError: String? = nil
-    @State private var shareURL: URL? = nil
+    @State private var shareItem: ShareItem? = nil
 
     var body: some View {
         NavigationStack {
@@ -53,7 +53,7 @@ struct TravelDocumentsView: View {
         }
         .sheet(item: $previewDoc) { doc in
             if let url = previewURL {
-                ShareableQLPreview(url: url, onShare: { shareURL = url })
+                ShareableQLPreview(url: url, onShare: { shareItem = ShareItem(url: url) })
                     .ignoresSafeArea()
             } else if isLoadingPreview {
                 ZStack {
@@ -77,8 +77,8 @@ struct TravelDocumentsView: View {
                 }
             }
         }
-        .sheet(item: $shareURL.map { ShareItem(url: $0) }) { item in
-            ShareSheet(url: item.url)
+        .sheet(item: $shareItem) { item in
+            ShareSheet(items: [item.url])
         }
         .alert("Eliminar documento", isPresented: Binding(
             get: { deleteTarget != nil },
@@ -496,18 +496,6 @@ private struct ShareableQLPreview: UIViewControllerRepresentable {
             url as NSURL
         }
     }
-}
-
-// MARK: - ShareSheet
-
-private struct ShareSheet: UIViewControllerRepresentable {
-    let url: URL
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: [url], applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - Helpers

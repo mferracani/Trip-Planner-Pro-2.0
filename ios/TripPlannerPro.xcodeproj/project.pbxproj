@@ -3,56 +3,80 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		01714A493FB938FC600E9454 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D2C00BBFAFD3FF45C3C1CC7 /* NetworkMonitor.swift */; };
 		03C02F4BC2C036EF24535018 /* CacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63535354501CF525F6B8594E /* CacheManager.swift */; };
 		069A25E2D4656D474A0B1D2F /* DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B251D016C59B2173B79A5EC8 /* DashboardViewModel.swift */; };
+		07E2F3D1AAD0EEBA4012A36F /* FlightStatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F482D0523C835B1482F5D803 /* FlightStatusBadge.swift */; };
 		128DD0035A0A58F4DE179730 /* FormComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6B789D30B84724797C0070D /* FormComponents.swift */; };
 		12B4D9C3113D5CE8874138DF /* SelectedItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E0918B8679BF343860B9F5 /* SelectedItem.swift */; };
 		1DF53B1F72ECFB6BBF50FC76 /* ManualForms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C8B8F95501555D1CF8517AB /* ManualForms.swift */; };
 		1F00D8DC7BED5D6CD5085397 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 25FBF6AD691D894A96F6D4CE /* FirebaseFirestore */; };
 		2008580ED19997D8067F36F6 /* ListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0397E04A48CA096D262DC44 /* ListView.swift */; };
 		2780A690B1EF8C016E86917C /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 0DCEA82BFD0BD161E476E447 /* FirebaseAuth */; };
-		2A4BEC0AAF13B73EBEF9E97C /* SwiftKeychainWrapper in Frameworks */ = {isa = PBXBuildFile; productRef = 98DE54F22A972F91ADFEEBAF /* SwiftKeychainWrapper */; };
-		2BAA5F3A2F9E622800B204F9 /* ThemePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAA5F392F9E622800B204F9 /* ThemePickerView.swift */; };
-		2BAA5F3B2F9E622800B204F9 /* ThemePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAA5F392F9E622800B204F9 /* ThemePickerView.swift */; };
-		2BAA5F3D2F9E623F00B204F9 /* TripTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAA5F3C2F9E623F00B204F9 /* TripTheme.swift */; };
+		29296498EDC2E6C87D956DC2 /* TravelDocumentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97C1F982E0E82A66A94CC4B4 /* TravelDocumentsView.swift */; };
+		2A4BEC0AAF13B73EBEF9E97C /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 34446987BACF13E101E66DE4 /* FirebaseMessaging */; };
 		2D6C8C35501AF36B97E4C6DE /* CreateTripSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F35CCB39FFC9A1C8CC4FC9F3 /* CreateTripSheet.swift */; };
 		2DFE23D698EE8AA90E0F2F50 /* CostsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86C9FDE5B639E8638E84A965 /* CostsView.swift */; };
+		30D19CEBEA31608F35C0EBA7 /* MoneyFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA7419BF8ECA99BDC5C3BFCB /* MoneyFormatter.swift */; };
+		30F056E43E8DAA75C50AF426 /* CountUpText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD3349456E2218FE16F521 /* CountUpText.swift */; };
 		32E74E9DCD25A3D1D05694BC /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 2507F3FE7FFA5C78129E4F3D /* GoogleService-Info.plist */; };
 		37A2EDE57467A5208E182DEC /* FirestoreClient+Writes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7875DE7670482043E262AD3 /* FirestoreClient+Writes.swift */; };
 		3EC940072A0B6B3B8D2840B4 /* TripDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B50B6094A65351FEDB064F /* TripDetailViewModel.swift */; };
 		41B14A75A2EE268884F5EC2C /* AppleSignInHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6BCCA33AA7BBFE2EA5ED7E2 /* AppleSignInHelper.swift */; };
 		432D907E731D4ACDEDE49ECB /* CachedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2B7720CD4CABE0315A43689 /* CachedModels.swift */; };
 		47311792AC10F61C0E70819D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CA4CD7A2610D1374CBFEAC82 /* Assets.xcassets */; };
+		47C03231978570801EA8B938 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCB0024AAD3F36B933B2096D /* StatusBadge.swift */; };
 		49CC929394E0498FD35C0C77 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4D3216405FE908A11783762 /* AuthManager.swift */; };
 		51709004B5941D2E9D0FDFD4 /* AppGroupBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20BBE67EBD4ED649D8842823 /* AppGroupBridge.swift */; };
 		535AF6874FB9B7EEE75477AA /* ItemsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704D2546F46F5C1EEE4431C3 /* ItemsView.swift */; };
 		550D018B81EC031ECE48D8BD /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB4848A3063FFC4E6C2B6757 /* MainTabView.swift */; };
 		566F40B852BA4D80D3FFB867 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 525B905C231623339E8B59E5 /* DashboardView.swift */; };
 		57AD3424DD5EBDF9589302E0 /* TripCityEditSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8CC2D9229E1D0DCC25C1694 /* TripCityEditSheets.swift */; };
+		5DB0886322287AC9B665691E /* TripHeroCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30D92130B5F05CF799786438 /* TripHeroCard.swift */; };
 		5DE9562E9EF7E32FA79BFAD6 /* FirestoreClient+SaveParsed.swift in Sources */ = {isa = PBXBuildFile; fileRef = 394E9145A6F17EEA4213367E /* FirestoreClient+SaveParsed.swift */; };
+		5EE954EA87A80F705F68C931 /* SwipeBackEnabler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09998A6CD4691B7826815A2F /* SwipeBackEnabler.swift */; };
+		61209A7802E2CB92F0D0F89E /* FirestoreClient+Prefetch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86D83E05C095DFC22959E05C /* FirestoreClient+Prefetch.swift */; };
 		61DA9CE806F12CFA403FAECC /* CompassNav.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE881A888083E9F1FA2B675 /* CompassNav.swift */; };
 		629358D9009DF97EC0714669 /* CatalogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F75A43D1D2EB09299028521 /* CatalogView.swift */; };
-		AA1B2C3D4E5F607180A1B2C3 /* CatalogViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2C3D4E5F6071819A2B3C4D /* CatalogViewModel.swift */; };
 		63F408A366A902E967F9FB5A /* CategoryBreakdownSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66E2B23EDCC5278347DA37B1 /* CategoryBreakdownSheet.swift */; };
+		6CA131B440B124D87366B6CC /* TripTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B381913E9AB558E7F5EF095 /* TripTheme.swift */; };
+		7233F4DB874B2CC5076EBEAE /* CatalogViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FED1B77238A578492FB9B72 /* CatalogViewModel.swift */; };
 		73D82416E9924A088BC0D1CD /* FirestoreClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6F5D4AAA10A7E712EBA46C0 /* FirestoreClient.swift */; };
+		7D76DAF4F54C4BCF5D0A666C /* ItemBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93482BEBD73DA43D22BE6AE8 /* ItemBadge.swift */; };
 		7F8956774DA55D7163FF9A55 /* FirestoreClient+ManualSave.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9303A97FD96652D11DA80 /* FirestoreClient+ManualSave.swift */; };
 		807B81F9F754EAB4D0D85E0E /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 3395FE6E4E52421A1F3BF82A /* FirebaseFunctions */; };
 		908756A0AC06469A2C702322 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A1ED71DB4B4A29664381D14 /* ShareViewController.swift */; };
+		928B97B27F08952C3EB23057 /* ProgressRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D8C6C09D3819EA6F0D3CBB8 /* ProgressRing.swift */; };
 		981294913E2DFEE09A8BAC68 /* AIParseModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = E01F0510CEE3F5B87EA2E4E6 /* AIParseModal.swift */; };
+		9BD32718A4DCA1BD74B1CCE6 /* SwiftKeychainWrapper in Frameworks */ = {isa = PBXBuildFile; productRef = 98DE54F22A972F91ADFEEBAF /* SwiftKeychainWrapper */; };
 		9BDC10826FB88365638C3104 /* AddItemChooser.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2F2C04BD4186947DCADC86B /* AddItemChooser.swift */; };
 		9FCD969236CCDE7EC3CB4954 /* Trip.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDBD832BB0F7AA30948D1A01 /* Trip.swift */; };
+		A3EB7F05ADBA6312A9516E59 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 641A1C3C1F49E2C74D38EF7F /* StatsView.swift */; };
+		A4AB694CF00D2ABEF35C815C /* StorageClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59D57DE1288B2A565C05E972 /* StorageClient.swift */; };
+		A53F3DDCE2297E8D55790837 /* ThemePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD79CAE316AAA63AED1E2A1 /* ThemePickerView.swift */; };
 		A63AA6019A1C9BA894F8B0DB /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8715C7BA942D527D3C62A315 /* CalendarView.swift */; };
 		AD2EB3956033F36879444B02 /* Tokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6271B818C6F614D50268A32D /* Tokens.swift */; };
+		AFE908A415B3F2FB712B3D74 /* Gradients.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4465DCAD664FDA7A32DD989 /* Gradients.swift */; };
+		B0C7CDA543C3431A604D6C3C /* TravelGlobeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD8F8807140995F0A346A943 /* TravelGlobeView.swift */; };
+		B4B23F531E3DDD2A732F7FDD /* OfflineBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE62AFBB6B13CE23B3FC5463 /* OfflineBanner.swift */; };
+		B564718D2DDDF7B095FE23A2 /* FCMTokenManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78AD5E9AD0B6C2927018899 /* FCMTokenManager.swift */; };
+		B670454C43A05F336DAA3FA1 /* TripStatStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46BA7387CC3BB17B5BDB347F /* TripStatStrip.swift */; };
 		B6780060B04152AD3CDE3168 /* TripPlannerProApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DD604BA22C348ACF89504C7 /* TripPlannerProApp.swift */; };
+		C12293E6C2878248C87BB0F2 /* TravelDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21B5058FB19B3E6AFAACD377 /* TravelDocument.swift */; };
 		C54E2DE24DBC10C0E8D3515F /* AIParseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 295E53F7B9186499AEC7A4E5 /* AIParseClient.swift */; };
 		CA6BEA6E83474C2AA78B590D /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 33DA31B9B1B139DDAD3CCE05 /* FirebaseStorage */; };
-		71B18D34F088B9F56C69152F /* SwipeBackEnabler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F0BB50139BBC3516F2D8CE1 /* SwipeBackEnabler.swift */; };
 		CB73676789102640E78B0F74 /* UIState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5966B917647DA233F09D6205 /* UIState.swift */; };
+		CE6DD1ED2BB37953C22B70CA /* ViewModifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64039A30A2B3E5C376063615 /* ViewModifiers.swift */; };
 		D076F2528B969E87F056F2CD /* HouseholdConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8947034ABFB47742EC7D128 /* HouseholdConfig.swift */; };
+		D7C6C33E35A1B1762EEC8FB4 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = D100FDAE65BCBE3E1A839C7C /* Typography.swift */; };
+		DFF36ABF79492CF2F8E5AF47 /* OfflinePrefetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD8C4234DE6E16752902569F /* OfflinePrefetcher.swift */; };
+		E189D423E1ABD4C3DF08C629 /* PendingOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8437FE3BF3F214AF909EFCC /* PendingOperation.swift */; };
+		E3BD97E941DD78784B21FF86 /* CityLegend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2555CE2A459A845345B0F0C4 /* CityLegend.swift */; };
+		EB412393C54D9EB60BC016D8 /* StatsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 391DD28DCDF345D9ED5C96A5 /* StatsViewModel.swift */; };
 		F280C23F1DCD5C346A636459 /* ParseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 374A33B48BC4CFEA12C8ABF4 /* ParseModels.swift */; };
 		F3CEF6BA5263E3344301A0B2 /* EditSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A7C86285A04EFD731D9E9F5 /* EditSheets.swift */; };
 		FBC69458CA99BFA3E34C644E /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D8409AA00EDAECD94F980D2 /* SignInView.swift */; };
@@ -64,22 +88,32 @@
 
 /* Begin PBXFileReference section */
 		005885A7CA7330AE3A03F3A5 /* TripDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailView.swift; sourceTree = "<group>"; };
+		09998A6CD4691B7826815A2F /* SwipeBackEnabler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeBackEnabler.swift; sourceTree = "<group>"; };
+		0D2C00BBFAFD3FF45C3C1CC7 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
 		0DD604BA22C348ACF89504C7 /* TripPlannerProApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripPlannerProApp.swift; sourceTree = "<group>"; };
+		1BD79CAE316AAA63AED1E2A1 /* ThemePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePickerView.swift; sourceTree = "<group>"; };
 		20BBE67EBD4ED649D8842823 /* AppGroupBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupBridge.swift; sourceTree = "<group>"; };
+		21B5058FB19B3E6AFAACD377 /* TravelDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelDocument.swift; sourceTree = "<group>"; };
 		2507F3FE7FFA5C78129E4F3D /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		2555CE2A459A845345B0F0C4 /* CityLegend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityLegend.swift; sourceTree = "<group>"; };
 		25C9303A97FD96652D11DA80 /* FirestoreClient+ManualSave.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FirestoreClient+ManualSave.swift"; sourceTree = "<group>"; };
 		295E53F7B9186499AEC7A4E5 /* AIParseClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIParseClient.swift; sourceTree = "<group>"; };
-		2BAA5F392F9E622800B204F9 /* ThemePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePickerView.swift; sourceTree = "<group>"; };
-		2BAA5F3C2F9E623F00B204F9 /* TripTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripTheme.swift; sourceTree = "<group>"; };
 		2D8409AA00EDAECD94F980D2 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
+		2D8C6C09D3819EA6F0D3CBB8 /* ProgressRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressRing.swift; sourceTree = "<group>"; };
+		30D92130B5F05CF799786438 /* TripHeroCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripHeroCard.swift; sourceTree = "<group>"; };
 		374A33B48BC4CFEA12C8ABF4 /* ParseModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParseModels.swift; sourceTree = "<group>"; };
+		391DD28DCDF345D9ED5C96A5 /* StatsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsViewModel.swift; sourceTree = "<group>"; };
 		394E9145A6F17EEA4213367E /* FirestoreClient+SaveParsed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FirestoreClient+SaveParsed.swift"; sourceTree = "<group>"; };
 		3A7C86285A04EFD731D9E9F5 /* EditSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditSheets.swift; sourceTree = "<group>"; };
+		3B381913E9AB558E7F5EF095 /* TripTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripTheme.swift; sourceTree = "<group>"; };
+		46BA7387CC3BB17B5BDB347F /* TripStatStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripStatStrip.swift; sourceTree = "<group>"; };
 		525B905C231623339E8B59E5 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
-		4F0BB50139BBC3516F2D8CE1 /* SwipeBackEnabler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeBackEnabler.swift; sourceTree = "<group>"; };
 		5966B917647DA233F09D6205 /* UIState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIState.swift; sourceTree = "<group>"; };
+		59D57DE1288B2A565C05E972 /* StorageClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageClient.swift; sourceTree = "<group>"; };
 		6271B818C6F614D50268A32D /* Tokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tokens.swift; sourceTree = "<group>"; };
 		63535354501CF525F6B8594E /* CacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheManager.swift; sourceTree = "<group>"; };
+		64039A30A2B3E5C376063615 /* ViewModifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModifiers.swift; sourceTree = "<group>"; };
+		641A1C3C1F49E2C74D38EF7F /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		66E2B23EDCC5278347DA37B1 /* CategoryBreakdownSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryBreakdownSheet.swift; sourceTree = "<group>"; };
 		6A1ED71DB4B4A29664381D14 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		6C8B8F95501555D1CF8517AB /* ManualForms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualForms.swift; sourceTree = "<group>"; };
@@ -88,32 +122,46 @@
 		7B8E80705B47694B1EC8A53D /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		7DE881A888083E9F1FA2B675 /* CompassNav.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassNav.swift; sourceTree = "<group>"; };
 		7F75A43D1D2EB09299028521 /* CatalogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogView.swift; sourceTree = "<group>"; };
-		BB2C3D4E5F6071819A2B3C4D /* CatalogViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogViewModel.swift; sourceTree = "<group>"; };
 		84D86E88BE3E10B56BEC75D5 /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
 		86C9FDE5B639E8638E84A965 /* CostsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CostsView.swift; sourceTree = "<group>"; };
+		86D83E05C095DFC22959E05C /* FirestoreClient+Prefetch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FirestoreClient+Prefetch.swift"; sourceTree = "<group>"; };
 		8715C7BA942D527D3C62A315 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
+		8FED1B77238A578492FB9B72 /* CatalogViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogViewModel.swift; sourceTree = "<group>"; };
+		93482BEBD73DA43D22BE6AE8 /* ItemBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemBadge.swift; sourceTree = "<group>"; };
 		9528187FB886B262231989DC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		97C1F982E0E82A66A94CC4B4 /* TravelDocumentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelDocumentsView.swift; sourceTree = "<group>"; };
 		98656ECD7F6F4EDD755E01FA /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		9E14DCAB330192DFA05BBF39 /* TripPlannerPro.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; name = TripPlannerPro.app; path = "Trip Planner Pro.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9DAD3349456E2218FE16F521 /* CountUpText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountUpText.swift; sourceTree = "<group>"; };
+		9E14DCAB330192DFA05BBF39 /* TripPlannerPro.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TripPlannerPro.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A4D3216405FE908A11783762 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		B251D016C59B2173B79A5EC8 /* DashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModel.swift; sourceTree = "<group>"; };
 		B3E0918B8679BF343860B9F5 /* SelectedItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectedItem.swift; sourceTree = "<group>"; };
+		B8437FE3BF3F214AF909EFCC /* PendingOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingOperation.swift; sourceTree = "<group>"; };
 		C2F2C04BD4186947DCADC86B /* AddItemChooser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddItemChooser.swift; sourceTree = "<group>"; };
 		C6B789D30B84724797C0070D /* FormComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormComponents.swift; sourceTree = "<group>"; };
 		CA4CD7A2610D1374CBFEAC82 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D0397E04A48CA096D262DC44 /* ListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListView.swift; sourceTree = "<group>"; };
+		D100FDAE65BCBE3E1A839C7C /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		D6BCCA33AA7BBFE2EA5ED7E2 /* AppleSignInHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInHelper.swift; sourceTree = "<group>"; };
 		D8947034ABFB47742EC7D128 /* HouseholdConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HouseholdConfig.swift; sourceTree = "<group>"; };
 		D8CC2D9229E1D0DCC25C1694 /* TripCityEditSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCityEditSheets.swift; sourceTree = "<group>"; };
+		DA7419BF8ECA99BDC5C3BFCB /* MoneyFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoneyFormatter.swift; sourceTree = "<group>"; };
 		DB4848A3063FFC4E6C2B6757 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		DCB0024AAD3F36B933B2096D /* StatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBadge.swift; sourceTree = "<group>"; };
+		DD8C4234DE6E16752902569F /* OfflinePrefetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflinePrefetcher.swift; sourceTree = "<group>"; };
 		E01F0510CEE3F5B87EA2E4E6 /* AIParseModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIParseModal.swift; sourceTree = "<group>"; };
 		E2B7720CD4CABE0315A43689 /* CachedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedModels.swift; sourceTree = "<group>"; };
+		E4465DCAD664FDA7A32DD989 /* Gradients.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gradients.swift; sourceTree = "<group>"; };
 		E6F5D4AAA10A7E712EBA46C0 /* FirestoreClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirestoreClient.swift; sourceTree = "<group>"; };
 		EDBD832BB0F7AA30948D1A01 /* Trip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trip.swift; sourceTree = "<group>"; };
 		F35CCB39FFC9A1C8CC4FC9F3 /* CreateTripSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateTripSheet.swift; sourceTree = "<group>"; };
+		F482D0523C835B1482F5D803 /* FlightStatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightStatusBadge.swift; sourceTree = "<group>"; };
 		F5B50B6094A65351FEDB064F /* TripDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailViewModel.swift; sourceTree = "<group>"; };
 		F7875DE7670482043E262AD3 /* FirestoreClient+Writes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FirestoreClient+Writes.swift"; sourceTree = "<group>"; };
+		F78AD5E9AD0B6C2927018899 /* FCMTokenManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FCMTokenManager.swift; sourceTree = "<group>"; };
 		F98D908DFD041768BECE4CEE /* AppRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRoot.swift; sourceTree = "<group>"; };
+		FD8F8807140995F0A346A943 /* TravelGlobeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelGlobeView.swift; sourceTree = "<group>"; };
+		FE62AFBB6B13CE23B3FC5463 /* OfflineBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineBanner.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -125,13 +173,46 @@
 				1F00D8DC7BED5D6CD5085397 /* FirebaseFirestore in Frameworks */,
 				CA6BEA6E83474C2AA78B590D /* FirebaseStorage in Frameworks */,
 				807B81F9F754EAB4D0D85E0E /* FirebaseFunctions in Frameworks */,
-				2A4BEC0AAF13B73EBEF9E97C /* SwiftKeychainWrapper in Frameworks */,
+				2A4BEC0AAF13B73EBEF9E97C /* FirebaseMessaging in Frameworks */,
+				9BD32718A4DCA1BD74B1CCE6 /* SwiftKeychainWrapper in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0459DE085DA14ACD71511FF4 /* Sync */ = {
+			isa = PBXGroup;
+			children = (
+				DD8C4234DE6E16752902569F /* OfflinePrefetcher.swift */,
+				B8437FE3BF3F214AF909EFCC /* PendingOperation.swift */,
+			);
+			path = Sync;
+			sourceTree = "<group>";
+		};
+		1BC3B9EF324933365E21A85C /* Formatting */ = {
+			isa = PBXGroup;
+			children = (
+				DA7419BF8ECA99BDC5C3BFCB /* MoneyFormatter.swift */,
+			);
+			path = Formatting;
+			sourceTree = "<group>";
+		};
+		23AE98F8387DD9039BB96128 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				2555CE2A459A845345B0F0C4 /* CityLegend.swift */,
+				F482D0523C835B1482F5D803 /* FlightStatusBadge.swift */,
+				93482BEBD73DA43D22BE6AE8 /* ItemBadge.swift */,
+				FE62AFBB6B13CE23B3FC5463 /* OfflineBanner.swift */,
+				2D8C6C09D3819EA6F0D3CBB8 /* ProgressRing.swift */,
+				DCB0024AAD3F36B933B2096D /* StatusBadge.swift */,
+				30D92130B5F05CF799786438 /* TripHeroCard.swift */,
+				46BA7387CC3BB17B5BDB347F /* TripStatStrip.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
 		2BF56026FEB39CC471CE3EB2 /* AI */ = {
 			isa = PBXGroup;
 			children = (
@@ -146,6 +227,7 @@
 			children = (
 				E6F5D4AAA10A7E712EBA46C0 /* FirestoreClient.swift */,
 				25C9303A97FD96652D11DA80 /* FirestoreClient+ManualSave.swift */,
+				86D83E05C095DFC22959E05C /* FirestoreClient+Prefetch.swift */,
 				394E9145A6F17EEA4213367E /* FirestoreClient+SaveParsed.swift */,
 				F7875DE7670482043E262AD3 /* FirestoreClient+Writes.swift */,
 				D8947034ABFB47742EC7D128 /* HouseholdConfig.swift */,
@@ -159,7 +241,11 @@
 				7DE881A888083E9F1FA2B675 /* CompassNav.swift */,
 				7B8E80705B47694B1EC8A53D /* Components.swift */,
 				C6B789D30B84724797C0070D /* FormComponents.swift */,
+				E4465DCAD664FDA7A32DD989 /* Gradients.swift */,
 				6271B818C6F614D50268A32D /* Tokens.swift */,
+				D100FDAE65BCBE3E1A839C7C /* Typography.swift */,
+				64039A30A2B3E5C376063615 /* ViewModifiers.swift */,
+				23AE98F8387DD9039BB96128 /* Components */,
 			);
 			path = DesignSystem;
 			sourceTree = "<group>";
@@ -192,6 +278,17 @@
 				20BBE67EBD4ED649D8842823 /* AppGroupBridge.swift */,
 			);
 			path = AppGroup;
+			sourceTree = "<group>";
+		};
+		7D810D3AD79AF42E986B3CAB /* Stats */ = {
+			isa = PBXGroup;
+			children = (
+				9DAD3349456E2218FE16F521 /* CountUpText.swift */,
+				641A1C3C1F49E2C74D38EF7F /* StatsView.swift */,
+				391DD28DCDF345D9ED5C96A5 /* StatsViewModel.swift */,
+				FD8F8807140995F0A346A943 /* TravelGlobeView.swift */,
+			);
+			path = Stats;
 			sourceTree = "<group>";
 		};
 		82125D8B9E2B720CB0BC575C /* Products */ = {
@@ -236,6 +333,14 @@
 				C90C727C4814AC35F4BC7A51 /* Resources */,
 			);
 			path = ShareExtension;
+			sourceTree = "<group>";
+		};
+		A9E1B7393DB48CC92EE9AE13 /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				59D57DE1288B2A565C05E972 /* StorageClient.swift */,
+			);
+			path = Storage;
 			sourceTree = "<group>";
 		};
 		AD77CDDCDA91E9CEE6B88516 /* Cache */ = {
@@ -284,11 +389,21 @@
 				8E6EE84328110157ADBA5E02 /* Auth */,
 				F101D1C168CCFF1C478BE87D /* Catalog */,
 				BB6ED1A03D370B1B958A98ED /* Dashboard */,
+				D53BB46F114872CC01079E4E /* Documents */,
 				DF9D0B3A258AB12306AFE03A /* Editing */,
 				4C8E1F3A12DDCECC2F3F2710 /* Settings */,
+				7D810D3AD79AF42E986B3CAB /* Stats */,
 				59D6961316AB39F8AFCED0B9 /* TripDetail */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		D53BB46F114872CC01079E4E /* Documents */ = {
+			isa = PBXGroup;
+			children = (
+				97C1F982E0E82A66A94CC4B4 /* TravelDocumentsView.swift */,
+			);
+			path = Documents;
 			sourceTree = "<group>";
 		};
 		DE21ABC94D20D740D6BE4BD6 = {
@@ -300,14 +415,23 @@
 			);
 			sourceTree = "<group>";
 		};
+		DF850FD60E183154CC369AAF /* Network */ = {
+			isa = PBXGroup;
+			children = (
+				F78AD5E9AD0B6C2927018899 /* FCMTokenManager.swift */,
+				0D2C00BBFAFD3FF45C3C1CC7 /* NetworkMonitor.swift */,
+			);
+			path = Network;
+			sourceTree = "<group>";
+		};
 		DF9D0B3A258AB12306AFE03A /* Editing */ = {
 			isa = PBXGroup;
 			children = (
-				2BAA5F392F9E622800B204F9 /* ThemePickerView.swift */,
 				C2F2C04BD4186947DCADC86B /* AddItemChooser.swift */,
 				F35CCB39FFC9A1C8CC4FC9F3 /* CreateTripSheet.swift */,
 				3A7C86285A04EFD731D9E9F5 /* EditSheets.swift */,
 				B3E0918B8679BF343860B9F5 /* SelectedItem.swift */,
+				1BD79CAE316AAA63AED1E2A1 /* ThemePickerView.swift */,
 				D8CC2D9229E1D0DCC25C1694 /* TripCityEditSheets.swift */,
 			);
 			path = Editing;
@@ -321,7 +445,11 @@
 				91949C26E77A9A9C25006E50 /* Auth */,
 				AD77CDDCDA91E9CEE6B88516 /* Cache */,
 				3D8C20962B755F198661A8AB /* Firestore */,
+				1BC3B9EF324933365E21A85C /* Formatting */,
 				F389A6C71AED0813AC00339B /* Models */,
+				DF850FD60E183154CC369AAF /* Network */,
+				A9E1B7393DB48CC92EE9AE13 /* Storage */,
+				0459DE085DA14ACD71511FF4 /* Sync */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -339,7 +467,7 @@
 			isa = PBXGroup;
 			children = (
 				7F75A43D1D2EB09299028521 /* CatalogView.swift */,
-				BB2C3D4E5F6071819A2B3C4D /* CatalogViewModel.swift */,
+				8FED1B77238A578492FB9B72 /* CatalogViewModel.swift */,
 			);
 			path = Catalog;
 			sourceTree = "<group>";
@@ -347,8 +475,9 @@
 		F389A6C71AED0813AC00339B /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				21B5058FB19B3E6AFAACD377 /* TravelDocument.swift */,
 				EDBD832BB0F7AA30948D1A01 /* Trip.swift */,
-				2BAA5F3C2F9E623F00B204F9 /* TripTheme.swift */,
+				3B381913E9AB558E7F5EF095 /* TripTheme.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -358,8 +487,8 @@
 			children = (
 				F98D908DFD041768BECE4CEE /* AppRoot.swift */,
 				DB4848A3063FFC4E6C2B6757 /* MainTabView.swift */,
+				09998A6CD4691B7826815A2F /* SwipeBackEnabler.swift */,
 				0DD604BA22C348ACF89504C7 /* TripPlannerProApp.swift */,
-				4F0BB50139BBC3516F2D8CE1 /* SwipeBackEnabler.swift */,
 				5966B917647DA233F09D6205 /* UIState.swift */,
 			);
 			path = App;
@@ -386,6 +515,7 @@
 				25FBF6AD691D894A96F6D4CE /* FirebaseFirestore */,
 				33DA31B9B1B139DDAD3CCE05 /* FirebaseStorage */,
 				3395FE6E4E52421A1F3BF82A /* FirebaseFunctions */,
+				34446987BACF13E101E66DE4 /* FirebaseMessaging */,
 				98DE54F22A972F91ADFEEBAF /* SwiftKeychainWrapper */,
 			);
 			productName = TripPlannerPro;
@@ -403,6 +533,8 @@
 			dependencies = (
 			);
 			name = ShareExtension;
+			packageProductDependencies = (
+			);
 			productName = ShareExtension;
 			productReference = 78F202CBE942F6942DCCEB85 /* ShareExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -425,7 +557,6 @@
 				};
 			};
 			buildConfigurationList = 4B7422C19970305D3CEEC52D /* Build configuration list for PBXProject "TripPlannerPro" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = "es-AR";
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -433,10 +564,13 @@
 				"es-AR",
 			);
 			mainGroup = DE21ABC94D20D740D6BE4BD6;
+			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				53B2005BB6B63F01A79333D7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				D923283E4CD5D9D70529DCE8 /* XCRemoteSwiftPackageReference "SwiftKeychainWrapper" */,
 			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 82125D8B9E2B720CB0BC575C /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -474,39 +608,63 @@
 				432D907E731D4ACDEDE49ECB /* CachedModels.swift in Sources */,
 				A63AA6019A1C9BA894F8B0DB /* CalendarView.swift in Sources */,
 				629358D9009DF97EC0714669 /* CatalogView.swift in Sources */,
-				AA1B2C3D4E5F607180A1B2C3 /* CatalogViewModel.swift in Sources */,
+				7233F4DB874B2CC5076EBEAE /* CatalogViewModel.swift in Sources */,
 				63F408A366A902E967F9FB5A /* CategoryBreakdownSheet.swift in Sources */,
+				E3BD97E941DD78784B21FF86 /* CityLegend.swift in Sources */,
 				61DA9CE806F12CFA403FAECC /* CompassNav.swift in Sources */,
 				FCCAA20E9E202EE433572F61 /* Components.swift in Sources */,
 				2DFE23D698EE8AA90E0F2F50 /* CostsView.swift in Sources */,
+				30F056E43E8DAA75C50AF426 /* CountUpText.swift in Sources */,
 				2D6C8C35501AF36B97E4C6DE /* CreateTripSheet.swift in Sources */,
 				566F40B852BA4D80D3FFB867 /* DashboardView.swift in Sources */,
 				069A25E2D4656D474A0B1D2F /* DashboardViewModel.swift in Sources */,
 				F3CEF6BA5263E3344301A0B2 /* EditSheets.swift in Sources */,
+				B564718D2DDDF7B095FE23A2 /* FCMTokenManager.swift in Sources */,
 				7F8956774DA55D7163FF9A55 /* FirestoreClient+ManualSave.swift in Sources */,
+				61209A7802E2CB92F0D0F89E /* FirestoreClient+Prefetch.swift in Sources */,
 				5DE9562E9EF7E32FA79BFAD6 /* FirestoreClient+SaveParsed.swift in Sources */,
 				37A2EDE57467A5208E182DEC /* FirestoreClient+Writes.swift in Sources */,
 				73D82416E9924A088BC0D1CD /* FirestoreClient.swift in Sources */,
+				07E2F3D1AAD0EEBA4012A36F /* FlightStatusBadge.swift in Sources */,
 				128DD0035A0A58F4DE179730 /* FormComponents.swift in Sources */,
+				AFE908A415B3F2FB712B3D74 /* Gradients.swift in Sources */,
 				D076F2528B969E87F056F2CD /* HouseholdConfig.swift in Sources */,
+				7D76DAF4F54C4BCF5D0A666C /* ItemBadge.swift in Sources */,
 				535AF6874FB9B7EEE75477AA /* ItemsView.swift in Sources */,
 				2008580ED19997D8067F36F6 /* ListView.swift in Sources */,
 				550D018B81EC031ECE48D8BD /* MainTabView.swift in Sources */,
 				1DF53B1F72ECFB6BBF50FC76 /* ManualForms.swift in Sources */,
+				30D19CEBEA31608F35C0EBA7 /* MoneyFormatter.swift in Sources */,
+				01714A493FB938FC600E9454 /* NetworkMonitor.swift in Sources */,
+				B4B23F531E3DDD2A732F7FDD /* OfflineBanner.swift in Sources */,
+				DFF36ABF79492CF2F8E5AF47 /* OfflinePrefetcher.swift in Sources */,
 				F280C23F1DCD5C346A636459 /* ParseModels.swift in Sources */,
-				2BAA5F3A2F9E622800B204F9 /* ThemePickerView.swift in Sources */,
+				E189D423E1ABD4C3DF08C629 /* PendingOperation.swift in Sources */,
+				928B97B27F08952C3EB23057 /* ProgressRing.swift in Sources */,
 				12B4D9C3113D5CE8874138DF /* SelectedItem.swift in Sources */,
 				FC3F2053AF6F17C23FDCD301 /* SettingsView.swift in Sources */,
 				FBC69458CA99BFA3E34C644E /* SignInView.swift in Sources */,
+				A3EB7F05ADBA6312A9516E59 /* StatsView.swift in Sources */,
+				EB412393C54D9EB60BC016D8 /* StatsViewModel.swift in Sources */,
+				47C03231978570801EA8B938 /* StatusBadge.swift in Sources */,
+				A4AB694CF00D2ABEF35C815C /* StorageClient.swift in Sources */,
+				5EE954EA87A80F705F68C931 /* SwipeBackEnabler.swift in Sources */,
+				A53F3DDCE2297E8D55790837 /* ThemePickerView.swift in Sources */,
 				AD2EB3956033F36879444B02 /* Tokens.swift in Sources */,
+				C12293E6C2878248C87BB0F2 /* TravelDocument.swift in Sources */,
+				29296498EDC2E6C87D956DC2 /* TravelDocumentsView.swift in Sources */,
+				B0C7CDA543C3431A604D6C3C /* TravelGlobeView.swift in Sources */,
 				9FCD969236CCDE7EC3CB4954 /* Trip.swift in Sources */,
 				57AD3424DD5EBDF9589302E0 /* TripCityEditSheets.swift in Sources */,
 				FF0229CE0B290A7F9F61ACB9 /* TripDetailView.swift in Sources */,
 				3EC940072A0B6B3B8D2840B4 /* TripDetailViewModel.swift in Sources */,
+				5DB0886322287AC9B665691E /* TripHeroCard.swift in Sources */,
 				B6780060B04152AD3CDE3168 /* TripPlannerProApp.swift in Sources */,
-				2BAA5F3D2F9E623F00B204F9 /* TripTheme.swift in Sources */,
-				71B18D34F088B9F56C69152F /* SwipeBackEnabler.swift in Sources */,
+				B670454C43A05F336DAA3FA1 /* TripStatStrip.swift in Sources */,
+				6CA131B440B124D87366B6CC /* TripTheme.swift in Sources */,
+				D7C6C33E35A1B1762EEC8FB4 /* Typography.swift in Sources */,
 				CB73676789102640E78B0F74 /* UIState.swift in Sources */,
+				CE6DD1ED2BB37953C22B70CA /* ViewModifiers.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -514,7 +672,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2BAA5F3B2F9E622800B204F9 /* ThemePickerView.swift in Sources */,
 				908756A0AC06469A2C702322 /* ShareViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -800,6 +957,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 53B2005BB6B63F01A79333D7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		34446987BACF13E101E66DE4 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 53B2005BB6B63F01A79333D7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 		98DE54F22A972F91ADFEEBAF /* SwiftKeychainWrapper */ = {
 			isa = XCSwiftPackageProductDependency;

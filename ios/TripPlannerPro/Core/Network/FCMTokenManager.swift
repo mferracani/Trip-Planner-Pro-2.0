@@ -4,7 +4,7 @@ import Foundation
 
 /// Saves and removes the FCM device token in `users/{uid}/fcm_tokens/{token}`.
 /// Called from AppDelegate whenever the token is issued or refreshed.
-final class FCMTokenManager {
+final class FCMTokenManager: @unchecked Sendable {
     static let shared = FCMTokenManager()
     private init() {}
 
@@ -13,12 +13,13 @@ final class FCMTokenManager {
     func saveToken(_ token: String) {
         guard let uid = Auth.auth().currentUser?.uid else {
             // Auth not ready yet — retry when the user signs in.
+            let name = Notification.Name.AuthStateDidChange
             NotificationCenter.default.addObserver(
-                forName: .AuthStateDidChange,
+                forName: name,
                 object: nil,
                 queue: .main
             ) { [weak self] _ in
-                NotificationCenter.default.removeObserver(self as Any, name: .AuthStateDidChange, object: nil)
+                NotificationCenter.default.removeObserver(self as Any, name: name, object: nil)
                 self?.saveToken(token)
             }
             return

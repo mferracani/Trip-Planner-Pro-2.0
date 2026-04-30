@@ -54,6 +54,8 @@ struct MainTabView: View {
                 })
             case 2:
                 CatalogView(cache: cacheManager)
+            case 3:
+                StatsView()
             default:
                 SettingsView()
             }

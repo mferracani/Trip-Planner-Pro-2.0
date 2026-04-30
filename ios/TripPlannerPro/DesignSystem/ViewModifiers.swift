@@ -67,10 +67,15 @@ extension View {
                 RoundedRectangle(cornerRadius: Tokens.Radius.md)
                     .fill(Tokens.Color.surface)
                     .overlay(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 2)
+                        Rectangle()
                             .fill(color)
                             .frame(width: 3)
                     }
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Tokens.Radius.md)
+                            .strokeBorder(Tokens.Color.borderSoft, lineWidth: 0.5)
+                    )
             )
+            .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.md))
     }
 }
