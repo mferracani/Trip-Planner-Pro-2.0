@@ -561,7 +561,7 @@ private struct DayCell: View {
             } else if inRange {
                 Tokens.Color.elevated.opacity(0.45)
             } else {
-                Color(hex: 0x141414)
+                Color(hex: 0x1E1E1E)
             }
         }
     }
@@ -572,7 +572,7 @@ private struct DayCell: View {
         if isToday { return Tokens.Color.accentGold }
         if let city = primaryCity { return city.swiftColor.opacity(0.66) }
         if inRange { return Tokens.Color.borderSoft }
-        return Color(hex: 0x222222)
+        return Color(hex: 0x2E2E2E)
     }
 
     private var borderWidth: CGFloat {
@@ -669,13 +669,13 @@ private struct DayCell: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(dateLabel)
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(Color(hex: 0x555555))
+                        .foregroundStyle(Color(hex: 0x707070))
                     Spacer()
                     HStack {
                         Spacer()
                         Image(systemName: "plus")
                             .font(.system(size: 14, weight: .light))
-                            .foregroundStyle(Color(hex: 0x333333))
+                            .foregroundStyle(Color(hex: 0x484848))
                         Spacer()
                     }
                     Spacer()

@@ -644,7 +644,7 @@ function DayCell({
     ? `linear-gradient(145deg, ${resolvedColor}42 0%, ${resolvedColor}14 100%)`
     : inRange
     ? "#1A1A1A"
-    : "#141414";
+    : "#1E1E1E";
 
   // Border: city color at 40%, default #333333
   const borderColor = isSelected
@@ -653,7 +653,7 @@ function DayCell({
     ? "#FFD16A"
     : resolvedColor
     ? `${resolvedColor}66`
-    : inRange ? "#333333" : "#222222";
+    : inRange ? "#333333" : "#2E2E2E";
   const borderWidth = isSelected || isToday ? 2 : 1;
 
   const showProgress = !isSplit && primaryCity && totalDays > 0 && dayIndex >= 0;
@@ -699,7 +699,7 @@ function DayCell({
       <div className="flex items-start justify-between mb-1">
         <span
           className="text-[11px] md:text-[12px] font-bold leading-none tabular-nums"
-          style={{ color: isToday ? "#FFD16A" : inRange ? "#A0A0A0" : "#555" }}
+          style={{ color: isToday ? "#FFD16A" : inRange ? "#A0A0A0" : "#707070" }}
         >
           {dateLabel}
         </span>
@@ -783,7 +783,7 @@ function DayCell({
       {/* Padding day "+" hint */}
       {!inRange && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <span className="text-[#333] group-hover/padding:text-[#555] text-lg font-light transition-colors">+</span>
+          <span className="text-[#484848] group-hover/padding:text-[#666] text-lg font-light transition-colors">+</span>
         </div>
       )}
     </div>
