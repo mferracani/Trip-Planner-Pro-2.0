@@ -323,12 +323,19 @@ struct CalendarView: View {
                     cal: cal,
                     isSelected: selectedRange.contains(dateStr),
                     onTap: {
-                        guard inRange,
-                              let date = Trip.isoDateFormatter.date(from: dateStr)
-                        else { return }
-                        let h = UIImpactFeedbackGenerator(style: .soft)
-                        h.impactOccurred()
-                        selectedDate = SelectedDate(date: date)
+                        if inRange {
+                            guard let date = Trip.isoDateFormatter.date(from: dateStr) else { return }
+                            let h = UIImpactFeedbackGenerator(style: .soft)
+                            h.impactOccurred()
+                            selectedDate = SelectedDate(date: date)
+                        } else {
+                            // Padding day: extend the trip to include this date
+                            let h = UIImpactFeedbackGenerator(style: .medium)
+                            h.impactOccurred()
+                            Task {
+                                try? await vm.extendTripDates(toInclude: dateStr)
+                            }
+                        }
                     }
                 )
             }
@@ -554,7 +561,7 @@ private struct DayCell: View {
             } else if inRange {
                 Tokens.Color.elevated.opacity(0.45)
             } else {
-                Tokens.Color.bgPrimary.opacity(0.0)
+                Color(hex: 0x141414)
             }
         }
     }
@@ -564,7 +571,8 @@ private struct DayCell: View {
     private var borderColor: Color {
         if isToday { return Tokens.Color.accentGold }
         if let city = primaryCity { return city.swiftColor.opacity(0.66) }
-        return Tokens.Color.borderSoft
+        if inRange { return Tokens.Color.borderSoft }
+        return Color(hex: 0x222222)
     }
 
     private var borderWidth: CGFloat {
@@ -578,12 +586,11 @@ private struct DayCell: View {
             cellContent
         }
         .buttonStyle(DayCardButtonStyle())
-        .disabled(!inRange)
         .background(
             GeometryReader { geo in
                 Color.clear.preference(
                     key: CalendarCellFrameKey.self,
-                    value: inRange ? [dateStr: geo.frame(in: .named("calGrid"))] : [:]
+                    value: [dateStr: geo.frame(in: .named("calGrid"))]
                 )
             }
         )
@@ -657,11 +664,27 @@ private struct DayCell: View {
                     }
                 }
                 .padding(6)
+            } else {
+                // Padding day: show date + "+" hint
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(dateLabel)
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundStyle(Color(hex: 0x555555))
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .light))
+                            .foregroundStyle(Color(hex: 0x333333))
+                        Spacer()
+                    }
+                    Spacer()
+                }
+                .padding(6)
             }
         }
         .frame(maxWidth: .infinity)
         .frame(height: Tokens.Calendar.cellHeightMobile)
-        .opacity(inRange ? 1.0 : 0.18)
     }
 
     // MARK: - City blocks

@@ -5,7 +5,7 @@ import SwiftUI
 @MainActor
 @Observable
 final class TripDetailViewModel {
-    let trip: Trip
+    private(set) var trip: Trip
     private(set) var cities: [TripCity] = []
     private(set) var flights: [Flight] = []
     private(set) var hotels: [Hotel] = []
@@ -319,6 +319,27 @@ final class TripDetailViewModel {
                 try await client.updateCity(city, tripID: tripID)
             }
         }
+    }
+
+    // MARK: - Extend trip dates
+
+    /// Extends the trip date range to include a padding date. If `dateStr` is before
+    /// the current start, it becomes the new start. If after the end, it becomes the
+    /// new end. Writes to Firestore immediately and updates the local `trip` for
+    /// instant UI feedback.
+    func extendTripDates(toInclude dateStr: String) async throws {
+        var updated = trip
+        if dateStr < trip.startDateString {
+            updated.startDateString = dateStr
+        } else if dateStr > trip.endDateString {
+            updated.endDateString = dateStr
+        } else {
+            return // Already in range, nothing to do
+        }
+        updated.updatedAt = Date()
+        // Optimistic local update for immediate UI refresh
+        trip = updated
+        try await client.updateTrip(updated)
     }
 
     private let calendar: Calendar = {
