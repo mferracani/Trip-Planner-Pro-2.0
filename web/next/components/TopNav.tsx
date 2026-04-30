@@ -6,7 +6,7 @@ import { ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { signOut } from "@/lib/auth";
 
-export type TopNavTab = "home" | "trips" | "catalog" | "map" | "settings" | "stats";
+export type TopNavTab = "home" | "trips" | "catalog" | "map" | "settings";
 
 interface Props {
   active: TopNavTab;
@@ -48,9 +48,9 @@ export function TopNav({ active, onAdd, addIcon = "plus", addLabel = "Nuevo viaj
 
         {/* Nav items */}
         <nav className="flex items-center gap-1 flex-1">
-          <NavItem href="/" active={active === "trips"} icon={<Briefcase size={16} strokeWidth={2.2} />} label="Viajes" />
+          <NavItem href="/" active={active === "home"} icon={<Globe size={16} strokeWidth={2.2} />} label="Inicio" />
+          <NavItem href="/trips" active={active === "trips"} icon={<Briefcase size={16} strokeWidth={2.2} />} label="Viajes" />
           <NavItem href="/catalog" active={active === "catalog"} icon={<Library size={16} strokeWidth={2.2} />} label="Catálogo" />
-          <NavItem href="/stats" active={active === "stats"} icon={<Globe size={16} strokeWidth={2.2} />} label="Mundo" />
           <DisabledNavItem icon={<Map size={16} strokeWidth={2.2} />} label="Mapa" />
           <NavItem href="/settings" active={active === "settings"} icon={<Settings size={16} strokeWidth={2.2} />} label="Ajustes" />
         </nav>

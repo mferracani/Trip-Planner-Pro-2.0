@@ -243,5 +243,5 @@ extension AtlasTab {
     static let mundo = AtlasTab(id: "mundo", title: "Mundo", icon: "globe.americas", iconActive: "globe.americas.fill")
     static let settings = AtlasTab(id: "settings", title: "Perfil", icon: "person", iconActive: "person.fill")
 
-    static let mainTabs: [AtlasTab] = [.home, .trips, .catalog, .mundo, .settings]
+    static let mainTabs: [AtlasTab] = [.home, .trips, .catalog, .settings]
 }

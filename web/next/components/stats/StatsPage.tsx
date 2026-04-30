@@ -217,7 +217,7 @@ export function StatsPage() {
           "radial-gradient(circle at 50% 0%, rgba(10,132,255,0.08), transparent 50%), radial-gradient(circle at 10% 80%, rgba(48,209,88,0.06), transparent 40%), #0D0D0D",
       }}
     >
-      <TopNav active="stats" onAdd={() => {}} addIcon="plus" addLabel="Nuevo viaje" />
+      <TopNav active="home" onAdd={() => {}} addIcon="plus" addLabel="Nuevo viaje" />
 
       <div className="mx-auto max-w-2xl px-5 pb-32 md:pb-16 md:pt-8">
         {/* Header */}
@@ -349,7 +349,7 @@ export function StatsPage() {
           }}
         >
           <Link
-            href="/"
+            href="/trips"
             className="flex items-center justify-center gap-2 w-full py-3.5 rounded-[14px] text-[14px] font-semibold text-[#A0A0A0] hover:text-white transition-colors"
             style={{ background: "#1A1A1A", border: "1px solid #2A2A2A" }}
           >
@@ -358,7 +358,7 @@ export function StatsPage() {
         </div>
       </div>
 
-      <BottomNav active="stats" onAdd={() => {}} />
+      <BottomNav active="home" onAdd={() => {}} />
     </div>
   );
 }

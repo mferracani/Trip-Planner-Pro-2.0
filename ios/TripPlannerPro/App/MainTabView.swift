@@ -38,7 +38,9 @@ struct MainTabView: View {
         } else {
         Group {
             switch selection {
-            case 0, 1:
+            case 0:
+                StatsView()
+            case 1:
                 DashboardView(cache: cacheManager, onTripsLoaded: { trips in
                     availableTrips = trips
                     let summaries = trips.compactMap { trip -> AppGroupBridge.TripSummary? in
@@ -54,8 +56,6 @@ struct MainTabView: View {
                 })
             case 2:
                 CatalogView(cache: cacheManager)
-            case 3:
-                StatsView()
             default:
                 SettingsView()
             }

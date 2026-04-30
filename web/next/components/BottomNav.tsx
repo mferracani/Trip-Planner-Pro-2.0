@@ -1,11 +1,11 @@
 "use client";
 
-import { Home, Briefcase, Library, Settings, Sparkles, Plus, Globe } from "lucide-react";
+import { Briefcase, Settings, Sparkles, Plus, Globe } from "lucide-react";
 import Link from "next/link";
 import { ReactNode } from "react";
 import { Pressable } from "./ui/Pressable";
 
-export type BottomNavTab = "home" | "trips" | "catalog" | "settings" | "stats";
+export type BottomNavTab = "home" | "trips" | "catalog" | "settings";
 
 interface Props {
   active: BottomNavTab;
@@ -32,8 +32,8 @@ export function BottomNav({ active, onAdd, addIcon = "plus", onTabChange }: Prop
       >
         <div className="flex items-stretch justify-around px-2 pt-2 pb-3">
           <NavItem
-            label="Home"
-            icon={<Home size={22} strokeWidth={2} />}
+            label="Inicio"
+            icon={<Globe size={22} strokeWidth={active === "home" ? 2.4 : 2} />}
             active={active === "home"}
             onClick={onTabChange ? () => onTabChange("home") : undefined}
             href={onTabChange ? undefined : "/"}
@@ -43,19 +43,12 @@ export function BottomNav({ active, onAdd, addIcon = "plus", onTabChange }: Prop
             icon={<Briefcase size={22} strokeWidth={active === "trips" ? 2.4 : 2} />}
             active={active === "trips"}
             onClick={onTabChange ? () => onTabChange("trips") : undefined}
-            href={onTabChange ? undefined : "/"}
+            href={onTabChange ? undefined : "/trips"}
           />
 
           {/* Slot central — ocupa espacio, el FAB flota encima */}
           <div className="w-14 flex-shrink-0" aria-hidden />
 
-          <NavItem
-            label="Mundo"
-            icon={<Globe size={22} strokeWidth={active === "stats" ? 2.4 : 2} />}
-            active={active === "stats"}
-            onClick={onTabChange ? () => onTabChange("stats") : undefined}
-            href={onTabChange ? undefined : "/stats"}
-          />
           <NavItem
             label="Ajustes"
             icon={<Settings size={22} strokeWidth={2} />}
