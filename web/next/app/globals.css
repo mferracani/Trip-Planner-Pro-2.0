@@ -165,6 +165,29 @@ body::-webkit-scrollbar-thumb:hover { background: #332E25; }
   to   { transform: rotate(360deg); }
 }
 
+@keyframes earthRotate {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes earthOrbitSpin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes earthMarkerPulse {
+  0%, 100% {
+    opacity: 0.96;
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 209, 106, 0.34), 0 0 18px rgba(255, 209, 106, 0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.22);
+    box-shadow: 0 0 0 9px rgba(255, 209, 106, 0), 0 0 28px rgba(255, 209, 106, 1);
+  }
+}
+
 /* Ripple haptic — onda expansiva desde el punto de toque */
 @keyframes ripple {
   0%   { transform: translate(-50%, -50%) scale(0); opacity: 0.55; }
@@ -215,6 +238,129 @@ body::-webkit-scrollbar-thumb:hover { background: #332E25; }
 }
 .animate-soft-pulse {
   animation: softPulse 2s ease-in-out infinite;
+}
+
+.earth-stage {
+  position: relative;
+  width: min(58vw, 340px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  transform: translateZ(0);
+}
+
+.earth-glow {
+  position: absolute;
+  inset: 4%;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(10,132,255,0.34), transparent 58%),
+    radial-gradient(circle at 40% 38%, rgba(255,255,255,0.13), transparent 34%);
+  filter: blur(16px);
+  opacity: 0.86;
+}
+
+.earth-sphere {
+  position: absolute;
+  inset: 9%;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 165, 250, 0.32);
+  background: #020711;
+  box-shadow:
+    inset -32px -26px 56px rgba(0,0,0,0.78),
+    inset 16px 14px 34px rgba(255,255,255,0.13),
+    0 0 18px rgba(10,132,255,0.66),
+    0 0 46px rgba(10,132,255,0.24);
+}
+
+.earth-sphere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 31% 25%, rgba(255,255,255,0.18), transparent 12%),
+    linear-gradient(90deg, rgba(255,255,255,0.12), transparent 20%, transparent 60%, rgba(0,0,0,0.68) 100%),
+    radial-gradient(circle at 50% 50%, transparent 58%, rgba(1,6,20,0.76) 100%);
+  pointer-events: none;
+}
+
+.earth-map-strip {
+  position: absolute;
+  inset: -1% 0;
+  display: flex;
+  width: 200%;
+  animation: earthRotate 46s linear infinite;
+}
+
+.earth-map-copy {
+  position: relative;
+  width: 50%;
+  height: 100%;
+  flex: 0 0 50%;
+  background-image: url("/earth-blue-marble.png");
+  background-size: 100% 102%;
+  background-position: center;
+  filter: saturate(0.98) contrast(1.08) brightness(0.72);
+}
+
+.earth-marker {
+  position: absolute;
+  z-index: 5;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255,255,255,0.96);
+  background: #FFD16A;
+  transform: translate(-50%, -50%);
+  animation: earthMarkerPulse 2.4s ease-in-out infinite;
+}
+
+.earth-marker::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 88%;
+  width: 2px;
+  height: 10px;
+  transform: translateX(-50%);
+  background: linear-gradient(#FFD16A, transparent);
+}
+
+.earth-orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 112%;
+  height: 30%;
+  border: 1px solid rgba(10,132,255,0.28);
+  border-radius: 999px;
+  transform: translate(-50%, -50%) rotate(16deg);
+  filter: drop-shadow(0 0 8px rgba(10,132,255,0.22));
+}
+
+.earth-orbit-one { animation: earthOrbitSpin 42s linear infinite; }
+.earth-orbit-two {
+  border-color: rgba(168,145,232,0.24);
+  animation: earthOrbitSpin 54s linear infinite reverse;
+}
+.earth-orbit-three {
+  border-color: rgba(113,211,166,0.2);
+  animation: earthOrbitSpin 62s linear infinite;
+}
+
+@media (max-width: 767px) {
+  .earth-stage {
+    width: min(64vw, 260px);
+  }
+
+  .earth-sphere {
+    inset: 8%;
+  }
+
+  .earth-orbit {
+    width: 118%;
+    height: 32%;
+  }
 }
 
 /* Sparkles IA */
