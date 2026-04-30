@@ -30,16 +30,6 @@ struct TravelGlobeView: View {
         let rotation = (time * 0.025).truncatingRemainder(dividingBy: 2 * .pi)
 
         // --- 1. Base sphere ---
-        let sphereGrad = RadialGradient(
-            colors: [
-                Color(hex: 0x1A3A6B),
-                Color(hex: 0x0E1E3A),
-                Color(hex: 0x050D1A)
-            ],
-            center: UnitPoint(x: 0.38, y: 0.32),
-            startRadius: r * 0.08,
-            endRadius: r * 1.05
-        )
         context.fill(
             Path(ellipseIn: CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2)),
             with: .linearGradient(
@@ -58,10 +48,8 @@ struct TravelGlobeView: View {
         let lineCount = 8
         for i in 0..<lineCount {
             let angle = Double(i) * (.pi / Double(lineCount))
-            let cos1 = cos(angle + rotation)
-            let sin1 = sin(angle)
-            // Vertical ellipse (meridian)
-            let ellipseW = abs(cos1) * r * 2
+            let cosA = cos(angle + rotation)
+            let ellipseW = abs(cosA) * r * 2
             if ellipseW > 2 {
                 let rect = CGRect(
                     x: cx - ellipseW / 2,
@@ -143,12 +131,6 @@ struct TravelGlobeView: View {
         }
 
         // --- 5. Specular highlight ---
-        let specGrad = RadialGradient(
-            colors: [Color.white.opacity(0.18), Color.clear],
-            center: UnitPoint(x: 0.35, y: 0.28),
-            startRadius: r * 0.05,
-            endRadius: r * 0.6
-        )
         context.fill(
             Path(ellipseIn: CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2)),
             with: .linearGradient(

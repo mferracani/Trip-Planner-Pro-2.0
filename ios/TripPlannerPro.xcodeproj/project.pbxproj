@@ -132,7 +132,7 @@
 		97C1F982E0E82A66A94CC4B4 /* TravelDocumentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelDocumentsView.swift; sourceTree = "<group>"; };
 		98656ECD7F6F4EDD755E01FA /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		9DAD3349456E2218FE16F521 /* CountUpText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountUpText.swift; sourceTree = "<group>"; };
-		9E14DCAB330192DFA05BBF39 /* TripPlannerPro.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; name = TripPlannerPro.app; path = "Trip Planner Pro.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9E14DCAB330192DFA05BBF39 /* TripPlannerPro.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TripPlannerPro.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A4D3216405FE908A11783762 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		B251D016C59B2173B79A5EC8 /* DashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModel.swift; sourceTree = "<group>"; };
 		B3E0918B8679BF343860B9F5 /* SelectedItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectedItem.swift; sourceTree = "<group>"; };
